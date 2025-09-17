@@ -1,0 +1,705 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.65rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.645 0.246 16.439);
+  --primary-foreground: oklch(0.969 0.015 12.422);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.645 0.246 16.439);
+  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.645 0.246 16.439);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.645 0.246 16.439);
+  --primary-foreground: oklch(0.969 0.015 12.422);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.645 0.246 16.439);
+  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.645 0.246 16.439);
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ...existing styles... */
+
+/* ===== ESTILOS PARA EDITOR TIPTAP ===== */
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* ✅ Evitar scroll en el body */
+}
+
+/* Editor base */
+.ProseMirror {
+  outline: none;
+  padding: 1rem;
+  line-height: 1.6;
+}
+
+/* ===== LISTAS NUMERADAS ===== */
+.ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ol li {
+  display: list-item !important;
+  list-style-type: decimal !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+/* ===== LISTAS CON VIÑETAS ===== */
+.ProseMirror ul:not([data-type="taskList"]) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) li {
+  display: list-item !important;
+  list-style-type: disc !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+/* ===== LISTAS ANIDADAS ===== */
+.ProseMirror ol ol {
+  list-style-type: lower-alpha !important;
+  margin: 0.5rem 0 !important;
+}
+
+.ProseMirror ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+.ProseMirror ul ul {
+  list-style-type: circle !important;
+  margin: 0.5rem 0 !important;
+}
+
+.ProseMirror ul ul ul {
+  list-style-type: square !important;
+}
+
+/* ===== LISTAS DE TAREAS ===== */
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex !important;
+  align-items: flex-start !important;
+  margin: 0.5rem 0 !important;
+  list-style: none !important;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  margin-top: 0.125rem;
+  user-select: none;
+  cursor: pointer;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* ===== TABLAS ===== */
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  min-width: 1em;
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ProseMirror table th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f8f9fa;
+}
+
+.ProseMirror table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
+
+/* ===== TÍTULOS ===== */
+.ProseMirror h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 1.5rem 0 1rem 0;
+  line-height: 1.2;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 1.25rem 0 0.75rem 0;
+  line-height: 1.3;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+/* ===== PÁRRAFOS ===== */
+.ProseMirror p {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+/* ===== CITAS ===== */
+.ProseMirror blockquote {
+  border-left: 4px solid #e5e7eb;
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #6b7280;
+}
+
+/* ===== CÓDIGO ===== */
+.ProseMirror code {
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875em;
+}
+
+.ProseMirror pre {
+  background-color: #f3f4f6;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  background: none;
+  padding: 0;
+}
+
+/* ===== LÍNEAS HORIZONTALES ===== */
+.ProseMirror hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+/* ===== ENLACES ===== */
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  color: #1d4ed8;
+}
+
+/* ===== IMÁGENES ===== */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* ===== RESALTADO ===== */
+.ProseMirror mark {
+  background-color: #fef08a;
+  padding: 0.125rem;
+  border-radius: 0.125rem;
+}
+
+/* ===== ALINEACIÓN DE TEXTO ===== */
+.ProseMirror [style*="text-align: center"] {
+  text-align: center;
+}
+
+.ProseMirror [style*="text-align: right"] {
+  text-align: right;
+}
+
+.ProseMirror [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* ===== SUBRAYADO Y TACHADO ===== */
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+.ProseMirror s {
+  text-decoration: line-through;
+}
+
+/* ===== FOCUS STATES ===== */
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror.ProseMirror-focused {
+  outline: none;
+}
+
+/* ===== OVERRIDE PROSE STYLES ===== */
+.prose ol {
+  list-style-type: decimal !important;
+}
+
+.prose ul {
+  list-style-type: disc !important;
+}
+
+.prose li {
+  display: list-item !important;
+}
+
+/* ...existing styles... */
+
+/* ===== CONTENEDOR DEL EDITOR ===== */
+.tiptap-editor {
+  /* Asegurar que las listas se muestren correctamente */
+}
+
+.tiptap-editor .ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror li {
+  display: list-item !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+.tiptap-editor .ProseMirror ol li {
+  list-style-type: decimal !important;
+}
+
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) li {
+  list-style-type: disc !important;
+}
+
+/* ===== NUMERACIÓN ROMANA ===== */
+.tiptap-editor .ProseMirror ol.roman-list {
+  list-style-type: upper-roman !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ol.roman-list li {
+  display: list-item !important;
+  list-style-type: upper-roman !important;
+  margin: 0.5rem 0 !important;
+  padding-left: 0.5rem !important;
+  font-weight: normal; /* ✅ Cambiar de 500 a normal */
+}
+
+/* ===== NUMERACIÓN ROMANA ANIDADA ===== */
+.tiptap-editor .ProseMirror ol.roman-list ol {
+  list-style-type: lower-alpha !important;
+  margin: 0.25rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ol.roman-list ol ol {
+  list-style-type: decimal !important;
+}
+
+/* ===== ESTILOS MEJORADOS PARA LISTAS NORMALES ===== */
+.tiptap-editor .ProseMirror ol:not(.roman-list) {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ol:not(.roman-list) li {
+  display: list-item !important;
+  list-style-type: decimal !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) li {
+  display: list-item !important;
+  list-style-type: disc !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+/* ===== LISTAS DE TAREAS ===== */
+.tiptap-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 1rem 0 !important;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li {
+  display: flex !important;
+  align-items: flex-start !important;
+  margin: 0.5rem 0 !important;
+  list-style: none !important;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  margin-top: 0.125rem;
+  user-select: none;
+  cursor: pointer;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* ...existing styles... */
+
+/* ===== PÁGINA A4 EXACTA ===== */
+.a4-page {
+  /* ✅ Dimensiones A4 exactas en píxeles (96 DPI) */
+  width: 794px;  /* 210mm = 794px */
+  height: 1123px; /* 297mm = 1123px */
+  
+  /* ✅ Padding estándar de documento */
+  padding: 48px; /* 12.7mm ≈ 48px */
+  
+  /* ✅ Estilos visuales */
+  background: white;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid #d1d5db;
+  margin: 0 auto;
+  
+  /* ✅ Layout */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  
+  /* ✅ Tipografía */
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.6;
+  color: black;
+  font-family: system-ui, -apple-system, sans-serif;
+  
+  /* ✅ Escalado para vista previa */
+  transform: scale(0.6);
+  transform-origin: top center;
+}
+
+/* ===== ÁREA DE CONTENIDO DE ACTAS ===== */
+.acts-content-area {
+  /* ✅ Altura disponible = altura total - padding */
+  height: calc(1123px - 96px); /* 1027px disponibles */
+  max-height: calc(1123px - 96px);
+  overflow: hidden; /* ✅ Crucial: evitar desbordamiento */
+  flex: 1;
+}
+
+/* ===== RESPONSIVIDAD PARA DIFERENTES PANTALLAS ===== */
+@media (max-width: 1024px) {
+  .a4-page {
+    transform: scale(0.4);
+  }
+}
+
+@media (min-width: 1200px) {
+  .a4-page {
+    transform: scale(0.7);
+  }
+}
+
+@media (min-width: 1400px) {
+  .a4-page {
+    transform: scale(0.8);
+  }
+}
+
+@media (min-width: 1600px) {
+  .a4-page {
+    transform: scale(0.9);
+  }
+}
+
+@media (min-width: 1920px) {
+  .a4-page {
+    transform: scale(1.0); /* Tamaño real en pantallas muy grandes */
+  }
+}
+
+/* ===== ESTILOS PARA CONTENIDO DE ACTAS ===== */
+.content-section {
+  margin-bottom: 1.5rem;
+}
+
+.content-section:last-child {
+  margin-bottom: 0;
+}
+
+.act-content {
+  height: auto;
+}
+
+.signatures-section {
+  margin-top: 2rem;
+}
+
+/* ===== ESTILOS PARA VISTA PREVIA DEL ACTA ===== */
+.prose-acta {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.prose-acta h1,
+.prose-acta h2,
+.prose-acta h3,
+.prose-acta h4,
+.prose-acta h5,
+.prose-acta h6 {
+  font-weight: bold;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.prose-acta h3,
+.prose-acta h4 {
+  text-decoration: underline;
+}
+
+.prose-acta p {
+  margin-bottom: 1rem;
+  text-align: justify;
+}
+
+.prose-acta strong,
+.prose-acta b {
+  font-weight: bold;
+}
+
+.prose-acta em,
+.prose-acta i {
+  font-style: italic;
+}
+
+.prose-acta u {
+  text-decoration: underline;
+}
+
+/* ===== LISTAS EN VISTA PREVIA ===== */
+.prose-acta ol,
+.prose-acta ul {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.prose-acta ol {
+  list-style-type: decimal;
+}
+
+.prose-acta ol[style*="upper-roman"] {
+  list-style-type: upper-roman !important;
+}
+
+.prose-acta ul {
+  list-style-type: disc;
+}
+
+.prose-acta li {
+  margin-bottom: 0.5rem;
+  text-align: justify;
+  font-weight: normal !important;
+}
+
+.prose-acta li p {
+  margin-bottom: 0.25rem;
+}
+
+/* ===== SEPARADORES ENTRE ACTAS ===== */
+.prose-acta hr {
+  border: none;
+  border-top: 2px solid #666;
+  margin: 3rem auto;
+  width: 50%;
+}
+
+/* ===== ESTILOS DE IMPRESIÓN ===== */
+@media print {
+  .a4-page {
+    width: 210mm;
+    height: 297mm;
+    transform: none;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+    page-break-after: always;
+  }
+  
+  .acts-content-area {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ===== REMOVER ESTILOS ANTIGUOS CONFLICTIVOS ===== */
+.page-container,
+.page-content-area,
+.p-12.bg-white.shadow-lg.aspect-\[210\/297\] {
+  /* Desactivar estilos antiguos */
+  transform: none !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: none !important;
+}
+
+/* ...rest of existing styles... */
