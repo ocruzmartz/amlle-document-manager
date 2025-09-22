@@ -1,5 +1,3 @@
-"use client";
-
 import { type ColumnDef } from "@tanstack/react-table";
 import { type Book } from "@/types/book";
 import { Badge } from "@/components/ui/badge";

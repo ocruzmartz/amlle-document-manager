@@ -16,4 +16,5 @@ export type Act = {
   };
   bodyContent: string;
   agreements: Agreement[];
+  clarifyingNote?: string;
 };

@@ -2,7 +2,12 @@
 
 import { type Book, type Act } from "@/types";
 
-import { booksData as initialBooks, bookContentData as initialContent } from "./dummyData";
+import {
+  allCouncilMembers,
+  booksData as initialBooks,
+  bookContentData as initialContent,
+} from "./dummyData";
+import { numberToWords } from "@/lib/textUtils";
 
 declare global {
   interface Window {
@@ -65,7 +70,7 @@ export const getBookById = (id: string | undefined): Book | undefined => {
   // Unimos los datos del libro con su contenido de actas
   return {
     ...bookData,
-    actas: contentStore[id]?.actas || [],
+    acts: contentStore[id]?.acts || [],
   };
 };
 
@@ -75,7 +80,7 @@ export const createBook = (data: {
 }): Book => {
   let books = getBooksStore();
   const newBook: Book = {
-    id: crypto.randomUUID(), // ✅ Ya está usando crypto
+    id: crypto.randomUUID(),
     name: data.name,
     status: "BORRADOR",
     actaCount: 0,
@@ -84,7 +89,7 @@ export const createBook = (data: {
     createdAt: new Date().toISOString(),
     lastModified: new Date().toISOString(),
     modifiedBy: "Usuario Actual",
-    actas: [],
+    acts: [],
   };
   books = [newBook, ...books];
   setBooksStore(books);
@@ -120,77 +125,73 @@ export const updateBookDetails = (
 export const getActasByBookId = (bookId: string | undefined): Act[] => {
   if (!bookId) return [];
   const contentStore = getContentStore();
-  return contentStore[bookId]?.actas || [];
-};
-
-// Helper function para convertir números a palabras
-const numberToWords = (num: number): string => {
-  const numbers = [
-    "", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez",
-    "Once", "Doce", "Trece", "Catorce", "Quince", "Dieciséis", "Diecisiete", "Dieciocho", "Diecinueve", "Veinte",
-    "Veintiuno", "Veintidós", "Veintitrés", "Veinticuatro", "Veinticinco", "Veintiséis", "Veintisiete", "Veintiocho", "Veintinueve", "Treinta"
-  ];
-  
-  if (num <= 30) {
-    return numbers[num];
-  }
-  
-  // Para números mayores a 30, usar formato simple
-  return num.toString();
+  return contentStore[bookId]?.acts || [];
 };
 
 export const createActaInBook = (
   bookId: string | undefined,
-  actaData?: { name?: string } // ✅ Hacer opcional el name
+  actaData?: { name?: string }
 ): Act | null => {
   if (!bookId) return null;
 
-  const book = getBookById(bookId);
+  const books = getBooksStore();
+  const contentStore = getContentStore();
+
+  const bookIndex = books.findIndex((b) => b.id === bookId);
+  const book = books[bookIndex];
+
   if (!book) return null;
 
-  const actNumber = (book.actas?.length || 0) + 1;
+  const actNumber = (contentStore[bookId]?.acts.length || 0) + 1; // Corregido a 'acts'
   const actNumberInWords = numberToWords(actNumber);
+
+  // --- 👇 INICIO DE CAMBIOS 👇 ---
+
+  // ✅ 2. Lógica para obtener los asistentes por defecto
+  const defaultAttendees = {
+    sindico: allCouncilMembers.find((m) => m.role === "SINDICO") || null,
+    propietarios: allCouncilMembers.filter((m) => m.role === "PROPIETARIO"),
+    secretaria: allCouncilMembers.find((m) => m.role === "SECRETARIA") || null,
+  };
 
   const newActa: Act = {
     id: crypto.randomUUID(),
-    name: actaData?.name ?? `Acta número ${actNumberInWords}`, // Usa actaData.name si está presente
+    name: actaData?.name ?? `Acta número ${actNumberInWords}`,
     sessionDate: new Date().toISOString(),
-    attendees: {
-      sindico: null,
-      propietarios: [],
-      secretaria: null,
-    },
-    bodyContent: "",
+    // ✅ 3. Usar los asistentes por defecto en la creación
+    attendees: defaultAttendees,
+    bodyContent: `<p><strong>Acta número ${actNumberInWords}</strong></p>`,
     agreements: [],
-    // Propiedades adicionales
     actNumber: actNumber,
     sessionType: "ordinaria",
     sessionTime: "diez horas",
     sessionPoints: [],
   };
 
-  // Actualizar el store de contenido correctamente
-  const contentStore = getContentStore();
-  
-  if (!contentStore[bookId]) {
-    contentStore[bookId] = { actas: [] };
-  }
-  
-  contentStore[bookId].actas.push(newActa);
-  setContentStore(contentStore);
+  // --- INICIO DE CAMBIOS ---
 
-  // También actualizar el store de libros para el conteo
-  const books = getBooksStore();
-  const bookIndex = books.findIndex(b => b.id === bookId);
-  if (bookIndex !== -1) {
-    books[bookIndex] = {
-      ...books[bookIndex],
-      actaCount: contentStore[bookId].actas.length,
-      lastModified: new Date().toISOString(),
-    };
-    setBooksStore(books);
-  }
+  // 1. Clonamos el contenido del libro para no mutarlo
+  const newBookContent = contentStore[bookId]
+    ? { ...contentStore[bookId], acts: [...contentStore[bookId].acts, newActa] }
+    : { acts: [newActa] };
+
+  // 2. Creamos un nuevo objeto para el contentStore
+  const newContentStore = {
+    ...contentStore,
+    [bookId]: newBookContent,
+  };
+  setContentStore(newContentStore);
+
+  // 3. Creamos un nuevo array de libros y actualizamos el libro modificado
+  const updatedBooks = [...books];
+  updatedBooks[bookIndex] = {
+    ...book,
+    actaCount: newBookContent.acts.length,
+    lastModified: new Date().toISOString(),
+  };
+  setBooksStore(updatedBooks);
+
+  // --- FIN DE CAMBIOS ---
 
   return newActa;
 };
-

@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+// src/features/acts/components/ActasWorkspace.tsx
+
+import { useState, useEffect, useRef } from "react";
 import { type Act } from "@/types";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,79 +17,118 @@ import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { AttendeesManager } from "./AttendeesManager";
 import { ActTemplateEditor } from "./ActTemplateEditor";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ArrowRight, ChevronsUpDown } from "lucide-react";
 
-const actaSchema = z.object({
+const actSchema = z.object({
+  // ✅ Renamed from actaSchema
   name: z.string().min(3, "El nombre es requerido"),
 });
 
-type ActaFormValues = z.infer<typeof actaSchema>;
+type ActFormValues = z.infer<typeof actSchema>; // ✅ Renamed from ActaFormValues
 
-interface ActaWorkspaceProps {
+interface ActWorkspaceProps {
+  // ✅ Renamed from ActaWorkspaceProps
   act: Act;
-  onUpdateActa?: (updatedActa: Act) => void;
+  onUpdateAct?: (updatedAct: Act) => void;
+  onDoneEditing?: () => void;
+  onManageAgreements: (actId: string) => void;
 }
 
-export const ActaWorkspace = ({ act, onUpdateActa }: ActaWorkspaceProps) => {
-  const [localAct, setLocalAct] = useState<Act>(act);
-  const [bodyContent, setBodyContent] = useState(act.bodyContent);
+export const ActWorkspace = ({
+  act,
+  onUpdateAct,
+  onDoneEditing,
+  onManageAgreements
+}: ActWorkspaceProps) => {
+  // ✅ Renamed from ActaWorkspace
+  const [localActState, setLocalActState] = useState<Act>(act); // ✅ Renamed from localAct
+  const [bodyContentState, setBodyContentState] = useState(act.bodyContent); // ✅ Renamed from bodyContent
+  const [clarifyingNoteState, setClarifyingNoteState] = useState(
+    act.clarifyingNote || ""
+  ); // ✅ Renamed from notaAclaratoria
 
-  const form = useForm<ActaFormValues>({
-    resolver: zodResolver(actaSchema),
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const form = useForm<ActFormValues>({
+    resolver: zodResolver(actSchema),
     defaultValues: {
       name: act.name,
     },
   });
 
-  // ✅ Sincronizar cuando cambie el prop
   useEffect(() => {
-    console.log("🔄 ActaWorkspace recibió nueva acta:", act);
-    setLocalAct(act);
-    setBodyContent(act.bodyContent);
+    console.log("🔄 ActWorkspace received new act:", act);
+    setLocalActState(act);
+    setBodyContentState(act.bodyContent);
+    setClarifyingNoteState(act.clarifyingNote || "");
 
-    // ✅ Actualizar también el formulario
     form.reset({
       name: act.name,
     });
   }, [act, form]);
 
-  // ✅ Función para manejar cambios en el acta
-  const handleActChange = <K extends keyof Act>(field: K, value: Act[K]) => {
-    console.log(`🔄 Actualizando ${field}:`, value);
-
-    const updatedAct = {
-      ...localAct,
-      [field]: value,
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
+  }, []);
 
-    setLocalAct(updatedAct);
+  const handleActPropertyChange = <K extends keyof Act>(
+    field: K,
+    value: Act[K]
+  ) => {
+    // A. Actualizar el estado local al instante para una UI fluida
+    const updatedAct = { ...localActState, [field]: value };
+    setLocalActState(updatedAct);
 
-    // ✅ Actualizar bodyContent si es necesario
-    if (field === "bodyContent") {
-      setBodyContent(value as string);
+    if (field === "bodyContent") setBodyContentState(value as string);
+    if (field === "clarifyingNote") setClarifyingNoteState(value as string);
+
+    // B. Limpiar cualquier temporizador pendiente
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
-    // ✅ Notificar inmediatamente al componente padre
-    if (onUpdateActa) {
-      console.log("📤 Enviando acta actualizada al padre:", updatedAct);
-      onUpdateActa(updatedAct);
-    }
+    // C. Crear un nuevo temporizador para notificar al padre después de 500ms
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (onUpdateAct) {
+        console.log(
+          "📤 Debounced: Enviando actualización al padre:",
+          updatedAct
+        );
+        onUpdateAct(updatedAct);
+      }
+    }, 500);
   };
 
-  const handleNameChange = (name: string) => {
-    handleActChange("name", name);
+  const handleNameInputChange = (name: string) => {
+    // ✅ Renamed from handleNameChange
+    handleActPropertyChange("name", name);
   };
 
-  const onSubmit = (data: ActaFormValues) => {
+  const handleFormSubmit = (data: ActFormValues) => {
+    // ✅ Renamed from onSubmit
     const finalAct = {
-      ...localAct,
+      ...localActState,
       name: data.name,
-      bodyContent,
+      bodyContent: bodyContentState,
+      clarifyingNote: clarifyingNoteState,
     };
 
-    console.log("💾 Guardando acta:", finalAct);
+    console.log("💾 Saving act:", finalAct);
 
-    if (onUpdateActa) {
-      onUpdateActa(finalAct);
+    if (onUpdateAct) {
+      onUpdateAct(finalAct);
+    }
+    if (onDoneEditing) {
+      onDoneEditing();
     }
   };
 
@@ -96,10 +137,10 @@ export const ActaWorkspace = ({ act, onUpdateActa }: ActaWorkspaceProps) => {
       <div className="overflow-y-auto h-full">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(handleFormSubmit)}
             className="flex flex-col h-full"
           >
-            {/* Cabecera - Fija */}
+            {/* Header */}
             <div
               className="flex-shrink-0  border-b bg-white p-3
             "
@@ -115,7 +156,7 @@ export const ActaWorkspace = ({ act, onUpdateActa }: ActaWorkspaceProps) => {
                         className="text-lg! font-bold border-none shadow-none focus-visible:ring-0 p-0"
                         onChange={(e) => {
                           field.onChange(e);
-                          handleNameChange(e.target.value);
+                          handleNameInputChange(e.target.value);
                         }}
                       />
                     </FormControl>
@@ -125,28 +166,28 @@ export const ActaWorkspace = ({ act, onUpdateActa }: ActaWorkspaceProps) => {
               />
             </div>
 
-            {/* Contenido principal - Scrolleable */}
+            {/* Main content */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-4 space-y-4">
-                {/* Editor de plantilla */}
+                {/* Template Editor */}
                 <div className="border rounded-lg p-4">
                   <ActTemplateEditor
-                    act={localAct}
-                    onActChange={handleActChange}
+                    act={localActState}
+                    onActChange={handleActPropertyChange}
                   />
                 </div>
 
-                {/* Gestión de asistentes */}
+                {/* Attendees Manager */}
                 <div className="border rounded-lg p-4">
                   <AttendeesManager
-                    attendees={localAct.attendees}
+                    attendees={localActState.attendees}
                     onAttendeesChange={(attendees) =>
-                      handleActChange("attendees", attendees)
+                      handleActPropertyChange("attendees", attendees)
                     }
                   />
                 </div>
 
-                {/* Editor de Texto Enriquecido */}
+                {/* Rich Text Editor */}
                 <div className="border rounded-lg p-4">
                   <h3 className="text-lg font-semibold mb-4">
                     Puntos del Acta
@@ -154,34 +195,65 @@ export const ActaWorkspace = ({ act, onUpdateActa }: ActaWorkspaceProps) => {
 
                   <div className="min-h-[400px] ">
                     <RichTextEditor
-                      content={bodyContent}
+                      content={bodyContentState}
                       onChange={(content) => {
-                        setBodyContent(content);
-                        handleActChange("bodyContent", content);
+                        setBodyContentState(content);
+                        handleActPropertyChange("bodyContent", content);
                       }}
                     />
                   </div>
                 </div>
 
-                {/* Sección de Acuerdos */}
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-2">Acuerdos</h3>
-                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-500">
-                    <p className="text-sm">
-                      Próximamente: Lista de acuerdos y botón para añadir uno
-                      nuevo.
-                    </p>
+                {/* Agreements Section */}
+                <div className="border rounded-lg">
+                  <div
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                    onClick={() => onManageAgreements(localActState.id)}
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        Acuerdos del Acta
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {localActState.agreements?.length || 0} acuerdos
+                        definidos. Haz clic para gestionar.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>Gestionar</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </div>
                   </div>
+                </div>
+
+                {/* Clarifying Note Section */}
+                <div className="border rounded-lg">
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                        <h3 className="text-lg font-semibold">
+                          Nota Aclaratoria (Opcional)
+                        </h3>
+                        <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="p-4 border-t">
+                      <RichTextEditor
+                        content={clarifyingNoteState}
+                        onChange={(content) => {
+                          setClarifyingNoteState(content);
+                          handleActPropertyChange("clarifyingNote", content);
+                        }}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               </div>
             </div>
 
-            {/* Footer con botones - Fijo */}
+            {/* Footer */}
             <div className="flex-shrink-0 p-4 border-t bg-white">
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline">
-                  Guardar Borrador
-                </Button>
                 <Button type="submit">Guardar Cambios</Button>
               </div>
             </div>

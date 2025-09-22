@@ -1,8 +1,11 @@
 // src/lib/textUtils.ts
-export const numeroALetras = (num: number): string => {
-  const unidades = [
+
+export const numberToWords = (num: number): string => {
+  // ✅ Renamed from numeroALetras
+  const units = [
+    // ✅ Renamed
     "",
-    "un",
+    "uno",
     "dos",
     "tres",
     "cuatro",
@@ -12,7 +15,8 @@ export const numeroALetras = (num: number): string => {
     "ocho",
     "nueve",
   ];
-  const decenas = [
+  const tens = [
+    // ✅ Renamed
     "",
     "diez",
     "veinte",
@@ -24,7 +28,8 @@ export const numeroALetras = (num: number): string => {
     "ochenta",
     "noventa",
   ];
-  const centenas = [
+  const hundreds = [
+    // ✅ Renamed
     "",
     "ciento",
     "doscientos",
@@ -37,7 +42,8 @@ export const numeroALetras = (num: number): string => {
     "novecientos",
   ];
 
-  const especiales: { [key: number]: string } = {
+  const specials: { [key: number]: string } = {
+    // ✅ Renamed
     10: "diez",
     11: "once",
     12: "doce",
@@ -52,28 +58,31 @@ export const numeroALetras = (num: number): string => {
     30: "treinta",
   };
 
-  if (especiales[num]) return especiales[num];
-  if (num > 15 && num < 20) return "dieci" + unidades[num - 10];
-  if (num > 20 && num < 30) return "veinti" + unidades[num % 10];
+  if (specials[num]) return specials[num];
+  if (num > 15 && num < 20) return "dieci" + units[num - 10];
+  if (num > 20 && num < 30) return "veinti" + units[num % 10];
 
   if (num >= 2000 && num < 3000) {
-    const resto = num - 2000;
-    return "dos mil" + (resto > 0 ? " " + numeroALetras(resto) : "");
+    const remainder = num - 2000; // ✅ Renamed
+    return "dos mil" + (remainder > 0 ? " " + numberToWords(remainder) : "");
   }
 
   if (num >= 100) {
-    const cienExacto = Math.floor(num / 100);
-    const resto = num % 100;
+    const exactHundred = Math.floor(num / 100); // ✅ Renamed
+    const remainder = num % 100; // ✅ Renamed
     if (num === 100) return "cien";
-    return centenas[cienExacto] + (resto > 0 ? " " + numeroALetras(resto) : "");
+    return (
+      hundreds[exactHundred] +
+      (remainder > 0 ? " " + numberToWords(remainder) : "")
+    );
   }
 
-  const diez = Math.floor(num / 10);
-  const uno = num % 10;
+  const ten = Math.floor(num / 10); // ✅ Renamed
+  const one = num % 10; // ✅ Renamed
 
   let str = "";
-  if (diez > 0) str += decenas[diez] + (uno > 0 ? " y " : "");
-  if (uno > 0) str += unidades[uno];
+  if (ten > 0) str += tens[ten] + (one > 0 ? " y " : "");
+  if (one > 0) str += units[one];
 
   return str || num.toString();
 };

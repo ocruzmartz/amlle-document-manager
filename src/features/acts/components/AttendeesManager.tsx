@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 interface AttendeesManagerProps {
   attendees: Act["attendees"];
@@ -37,22 +37,6 @@ export const AttendeesManager = ({
     secretarias,
   } = councilMembersByRole;
 
-  // Inicializar attendees con valores por defecto (solo una vez)
-  useEffect(() => {
-    if (!attendees?.propietarios || attendees.propietarios.length === 0) {
-      onAttendeesChange({
-        sindico: sindicos[0] || null,
-        propietarios: [...propietariosDefault],
-        secretaria: secretarias[0] || null,
-      });
-    }
-  }, [
-    attendees?.propietarios,
-    onAttendeesChange,
-    propietariosDefault,
-    secretarias,
-    sindicos,
-  ]); // ✅ Solo ejecutar una vez al montar
 
   // Validar que attendees esté inicializado
   if (!attendees?.propietarios) {

@@ -110,7 +110,6 @@
   --sidebar-ring: oklch(0.645 0.246 16.439);
 }
 
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -124,7 +123,8 @@
 
 /* ===== ESTILOS PARA EDITOR TIPTAP ===== */
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden; /* ✅ Evitar scroll en el body */
 }
@@ -244,7 +244,10 @@ html, body {
   z-index: 2;
   position: absolute;
   content: "";
-  left: 0; right: 0; top: 0; bottom: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
   background: rgba(200, 200, 255, 0.4);
   pointer-events: none;
 }
@@ -291,7 +294,7 @@ html, body {
   background-color: #f3f4f6;
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.875em;
 }
 
@@ -492,7 +495,12 @@ html, body {
   cursor: pointer;
 }
 
-.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+.tiptap-editor
+  .ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  input[type="checkbox"] {
   cursor: pointer;
   margin: 0;
 }
@@ -501,100 +509,105 @@ html, body {
   flex: 1 1 auto;
 }
 
-/* ...existing styles... */
+/* ...rest of existing styles... */
 
-/* ===== PÁGINA A4 EXACTA ===== */
-.a4-page {
-  /* ✅ Dimensiones A4 exactas en píxeles (96 DPI) */
-  width: 794px;  /* 210mm = 794px */
-  height: 1123px; /* 297mm = 1123px */
-  
-  /* ✅ Padding estándar de documento */
-  padding: 48px; /* 12.7mm ≈ 48px */
-  
-  /* ✅ Estilos visuales */
-  background: white;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border: 1px solid #d1d5db;
+/* ===== LISTAS ROMANAS - EXTENSIÓN PERSONALIZADA ===== */
+.ProseMirror ol[style*="upper-roman"],
+.tiptap-editor .ProseMirror ol[style*="upper-roman"] {
+  list-style-type: upper-roman !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ol[style*="upper-roman"] li,
+.tiptap-editor .ProseMirror ol[style*="upper-roman"] li {
+  display: list-item !important;
+  list-style-type: upper-roman !important;
+  margin: 0.5rem 0 !important;
+  padding-left: 0.5rem !important;
+  font-weight: normal !important; /* ✅ Cambiar de 500 a normal */
+}
+
+/* ===== NUMERACIÓN ROMANA (estilos duplicados - también corregir) ===== */
+.tiptap-editor .ProseMirror ol.roman-list li {
+  display: list-item !important;
+  list-style-type: upper-roman !important;
+  margin: 0.5rem 0 !important;
+  padding-left: 0.5rem !important;
+  font-weight: normal; /* ✅ Cambiar de 500 a normal */
+}
+
+/* ===== LISTAS ORDENADAS NORMALES ===== */
+.ProseMirror ol:not([style*="upper-roman"]):not(.roman-list),
+.tiptap-editor .ProseMirror ol:not([style*="upper-roman"]):not(.roman-list) {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ol:not([style*="upper-roman"]):not(.roman-list) li,
+.tiptap-editor .ProseMirror ol:not([style*="upper-roman"]):not(.roman-list) li {
+  display: list-item !important;
+  list-style-type: decimal !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+/* ===== LISTAS CON VIÑETAS ===== */
+.ProseMirror ul:not([data-type="taskList"]),
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) li,
+.tiptap-editor .ProseMirror ul:not([data-type="taskList"]) li {
+  display: list-item !important;
+  list-style-type: disc !important;
+  margin: 0.25rem 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+/* ===== ESTILOS PARA PÁGINAS DEL ACTA ===== */
+.act-page {
+  min-height: 297mm; /* Altura A4 */
+  max-height: 297mm;
+  width: 210mm; /* Ancho A4 */
   margin: 0 auto;
-  
-  /* ✅ Layout */
+  box-sizing: border-box;
+  page-break-after: always;
+  overflow: hidden;
+}
+
+.page-content {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
-  
-  /* ✅ Tipografía */
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.6;
-  color: black;
-  font-family: system-ui, -apple-system, sans-serif;
-  
-  /* ✅ Escalado para vista previa */
-  transform: scale(0.6);
-  transform-origin: top center;
-}
-
-/* ===== ÁREA DE CONTENIDO DE ACTAS ===== */
-.acts-content-area {
-  /* ✅ Altura disponible = altura total - padding */
-  height: calc(1123px - 96px); /* 1027px disponibles */
-  max-height: calc(1123px - 96px);
-  overflow: hidden; /* ✅ Crucial: evitar desbordamiento */
-  flex: 1;
-}
-
-/* ===== RESPONSIVIDAD PARA DIFERENTES PANTALLAS ===== */
-@media (max-width: 1024px) {
-  .a4-page {
-    transform: scale(0.4);
-  }
-}
-
-@media (min-width: 1200px) {
-  .a4-page {
-    transform: scale(0.7);
-  }
-}
-
-@media (min-width: 1400px) {
-  .a4-page {
-    transform: scale(0.8);
-  }
-}
-
-@media (min-width: 1600px) {
-  .a4-page {
-    transform: scale(0.9);
-  }
-}
-
-@media (min-width: 1920px) {
-  .a4-page {
-    transform: scale(1.0); /* Tamaño real en pantallas muy grandes */
-  }
-}
-
-/* ===== ESTILOS PARA CONTENIDO DE ACTAS ===== */
-.content-section {
-  margin-bottom: 1.5rem;
 }
 
 .content-section:last-child {
   margin-bottom: 0;
 }
 
-.act-content {
-  height: auto;
+.page-header {
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 1rem;
+}
+
+.page-footer {
+  border-top: 1px solid #e5e5e5;
+  margin-top: auto;
 }
 
 .signatures-section {
   margin-top: 2rem;
 }
 
-/* ===== ESTILOS PARA VISTA PREVIA DEL ACTA ===== */
+/* ===== ESTILOS PARA VISTA PREVIA DEL ACTA (actualizados) ===== */
 .prose-acta {
-  font-size: inherit;
-  line-height: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 .prose-acta h1,
@@ -609,8 +622,7 @@ html, body {
   text-align: center;
 }
 
-.prose-acta h3,
-.prose-acta h4 {
+.prose-acta h3 {
   text-decoration: underline;
 }
 
@@ -637,7 +649,7 @@ html, body {
 .prose-acta ol,
 .prose-acta ul {
   margin: 1rem 0;
-  padding-left: 2rem;
+  padding-left: 0.625rem;
 }
 
 .prose-acta ol {
@@ -655,51 +667,110 @@ html, body {
 .prose-acta li {
   margin-bottom: 0.5rem;
   text-align: justify;
-  font-weight: normal !important;
 }
 
 .prose-acta li p {
   margin-bottom: 0.25rem;
 }
 
-/* ===== SEPARADORES ENTRE ACTAS ===== */
-.prose-acta hr {
-  border: none;
-  border-top: 2px solid #666;
-  margin: 3rem auto;
-  width: 50%;
-}
-
 /* ===== ESTILOS DE IMPRESIÓN ===== */
 @media print {
-  .a4-page {
+  .act-page {
     width: 210mm;
     height: 297mm;
-    transform: none;
     margin: 0;
     box-shadow: none;
     border: none;
     page-break-after: always;
   }
-  
-  .acts-content-area {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+
+  .page-footer,
+  .page-header {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
   }
 }
 
-/* ===== REMOVER ESTILOS ANTIGUOS CONFLICTIVOS ===== */
-.page-container,
-.page-content-area,
-.p-12.bg-white.shadow-lg.aspect-\[210\/297\] {
-  /* Desactivar estilos antiguos */
-  transform: none !important;
-  width: auto !important;
-  height: auto !important;
-  max-width: none !important;
-  max-height: none !important;
-  aspect-ratio: none !important;
+.a4-page {
+  /* ✅ Dimensiones A4 exactas en píxeles (96 DPI) */
+  width: 794px;  /* 210mm = 794px */
+  min-height: 1123px; /* 297mm = 1123px - Usamos min-height para que pueda crecer si es necesario */
+  
+  /* ✅ Padding estándar de documento */
+  padding: 48px;
+  
+  /* ✅ Estilos visuales */
+  background: white;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid #d1d5db;
+  margin: 0 auto;
+  
+  /* ✅ Layout */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  
+  /* ✅ Tipografía */
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.6;
+  color: black;
+  font-family: system-ui, -apple-system, sans-serif;
+  
+  /* --- LÍNEAS ELIMINADAS --- */
+  /* transform: scale(0.6); */
+  /* transform-origin: top center; */
+  /* Se han quitado las media queries de scale también */
+}
+
+/* ===== CONTENEDOR DE VISTA PREVIA PDF ===== */
+.pdf-preview-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* ✅ Ocultar scroll si el PDF es más grande */
+  position: relative;
+}
+
+.pdf-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== ESTILOS PARA EL IFRAME DEL PDF ===== */
+.pdf-preview-container iframe {
+  border: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 600px; /* ✅ Altura mínima para mejor visualización */
+}
+
+/* ===== RESPONSIVE PARA VISTA PREVIA PDF ===== */
+@media (max-width: 1024px) {
+  .pdf-preview-container {
+    /* En pantallas pequeñas, mantener tamaño normal */
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1400px) {
+  .pdf-preview-container {
+    /* En pantallas grandes, permitir PDF más grande */
+    overflow: hidden;
+  }
+  
+  .pdf-preview-container iframe {
+    min-height: 800px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .pdf-preview-container iframe {
+    min-height: 900px;
+  }
+}
+
+/* ===== OCULTAR ALGUNOS CONTROLES DEL PDF SI ES NECESARIO ===== */
+.pdf-container canvas {
+  max-width: none !important; /* ✅ Permitir que el canvas sea más grande */
 }
 
 /* ...rest of existing styles... */

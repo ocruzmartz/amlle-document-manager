@@ -1,6 +1,3 @@
-// src/components/nav-main.tsx
-"use client";
-
 import { NavLink, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";

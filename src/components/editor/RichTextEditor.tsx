@@ -6,16 +6,36 @@ import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import {Table} from "@tiptap/extension-table";
+import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { Color } from "@tiptap/extension-color";
-import {TextStyle} from "@tiptap/extension-text-style";
+import { TextStyle } from "@tiptap/extension-text-style";
 import { RomanOrderedList } from "./extensions/RomanOrderedList"; // ✅ Importar extensión personalizada
 import { Toolbar } from "./ToolBar";
+
+const cleanPastedHtml = (html: string): string => {
+  // Elimina clases y estilos específicos de Word/Office
+  let cleanedHtml = html.replace(/class="[^"]*"/g, ""); // Elimina todas las clases
+
+  // Elimina atributos de estilo en línea, excepto los de alineación de texto
+  cleanedHtml = cleanedHtml.replace(/style="((?!text-align)[^"]*)"/g, "");
+
+  // Elimina etiquetas vacías que no aportan nada, comunes en Word
+  cleanedHtml = cleanedHtml.replace(/<o:p>&nbsp;<\/o:p>/g, "");
+  cleanedHtml = cleanedHtml.replace(/<o:p><\/o:p>/g, "");
+
+  // Elimina espacios de nombres de XML de Office
+  cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");
+
+  // Elimina comentarios de HTML
+  cleanedHtml = cleanedHtml.replace(/<!--[^>]*-->/g, "");
+
+  return cleanedHtml;
+};
 
 interface RichTextEditorProps {
   content: string;
@@ -33,19 +53,19 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
           keepMarks: true,
           keepAttributes: false,
           HTMLAttributes: {
-            class: 'bullet-list',
+            class: "bullet-list",
           },
         },
         orderedList: {
           keepMarks: true,
           keepAttributes: false,
           HTMLAttributes: {
-            class: 'ordered-list',
+            class: "ordered-list",
           },
         },
         listItem: {
           HTMLAttributes: {
-            class: 'list-item',
+            class: "list-item",
           },
         },
       }),
@@ -93,7 +113,11 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
         class:
           "max-w-none min-h-[400px] w-full rounded-b-md border-r border-b border-l border-input bg-background px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none",
       },
+      transformPastedHTML(html) {
+        return cleanPastedHtml(html);
+      },
     },
+
     onUpdate({ editor }) {
       onChange(editor.getHTML());
     },

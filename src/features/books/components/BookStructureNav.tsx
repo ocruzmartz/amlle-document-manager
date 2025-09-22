@@ -1,5 +1,5 @@
 import { type Act } from "@/types";
-import { type WorkspaceView } from "@/types";
+import { type WorkspaceView } from "@/features/books/types";
 import {
   Accordion,
   AccordionContent,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/accordion";
 import { Dot, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { capitalize, numberToWords } from "@/lib/textUtils";
 
 interface BookStructureNavProps {
   acts: Act[]; // <-- Usa el tipo 'Act' y la prop 'acts'
@@ -45,7 +46,9 @@ export const BookStructureNav = ({
         {acts.map((act) => (
           <AccordionItem value={act.id} key={act.id} className="border-none">
             <AccordionTrigger
-              onClick={() => onViewChange({ type: "acta", data: act })}
+              onClick={() =>
+                onViewChange({ type: "acta-edit", actaId: act.id })
+              }
               className={cn(
                 "font-semibold text-left hover:no-underline p-2 rounded-md hover:bg-muted/50 text-sm"
               )}
@@ -54,13 +57,14 @@ export const BookStructureNav = ({
             </AccordionTrigger>
             <AccordionContent>
               <ul className="pl-6 space-y-1 py-2">
-                {act.agreements.map((agreement) => (
+                {act.agreements.map((agreement, index) => (
                   <li
                     key={agreement.id}
                     onClick={() =>
                       onViewChange({
                         type: "agreement-editor",
-                        data: agreement,
+                        actId: act.id,
+                        agreementId: agreement.id,
                       })
                     }
                   >
@@ -70,7 +74,9 @@ export const BookStructureNav = ({
                       )}
                     >
                       <Dot className="h-4 w-4 flex-shrink-0" />
-                      <span>{agreement.title}</span>
+                      <span>
+                        Acuerdo número {capitalize(numberToWords(index + 1))}
+                      </span>
                     </div>
                   </li>
                 ))}

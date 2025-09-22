@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { createActaInBook, getBookById } from "../lib/bookService";
 import { type Book } from "@/types";
-import { type WorkspaceView } from "@/types";
+import { type WorkspaceView } from "../types/index";
 import {
   Sheet,
   SheetContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { BookStructureNav } from "../components/BookStructureNav";
-import { EditorPanel } from "../components/EditorPanel"; // <-- La pieza clave
+import { EditorPanel } from "../components/EditorPanel";
 import { PreviewPanel } from "../components/PreviewPanel";
 
 export const BookWorkspacePage = () => {
@@ -39,22 +39,29 @@ export const BookWorkspacePage = () => {
     }
   }, [bookId, navigate]);
 
-  const handleBookUpdate = (updatedBook: Book) => {
-    console.log("📖 Actualizando libro en página principal:", updatedBook);
-    console.log("📖 Actas en el libro:", updatedBook.actas);
-    setBook(updatedBook);
-  };
+  const handleBookUpdate = (updatedBookData: Partial<Book>) => {
+    setBook((prevBook) => {
+      if (!prevBook) return null;
 
+      // Usamos el estado previo para garantizar que no perdemos datos
+      const newBook = {
+        ...prevBook,
+        ...updatedBookData,
+        lastModified: new Date().toISOString(),
+      };
+
+      console.log("📖 Libro actualizado con nuevos datos:", newBook);
+      return newBook;
+    });
+  };
+  
   const handleCreateMinute = () => {
     if (!bookId) return;
-
-    // ✅ Ya no necesitamos pasar name, se genera automáticamente
     const newActa = createActaInBook(bookId);
     if (newActa) {
+      // ✅ Actualizamos usando la nueva función
       const updatedBook = getBookById(bookId);
-      if (updatedBook) {
-        setBook(updatedBook);
-      }
+      if (updatedBook) setBook(updatedBook);
     }
   };
 
@@ -70,25 +77,28 @@ export const BookWorkspacePage = () => {
           <h2 className="text-lg font-semibold truncate" title={book.name}>
             {book.name}
           </h2>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="flex-shrink-0 cursor-pointer">
-                  Ver Indice
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[350px] p-0">
-                <SheetHeader className="p-4 border-b text-left">
-                  <SheetTitle>Contenido</SheetTitle>
-                </SheetHeader>
-                <div className="p-4">
-                  <BookStructureNav
-                    acts={book.actas || []}
-                    currentView={currentView}
-                    onViewChange={setCurrentView}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex-shrink-0 cursor-pointer"
+              >
+                Ver Indice
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[350px] p-0">
+              <SheetHeader className="p-4 border-b text-left">
+                <SheetTitle>Contenido</SheetTitle>
+              </SheetHeader>
+              <div className="p-4">
+                <BookStructureNav
+                  acts={book.acts || []}
+                  currentView={currentView}
+                  onViewChange={setCurrentView}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
@@ -105,7 +115,7 @@ export const BookWorkspacePage = () => {
           />
         </div>
 
-        <PreviewPanel book={book} /> {/* ✅ Esto debe recibir el libro actualizado */}
+        <PreviewPanel key={book.lastModified} book={book} />
       </div>
     </div>
   );

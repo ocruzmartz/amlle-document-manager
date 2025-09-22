@@ -1,76 +1,49 @@
-import { useState, useEffect } from "react";
 import { type Book } from "@/types";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BookPageRenderer } from "./BookPageRenderer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface PreviewPanelProps {
   book: Book;
 }
 
 export const PreviewPanel = ({ book }: PreviewPanelProps) => {
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(2); // Mínimo: portada + índice
-
-  console.log("🖼️ PreviewPanel recibió libro:", book);
-
-  // ✅ Calcular total de páginas dinámicamente (estimado)
-  useEffect(() => {
-    const calculateTotalPages = () => {
-      let total = 2; // Portada + Índice
-      
-      if (book.actas && book.actas.length > 0) {
-        // Estimación: cada acta puede ocupar 1-3 páginas dependiendo del contenido
-        book.actas.forEach(acta => {
-          const contentLength = (acta.bodyContent?.length || 0) + 
-                               (acta.agreements?.join('').length || 0);
-          
-          // Estimación basada en longitud de contenido
-          const estimatedPages = Math.max(1, Math.ceil(contentLength / 2000));
-          total += estimatedPages;
-        });
-        
-        total += 1; // Página de firmas
-      }
-      
-      return total;
-    };
-
-    setTotalPages(calculateTotalPages());
-  }, [book]);
-
-  // ✅ Ajustar página actual si se eliminaron páginas
-  useEffect(() => {
-    if (currentPage >= totalPages && totalPages > 0) {
-      setCurrentPage(Math.max(0, totalPages - 1));
-    }
-  }, [totalPages, currentPage]);
-
-  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-  const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 0));
+  console.log("🖼️ PreviewPanel - Libro actualizado:", book);
 
   return (
-    <section className="hidden lg:flex flex-col bg-muted/40 overflow-hidden h-full">
-      <div className="p-4 flex items-center justify-between border-b">
+    <section className="hidden lg:flex flex-col bg-muted/40 overflow-hidden h-full min-w-[700px]">
+      <div className="p-3 border-b bg-white/50">
         <h3 className="text-md font-semibold">Vista Previa del Libro</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={currentPage === 0}>
-            <ChevronLeft className="h-4 w-4" /> Anterior
-          </Button>
-          <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-            {currentPage + 1} / {totalPages}+
-          </span>
-          <Button variant="outline" size="sm" onClick={goToNextPage} disabled={false}>
-            Siguiente <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Vista previa en tiempo real del documento PDF • {book.acts?.length || 0} actas
+        </p>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 bg-gray-100">
-        <BookPageRenderer 
-          book={book} 
-          currentPageIndex={currentPage}
-        />
+      <div className="flex-1 overflow-hidden">
+        <ErrorBoundary
+          fallback={
+            <div className="flex items-center justify-center h-full bg-gray-50">
+              <div className="text-center p-8">
+                <div className="text-red-500 mb-4">
+                  <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-lg font-semibold">Error en la vista previa</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  No se pudo cargar la vista previa del PDF
+                </p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                  Recargar página
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <BookPageRenderer book={book} />
+        </ErrorBoundary>
       </div>
     </section>
   );

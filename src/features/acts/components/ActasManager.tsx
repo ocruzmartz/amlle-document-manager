@@ -10,7 +10,7 @@ interface ActasManagerProps {
   onEditAct: (actId: string) => void;
 }
 
-export const ActasManager = ({
+export const ActsManager = ({
   acts,
   onCreateAct,
   onEditAct,

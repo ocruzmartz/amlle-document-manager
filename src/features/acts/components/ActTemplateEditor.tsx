@@ -18,7 +18,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { type Act } from "@/types";
-import { numeroALetras, capitalize } from "@/lib/textUtils"; // ✅ Usar la función existente
+import { numberToWords, capitalize } from "@/lib/textUtils"; // ✅ Usar la función existente
 
 interface ActTemplateEditorProps {
   act: Act;
@@ -32,15 +32,15 @@ const generateTimeOptions = () => {
   // Horas desde las 8 AM hasta las 4 PM
   for (let hour = 8; hour <= 16; hour++) {
     // Hora exacta
-    const hourText = capitalize(numeroALetras(hour));
+    const hourText = capitalize(numberToWords(hour));
     times.push({
-      value: `${numeroALetras(hour)} horas`,
+      value: `${numberToWords(hour)} horas`,
       label: `${hour}:00 ${hour >= 12 ? "PM" : "AM"} - ${hourText} horas`,
     });
 
     // Media hora
     times.push({
-      value: `${numeroALetras(hour)} horas y treinta minutos`,
+      value: `${numberToWords(hour)} horas y treinta minutos`,
       label: `${hour}:30 ${
         hour >= 12 ? "PM" : "AM"
       } - ${hourText} horas y treinta minutos`,
@@ -74,7 +74,7 @@ export const ActTemplateEditor = ({
 
     // ✅ Solo validar si hay un número válido
     if (!isNaN(newNumber) && newNumber >= 1) {
-      const actNumberInWords = capitalize(numeroALetras(newNumber)); // ✅ Usar la función existente
+      const actNumberInWords = capitalize(numberToWords(newNumber)); // ✅ Usar la función existente
       const newName = `Acta número ${actNumberInWords}`;
 
       // ✅ Actualizar todos los campos relacionados
