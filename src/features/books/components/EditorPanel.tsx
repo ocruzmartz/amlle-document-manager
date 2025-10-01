@@ -1,21 +1,21 @@
-// src/features/books/components/EditorPanel.tsx
-
-import { type Book, type Act, type Agreement } from "@/types";
-import { type WorkspaceView } from "@/features/books/types"; // ✅ 1. Ruta de importación corregida
+// filepath: src/features/books/components/EditorPanel.tsx
+import { type Book, type Agreement } from "@/types";
+import { type WorkspaceView } from "../types";
 import { BookCoverEditor } from "./BookCoverEditor";
-import { ActsManager } from "@/features/acts/components/ActasManager"; // ✅ 2. Nombre corregido
-import { ActWorkspace } from "@/features/acts/components/ActasWorkspace"; // ✅ 2. Nombre corregido
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ActWorkspace } from "@/features/acts/components/ActasWorkspace";
 import { AgreementWorkspace } from "@/features/agreements/components/AgreementWorkspace";
-import { capitalize, numberToWords } from "@/lib/textUtils";
 import { AgreementsManager } from "@/features/agreements/components/AgreementsManager";
-
+import { capitalize, numberToWords } from "@/lib/textUtils";
+import { cn } from "@/lib/utils";
+import { ActsManager } from "@/features/acts/components/ActasManager";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 interface EditorPanelProps {
   book: Book;
   currentView: WorkspaceView;
   setCurrentView: (view: WorkspaceView) => void;
   onUpdateBook: (updatedBookData: Partial<Book>) => void;
-  onCreateMinute: () => void;
+  onCreateActa: () => void;
 }
 
 export const EditorPanel = ({
@@ -23,29 +23,17 @@ export const EditorPanel = ({
   currentView,
   setCurrentView,
   onUpdateBook,
-  onCreateMinute,
+  onCreateActa,
 }: EditorPanelProps) => {
-  const handleCreateAndEdit = () => {
-    onCreateMinute();
-
-    setTimeout(() => {
-      const lastActa = book.acts?.[book.acts.length - 1];
-      if (lastActa) {
-        setCurrentView({ type: "acta-edit", actaId: lastActa.id });
-      }
-    }, 100);
-  };
+  const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
 
   const handleAddAgreement = (actId: string) => {
     const act = book.acts?.find((a) => a.id === actId);
     if (!act) return;
 
-    const newAgreementNumber = (act.agreements?.length || 0) + 1;
     const newAgreement: Agreement = {
       id: crypto.randomUUID(),
-      content: `<p><strong>Acuerdo número ${capitalize(
-        numberToWords(newAgreementNumber)
-      )}:</strong></p>`,
+      content: "",
     };
 
     const updatedAgreements = [...(act.agreements || []), newAgreement];
@@ -56,25 +44,23 @@ export const EditorPanel = ({
       ) || [];
 
     onUpdateBook({
-      ...book,
       acts: updatedActs,
-      lastModified: new Date().toISOString(),
     });
 
-    // Navegar directamente al editor del nuevo acuerdo
     setCurrentView({
-      type: "agreement-editor",
-      actId: actId,
-      agreementId: newAgreement.id,
+      ...currentView,
+      detail: {
+        type: "agreement-editor",
+        agreementId: newAgreement.id,
+      },
     });
   };
 
-  const handleUpdateAgreement = (
-    actId: string,
-    updatedAgreement: Agreement
-  ) => {
+  const handleUpdateAgreement = (updatedAgreement: Agreement) => {
+    if (!currentView.activeActId) return;
+
     const updatedActs = book.acts?.map((act) => {
-      if (act.id === actId) {
+      if (act.id === currentView.activeActId) {
         const updatedAgreements = act.agreements.map((agr) =>
           agr.id === updatedAgreement.id ? updatedAgreement : agr
         );
@@ -82,129 +68,160 @@ export const EditorPanel = ({
       }
       return act;
     });
-
     onUpdateBook({ acts: updatedActs });
   };
 
-  const renderView = () => {
-    switch (currentView.type) {
+  const isAgreementFocusMode =
+    currentView.main.type === "acta-edit" &&
+    currentView.detail.type === "agreement-editor";
+
+  const renderMainColumn = () => {
+    switch (currentView.main.type) {
       case "cover":
         return (
           <BookCoverEditor
             book={book}
-            onSave={(data) => {
+            onDone={(data) => {
               onUpdateBook(data);
-              setCurrentView({ type: "acta-list" });
+              setCurrentView({
+                ...currentView,
+                main: { type: "acta-list" },
+              });
             }}
           />
         );
 
-      case "acta-edit":
-        if (currentView.actaId) {
-          const acta = book.acts?.find((a) => a.id === currentView.actaId);
-          if (acta) {
-            return (
-              <ErrorBoundary>
-                <ActWorkspace // ✅ 2. Nombre de componente corregido
-                  act={acta}
-                  onUpdateAct={(updatedActa: Act) => {
-                    const updatedActs =
-                      book.acts?.map((a) =>
-                        a.id === updatedActa.id ? updatedActa : a
-                      ) || [];
-                    // ✅ Actualizado para pasar solo los cambios
-                    onUpdateBook({ acts: updatedActs });
-                  }}
-                  onDoneEditing={() => setCurrentView({ type: "acta-list" })}
-                  onManageAgreements={(actId) =>
-                    setCurrentView({ type: "agreement-list", actId })
-                  }
-                />
-              </ErrorBoundary>
-            );
-          }
-        }
+      case "acta-edit": {
+        const acta = book.acts?.find((a) => a.id === currentView.main.actaId);
+        if (!acta) return <div className="p-4">Acta no encontrada.</div>;
         return (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Acta no encontrada</p>
-            <button
-              onClick={() => setCurrentView({ type: "acta-list" })}
-              className="mt-4 text-blue-600 hover:text-blue-800 underline"
-            >
-              Volver a la lista de actas
-            </button>
-          </div>
+          <ActWorkspace
+            key={acta.id}
+            act={acta}
+            onUpdateAct={(updatedActa) => {
+              const updatedActs =
+                book.acts?.map((a) =>
+                  a.id === updatedActa.id ? updatedActa : a
+                ) || [];
+              onUpdateBook({ acts: updatedActs });
+            }}
+            onToggleAgreements={() =>
+              setIsDetailPanelVisible(!isDetailPanelVisible)
+            }
+            isAgreementsPanelVisible={isDetailPanelVisible}
+          />
         );
+      }
 
       case "acta-list":
+      default:
         return (
-          <ActsManager // ✅ 2. Nombre de componente corregido
+          <ActsManager
             acts={book.acts || []}
-            onCreateAct={handleCreateAndEdit}
-            onEditAct={(actaId: string) =>
-              setCurrentView({ type: "acta-edit", actaId })
+            onCreateAct={onCreateActa}
+            onEditAct={(actaId) =>
+              setCurrentView({
+                main: { type: "acta-edit", actaId },
+                detail: { type: "agreement-list" },
+                activeActId: actaId,
+              })
             }
           />
         );
+    }
+  };
 
-      case "agreement-list": {
-        const act = book.acts?.find((a) => a.id === currentView.actId);
-        if (!act) return <div>Acta no encontrada...</div>;
+  const renderDetailColumn = () => {
+    const act = book.acts?.find((a) => a.id === currentView.activeActId);
+    if (!act) return null;
 
+    switch (currentView.detail.type) {
+      case "agreement-editor": {
+        const agreement = act.agreements.find(
+          (agr) => agr.id === currentView.detail.agreementId
+        );
+        const agreementIndex = act.agreements.findIndex(
+          (agr) => agr.id === currentView.detail.agreementId
+        );
+        if (agreement === undefined || agreementIndex === -1) {
+          return (
+            <div className="flex flex-col mt-70 justify-center items-center gap-2 ">
+              <h1 className="text-lg font-semibold text-center">
+                Parece que hubo un error.
+              </h1>
+              <h2 className="mb-4">
+                El acuerdo podría haber sido eliminado o no estar disponible.
+              </h2>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setCurrentView({
+                    ...currentView,
+                    detail: { type: "agreement-list" },
+                  })
+                }
+              >
+                Regresar
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <AgreementWorkspace
+            key={agreement.id}
+            agreement={agreement}
+            agreementNumber={agreementIndex + 1}
+            onUpdate={handleUpdateAgreement}
+            onBack={() =>
+              setCurrentView({
+                ...currentView,
+                detail: { type: "agreement-list" },
+              })
+            }
+          />
+        );
+      }
+      case "agreement-list":
+      default:
         return (
           <AgreementsManager
             act={act}
             onAddAgreement={() => handleAddAgreement(act.id)}
             onEditAgreement={(agreementId) =>
               setCurrentView({
-                type: "agreement-editor",
-                actId: act.id,
-                agreementId,
+                ...currentView,
+                detail: {
+                  type: "agreement-editor",
+                  agreementId: agreementId,
+                },
               })
             }
-            onBackToAct={() =>
-              setCurrentView({ type: "acta-edit", actaId: act.id })
-            }
           />
-        );
-      }
-
-      case "agreement-editor": {
-        const act = book.acts?.find((a) => a.id === currentView.actId);
-        const agreement = act?.agreements.find(
-          (agr) => agr.id === currentView.agreementId
-        );
-        const agreementIndex = act?.agreements.findIndex(
-          (agr) => agr.id === currentView.agreementId
-        );
-
-        if (!act || !agreement || agreementIndex === undefined) {
-          return <div>Acuerdo no encontrado...</div>;
-        }
-
-        return (
-          <AgreementWorkspace
-            agreement={agreement}
-            agreementNumber={agreementIndex + 1}
-            // ✅ Conectado a la nueva lógica de actualización en tiempo real
-            onUpdate={(updatedAgreement) =>
-              handleUpdateAgreement(act.id, updatedAgreement)
-            }
-            onBack={() =>
-              setCurrentView({ type: "agreement-list", actId: act.id })
-            }
-          />
-        );
-      }
-
-      default:
-        return (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Vista no implementada...</p>
-          </div>
         );
     }
   };
 
-  return <div className="h-full">{renderView()}</div>;
+  return (
+    <div className="flex flex-1 min-h-0">
+      <div
+        className={cn(
+          "flex-1 min-w-0 border-r overflow-y-auto",
+          isAgreementFocusMode && "hidden"
+        )}
+      >
+        {renderMainColumn()}
+      </div>
+
+      {currentView.activeActId && isDetailPanelVisible && (
+        <div
+          className={cn(
+            "w-[500px] flex-shrink-0 bg-white overflow-y-auto",
+            isAgreementFocusMode && "w-full flex-1"
+          )}
+        >
+          {renderDetailColumn()}
+        </div>
+      )}
+    </div>
+  );
 };

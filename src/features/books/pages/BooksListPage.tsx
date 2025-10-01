@@ -27,7 +27,7 @@ export const BooksListPage = () => {
             Gestión de Libros
           </h1>
           <p className="text-muted-foreground mt-1">
-            Aquí puedes ver, buscar y administrar todos los libros del sistema.
+            Libros de Actas y Acuerdos Municipales.
           </p>
         </div>
         <div>

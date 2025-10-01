@@ -37,12 +37,10 @@ export const AttendeesManager = ({
     secretarias,
   } = councilMembersByRole;
 
-
   // Validar que attendees esté inicializado
   if (!attendees?.propietarios) {
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Asistencia del Concejo</h3>
         <div className="text-center py-4 text-gray-500">
           Inicializando asistencia...
         </div>
@@ -80,10 +78,6 @@ export const AttendeesManager = ({
 
   return (
     <div className="space-y-4">
-      {" "}
-      {/* Espaciado reducido */}
-      <h3 className="text-lg font-semibold">Asistencia del Concejo</h3>
-      {/* Layout en grid para optimizar espacio */}
       <div className="grid grid-cols-1 gap-4">
         {/* Síndico */}
         <div>
@@ -100,12 +94,10 @@ export const AttendeesManager = ({
               });
             }}
           >
-            <SelectTrigger className="w-full h-9">
-              {" "}
-              {/* Altura reducida */}
+            <SelectTrigger className="w-full h-9 shadow-none">
               <SelectValue placeholder="Seleccionar síndico" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="shadow-none">
               {sindicos.map((sindico) => (
                 <SelectItem key={sindico.id} value={sindico.id}>
                   {sindico.name}
@@ -129,7 +121,7 @@ export const AttendeesManager = ({
               return (
                 <div
                   key={propietarioDefault.id}
-                  className="grid grid-cols-[1fr,auto] gap-2 items-center"
+                  className="grid grid-cols-[1fr,auto] gap-2 items-center mb-2"
                 >
                   {/* Información del concejal */}
                   <div className="min-w-0">
@@ -171,10 +163,10 @@ export const AttendeesManager = ({
                         }
                       }}
                     >
-                      <SelectTrigger className="w-full h-9">
+                      <SelectTrigger className="w-full h-9 shadow-none">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="shadow-none">
                         <SelectItem value={propietarioDefault.id}>
                           <div className="flex items-center justify-between w-full">
                             <span className="truncate">
@@ -196,7 +188,10 @@ export const AttendeesManager = ({
                                   <span className="truncate">
                                     {suplente.name}
                                   </span>
-                                  <Badge variant="secondary" className="text-xs ml-2">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs ml-2"
+                                  >
                                     Suplente
                                   </Badge>
                                 </div>
@@ -214,10 +209,10 @@ export const AttendeesManager = ({
         </div>
 
         {/* Secretaria */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-3!">
             Secretaria Municipal
-          </label>
+          </p>
           <Select
             value={attendees.secretaria?.id || ""}
             onValueChange={(secretariaId) => {
@@ -230,12 +225,12 @@ export const AttendeesManager = ({
               });
             }}
           >
-            <SelectTrigger className="w-full h-9">
+            <SelectTrigger className="w-full h-9 shadow-none">
               {" "}
               {/* Altura reducida */}
               <SelectValue placeholder="Seleccionar secretaria" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="shadow-none">
               {secretarias.map((secretaria) => (
                 <SelectItem key={secretaria.id} value={secretaria.id}>
                   {secretaria.name}

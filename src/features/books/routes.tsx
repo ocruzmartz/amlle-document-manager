@@ -6,8 +6,11 @@ export const booksRoutes: RouteObject[] = [
     path: "/books",
     element: <BooksListPage />,
   },
-  // La ruta de creación '/books/new' ya no es necesaria.
-  // La ruta de detalle ahora es nuestro workspace.
+];
+// La ruta de creación '/books/new' ya no es necesaria.
+// La ruta de detalle ahora es nuestro workspace.
+
+export const booksWorkspaceRoutes: RouteObject[] = [
   {
     path: "/books/:bookId",
     element: <BookWorkspacePage />,

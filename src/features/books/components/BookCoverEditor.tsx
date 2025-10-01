@@ -1,5 +1,4 @@
-// src/features/books/components/BookCoverEditor.tsx
-
+// filepath: src/features/books/components/BookCoverEditor.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -25,7 +24,6 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { type Book } from "@/types";
 
-// Esquema de validación (el mismo que en la página de creación)
 const formSchema = z.object({
   name: z
     .string()
@@ -38,13 +36,12 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface BookCoverEditorProps {
   book: Book;
-  onSave: (data: FormValues) => void;
+  onDone: (data: FormValues) => void; // ✅ Renombrado de 'onSave' a 'onDone'
 }
 
-export const BookCoverEditor = ({ book, onSave }: BookCoverEditorProps) => {
+export const BookCoverEditor = ({ book, onDone }: BookCoverEditorProps) => { // ✅ Prop renombrada
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // Pre-llenamos el formulario con los datos del libro existente
     defaultValues: {
       name: book.name,
       creationDate: new Date(book.createdAt),
@@ -64,7 +61,8 @@ export const BookCoverEditor = ({ book, onSave }: BookCoverEditorProps) => {
       </div>
       <div className="p-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+          {/* ✅ El submit ahora llama a la nueva prop 'onDone' */}
+          <form onSubmit={form.handleSubmit(onDone)} className="space-y-6">
             <FormField
               control={form.control}
               name="name"

@@ -5,6 +5,8 @@ import { type Agreement } from "@/types";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { numberToWords, capitalize } from "@/lib/textUtils";
+import { FileImporter } from "@/components/editor/FileImporter";
+import { Backpack } from "lucide-react";
 
 interface AgreementWorkspaceProps {
   agreement: Agreement;
@@ -53,6 +55,12 @@ export const AgreementWorkspace = ({
     }, 500); // Espera 500ms después de la última pulsación
   };
 
+  const handleImportedContent = (importedHtml: string) => {
+    // Reemplaza el contenido actual del editor con el HTML importado
+    const newContent = `${localContent} ${importedHtml}`;
+    handleContentChange(newContent);
+  };
+
   const agreementNumberInWords = capitalize(numberToWords(agreementNumber));
 
   return (
@@ -62,24 +70,23 @@ export const AgreementWorkspace = ({
         <h3 className="text-xl font-bold">
           Acuerdo número {agreementNumberInWords}
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Edita el contenido del acuerdo. Los cambios se guardan automáticamente.
-        </p>
+        
+      </div>
+
+      <div className="m-4">
+        <FileImporter onImport={handleImportedContent} />
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <RichTextEditor
-          content={localContent}
-          onChange={handleContentChange}
-        />
+      <div className="flex-1 overflow-y-auto">
+        <RichTextEditor content={localContent} onChange={handleContentChange} />
       </div>
 
       {/* Footer */}
       <div className="flex-shrink-0 p-4 border-t bg-white">
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={onBack}>
-            Volver a la lista
+            Regresar
           </Button>
         </div>
       </div>

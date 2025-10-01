@@ -94,8 +94,6 @@ export const ActTemplateEditor = ({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Datos de la Sesión</h3>
-
         {/* Número del Acta y Tipo de Sesión */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -108,7 +106,7 @@ export const ActTemplateEditor = ({
               onChange={(e) => handleActNumberChange(e.target.value)} // ✅ Actualizar estado local
               min={1}
               placeholder="Ingresa el número del acta"
-              className="w-full"
+              className="w-full shadow-none"
             />
           </div>
 
@@ -122,7 +120,7 @@ export const ActTemplateEditor = ({
                 value: "ordinaria" | "extraordinaria" | "especial"
               ) => onActChange("sessionType", value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full shadow-none">
                 <SelectValue placeholder="Selecciona el tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -146,7 +144,7 @@ export const ActTemplateEditor = ({
                 onActChange("sessionTime", value)
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full shadow-none">
                 <SelectValue placeholder="Selecciona la hora" />
               </SelectTrigger>
               <SelectContent>
@@ -167,7 +165,7 @@ export const ActTemplateEditor = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="data-[empty=true]:text-muted-foreground w-full justify-between text-left font-normal"
+                  className="data-[empty=true]:text-muted-foreground w-full justify-between text-left font-normal shadow-none"
                 >
                   {act.sessionDate ? (
                     format(new Date(act.sessionDate), "PPP", { locale: es })

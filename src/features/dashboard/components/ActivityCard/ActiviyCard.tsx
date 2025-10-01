@@ -7,6 +7,9 @@ import {
 } from "@/components/ui/card";
 import ActivityItem from "./ActivityItem";
 import { type ActivityLog } from "@/types";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 interface ActivityCardProps {
   logs: ActivityLog[];
@@ -14,16 +17,21 @@ interface ActivityCardProps {
   description?: string;
 }
 
-export function ActivityCard({
-  logs,
-  title = "Actividad Reciente",
-  description = "Las últimas acciones realizadas en el sistema.",
-}: ActivityCardProps) {
+export function ActivityCard({ logs }: ActivityCardProps) {
   return (
     <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="flex justify-between items-center">
+        <div>
+          <CardTitle>Actividad Reciente</CardTitle>
+          <CardDescription>
+            Últimas acciones realizadas en el sistema.
+          </CardDescription>
+        </div>
+        <Link to="/activities">
+          <Button variant="link">
+            <ExternalLink className="size-4" /> Ver más
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent>
         {logs && logs.length > 0 ? (

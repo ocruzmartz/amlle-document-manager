@@ -160,7 +160,7 @@ export const createActaInBook = (
     sessionDate: new Date().toISOString(),
     // ✅ 3. Usar los asistentes por defecto en la creación
     attendees: defaultAttendees,
-    bodyContent: `<p><strong>Acta número ${actNumberInWords}</strong></p>`,
+    bodyContent:"",
     agreements: [],
     actNumber: actNumber,
     sessionType: "ordinaria",
