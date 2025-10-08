@@ -4,5 +4,5 @@ export * from "./logs";
 export * from "./act";
 export * from "./agreement";
 export * from "./book";
-export * from "./CouncilMembers";
+export * from "./council";
 

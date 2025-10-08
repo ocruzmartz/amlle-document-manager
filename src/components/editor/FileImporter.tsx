@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UploadCloud } from "lucide-react";
 import mammoth from "mammoth";
+import * as XLSX from "xlsx";
 
 interface FileImporterProps {
   onImport: (htmlContent: string) => void;
@@ -12,7 +13,7 @@ interface FileImporterProps {
 
 export const FileImporter = ({
   onImport,
-  acceptedFormats = ".docx",
+  acceptedFormats = ".docx, .xlsx, .xls",
 }: FileImporterProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +33,23 @@ export const FileImporter = ({
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.convertToHtml({ arrayBuffer });
         console.log("HTML generado por Mammoth:", result.value);
-        onImport(result.value); // 'result.value' contiene el HTML
+        onImport(result.value);
       } catch (err) {
         console.error("Error al convertir el archivo de Word:", err);
         setError("No se pudo procesar el archivo .docx.");
+      }
+    } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        const html = XLSX.utils.sheet_to_html(worksheet);
+        onImport(html);
+      } catch (err) {
+        console.error("Error al procesar el archivo de Excel:", err);
+        setError("No se pudo procesar el archivo de Excel.");
       }
     } else {
       setError(
@@ -49,12 +63,14 @@ export const FileImporter = ({
   };
 
   return (
-    <div>
+    <div className="float-right">
       <label htmlFor="file-importer" className="cursor-pointer">
-        <Button asChild variant="outline" className="w-auto">
+        <Button asChild variant="outline" className="w-auto shadow-none">
           <div>
             <UploadCloud className="mr-2 h-4 w-4" />
-            {isLoading ? "Procesando..." : "Importar desde .docx"}
+            {isLoading
+              ? "Procesando..."
+              : "Importar archivo (.docx, .xlsx, .xls)"}
           </div>
         </Button>
       </label>

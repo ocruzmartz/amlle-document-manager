@@ -1,20 +1,29 @@
 import { type Agreement } from "./agreement";
-import type { CouncilMember } from "./CouncilMembers";
+import type { CouncilMember } from "./council";
+
+export type ActSessionType = "Ordinary" | "Extraordinary" | "Special";
 
 export type Act = {
   id: string;
   name: string;
+  bookId: string;
+  bookName: string;
   sessionDate: string;
   actNumber?: number;
-  sessionType?: "ordinaria" | "extraordinaria" | "especial";
+  sessionType?: ActSessionType;
   sessionTime?: string;
   sessionPoints?: string[];
   attendees?: {
-    sindico?: CouncilMember | null;
-    propietarios?: CouncilMember[];
-    secretaria?: CouncilMember | null;
+    syndic?: CouncilMember | null;
+    owners?: CouncilMember[];
+    secretary?: CouncilMember | null;
   };
   bodyContent: string;
   agreements: Agreement[];
+  agreementsCount?: number;
   clarifyingNote?: string;
+  createdAt: string;
+  createdBy: string;
+  lastModified: string;
+  modifiedBy: string;
 };
