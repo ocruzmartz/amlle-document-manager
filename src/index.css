@@ -134,6 +134,13 @@ body {
   outline: none;
   padding: 1rem;
   line-height: 1.6;
+  overflow-wrap: break-word; /* ✅ ESTA LÍNEA ES LA SOLUCIÓN */
+}
+
+/* ✅ NUEVA REGLA: Espaciado de 8pt para los "Enter" */
+/* Esto le da a los párrafos vacíos una altura fija, simulando el espaciado de Word */
+.ProseMirror p:empty {
+  min-height: 8pt;
 }
 
 /* ===== LISTAS NUMERADAS ===== */
@@ -693,29 +700,29 @@ body {
 
 .a4-page {
   /* ✅ Dimensiones A4 exactas en píxeles (96 DPI) */
-  width: 794px;  /* 210mm = 794px */
+  width: 794px; /* 210mm = 794px */
   min-height: 1123px; /* 297mm = 1123px - Usamos min-height para que pueda crecer si es necesario */
-  
+
   /* ✅ Padding estándar de documento */
   padding: 48px;
-  
+
   /* ✅ Estilos visuales */
   background: white;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   border: 1px solid #d1d5db;
   margin: 0 auto;
-  
+
   /* ✅ Layout */
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  
+
   /* ✅ Tipografía */
   font-size: 0.875rem; /* 14px */
   line-height: 1.6;
   color: black;
   font-family: system-ui, -apple-system, sans-serif;
-  
+
   /* --- LÍNEAS ELIMINADAS --- */
   /* transform: scale(0.6); */
   /* transform-origin: top center; */
@@ -756,7 +763,7 @@ body {
     /* En pantallas grandes, permitir PDF más grande */
     overflow: hidden;
   }
-  
+
   .pdf-preview-container iframe {
     min-height: 800px;
   }

@@ -111,8 +111,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     content: content,
     editorProps: {
       attributes: {
-        class:
-          "max-w-none min-h-[400px] w-full border-input bg-background px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none",
+        class: "prose prose-lg focus:outline-none w-full",
       },
       transformPastedHTML(html) {
         return cleanPastedHtml(html);
@@ -142,10 +141,12 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="flex flex-col border-t">
+    <div className="flex flex-col h-full border-t">
       <Toolbar editor={editor} />
-      <div className="tiptap-editor flex-1 overflow-hidden">
-        <EditorContent editor={editor} />
+      <div className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-8">
+        <div className="mx-auto max-w-4xl min-h-full bg-background shadow-lg rounded-sm p-8">
+          <EditorContent editor={editor} />
+        </div>
       </div>
     </div>
   );

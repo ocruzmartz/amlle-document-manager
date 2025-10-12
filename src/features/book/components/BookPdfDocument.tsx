@@ -50,17 +50,18 @@ const styles = StyleSheet.create({
   actaHeader: {
     fontSize: 11,
     textAlign: "justify",
-    marginBottom: 15,
     lineHeight: 1.6,
   },
   actaContent: {
     fontSize: 11,
     textAlign: "justify",
-    lineHeight: 1.6,
-    marginBottom: 10,
+    lineHeight: 1.5,
   },
-  listContainer: { paddingLeft: 15, marginBottom: 10 },
-  listItem: { flexDirection: "row", marginBottom: 5 },
+  emptyParagraph: {
+    height: 11,
+  },
+  listContainer: { paddingLeft: 15, marginBottom: 5 },
+  listItem: { flexDirection: "row", marginBottom: 3 },
   listItemBullet: { width: 15, fontSize: 10 },
   listItemContent: { flex: 1 },
   table: {
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   tableCellText: { fontSize: 9, textAlign: "left" },
   signaturesSection: { marginTop: 60, textAlign: "center", fontSize: 11 },
   mainSignatureName: { fontFamily: "Helvetica-Bold" },
-  mainSignatureRole: { fontSize: 10, marginBottom: 25 },
+  mainSignatureRole: { marginBottom: 25 },
   signatureColumnsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -141,9 +142,10 @@ const renderContentBlocks = (
   baseTextStyle: object
 ): (JSX.Element | null)[] | null => {
   if (!html || !html.trim()) return null;
-  const cleanHtml = html
-    .replace(/<p><\/p>/g, "")
-    .replace(/<p><strong>(Acta|Acuerdo) número [^<]*<\/strong><\/p>/, "");
+  const cleanHtml = html.replace(
+    /<p><strong>(Acta|Acuerdo) número [^<]*<\/strong><\/p>/,
+    ""
+  );
 
   const blockRegex = /<(p|ul|ol|table)[^>]*>.*?<\/\1>/gs;
   const blocks: string[] = cleanHtml.match(blockRegex) || [];
@@ -220,12 +222,20 @@ const renderContentBlocks = (
     }
 
     if (block.trim().startsWith("<p")) {
+      const innerHtml = block.replace(/<\/?p[^>]*>/g, "").trim();
+      if (innerHtml === "" || innerHtml === "<br>" || innerHtml === "&nbsp;") {
+        return (
+          <Text key={`p-${blockIndex}`} style={styles.emptyParagraph}>
+            {" "}
+          </Text>
+        );
+      }
       const alignMatch = block.match(
         /text-align:\s*(left|center|right|justify)/
       );
       const textAlign = alignMatch
         ? (alignMatch[1] as "left" | "center" | "right" | "justify")
-        : "left";
+        : "justify";
       return (
         <Text key={`p-${blockIndex}`} style={{ ...baseTextStyle, textAlign }}>
           {renderInlineFormatting(block)}
@@ -242,7 +252,7 @@ const renderHtmlContent = (htmlContent: string) => {
 };
 
 const generateActHeader = (act: Act) => {
-  const sessionType = act.sessionType || "ordinaria";
+  const sessionType = act.sessionType || "ordinary";
   const sessionTime = act.sessionTime || "diez horas";
   const formatDateInWords = (dateString: string): string => {
     const date = new Date(dateString);
@@ -262,17 +272,15 @@ const generateActHeader = (act: Act) => {
   );
   return (
     <Text style={styles.actaHeader}>
-      <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold" }}>
-        {act.name}
-      </Text>
-      . Sesión {sessionType} celebrada por el Concejo Municipal en el salón de
-      reuniones de la Alcaldía Municipal de Antiguo Cuscatlán, a las{" "}
-      {sessionTime} del día {dateInWords}, presidió la reunión la señora
-      Alcaldesa Municipal Licda. Zoila Milagro Navas Quintanilla, con la
-      asistencia del señor Síndico Municipal Licenciado {sindicoName} y de los
-      concejales propietarios: {attendeesList} y la Secretaria Municipal del
-      Concejo Sra. {secretariaName}. Seguidamente la sesión dio inicio con los
-      siguientes puntos:
+      <Text style={{ fontFamily: "Helvetica-Bold" }}>{act.name}</Text>. Sesión{" "}
+      {sessionType} celebrada por el Concejo Municipal en el salón de reuniones
+      de la Alcaldía Municipal de Antiguo Cuscatlán, a las {sessionTime} del día{" "}
+      {dateInWords}, presidió la reunión la señora Alcaldesa Municipal Licda.
+      Zoila Milagro Navas Quintanilla, con la asistencia del señor Síndico
+      Municipal Licenciado {sindicoName} y de los concejales propietarios:{" "}
+      {attendeesList} y la Secretaria Municipal del Concejo Sra.{" "}
+      {secretariaName}. Seguidamente la sesión dio inicio con los siguientes
+      puntos:
     </Text>
   );
 };
@@ -379,82 +387,98 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
       </Page>
       {book.acts && book.acts.length > 0 && (
         <Page size="A4" style={styles.page} wrap>
-          {book.acts.map((act: Act) => (
-            <View key={act.id} style={styles.actaContainer} break={false} wrap>
-              {generateActHeader(act)}
-              <View style={{ marginTop: 20 }}>
-                {renderHtmlContent(act.bodyContent)}
-              </View>
-              {act.agreements && act.agreements.length > 0 && (
-                <View style={{ marginTop: 30 }} wrap>
-                  {act.agreements.map((agreement) => (
-                    <View key={agreement.id} wrap={true}>
-                      {renderHtmlContent(agreement.content)}
-                    </View>
-                  ))}
-                </View>
-              )}
-              <View style={styles.signaturesSection}>
-                <Text>
-                  Y no habiendo más que hacer constar se termina la presente
-                  Acta que firmamos.
-                </Text>
-                <View style={{ marginTop: 40 }}>
-                  <Text style={styles.mainSignatureName}>
-                    Licda. Zoila Milagro Navas Quintanilla
-                  </Text>
-                  <Text style={styles.mainSignatureRole}>
-                    Alcaldesa Municipal
-                  </Text>
-                </View>
-                {(() => {
-                  const signatories = [
-                    act.attendees?.syndic,
-                    ...(act.attendees?.owners || []),
-                  ].filter(Boolean);
-                  const leftColumn = signatories.filter((_, i) => i % 2 === 0);
-                  const rightColumn = signatories.filter((_, i) => i % 2 !== 0);
-                  return (
-                    <View style={styles.signatureColumnsContainer}>
-                      <View style={styles.signatureColumn}>
-                        {leftColumn.map(
-                          (p) =>
-                            p && (
-                              <Text key={p.id} style={styles.signatureName}>
-                                {p.name}
-                              </Text>
-                            )
-                        )}
+          {book.acts.map((act: Act) => {
+            const hasBodyContent =
+              act.bodyContent &&
+              act.bodyContent.replace(/<[^>]*>/g, "").trim() !== "";
+            const hasAgreements = act.agreements && act.agreements.length > 0;
+            const hasClarifyingNote =
+              act.clarifyingNote &&
+              act.clarifyingNote.replace(/<[^>]*>/g, "").trim() !== "";
+            return (
+              <View
+                key={act.id}
+                style={styles.actaContainer}
+                break={false}
+                wrap
+              >
+                {generateActHeader(act)}
+                {hasBodyContent && (
+                  <View style={{ marginTop: 11 }}>
+                    {renderHtmlContent(act.bodyContent)}
+                  </View>
+                )}
+                {hasAgreements && (
+                  <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
+                    {act.agreements.map((agreement) => (
+                      <View key={agreement.id} wrap={true}>
+                        {renderHtmlContent(agreement.content)}
                       </View>
-                      <View style={styles.signatureColumn}>
-                        {rightColumn.map(
-                          (p) =>
-                            p && (
-                              <Text key={p.id} style={styles.signatureName}>
-                                {p.name}
-                              </Text>
-                            )
-                        )}
+                    ))}
+                  </View>
+                )}
+                <View style={styles.signaturesSection}>
+                  <Text style={{ textAlign: "justify" }}>
+                    Y no habiendo más que hacer constar se termina la presente
+                    Acta que firmamos.
+                  </Text>
+                  <View style={{ marginTop: 40 }}>
+                    <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
+                    <Text style={styles.mainSignatureRole}>
+                      Alcaldesa Municipal
+                    </Text>
+                  </View>
+                  {(() => {
+                    const signatories = [
+                      act.attendees?.syndic,
+                      ...(act.attendees?.owners || []),
+                    ].filter(Boolean);
+                    const leftColumn = signatories.filter(
+                      (_, i) => i % 2 === 0
+                    );
+                    const rightColumn = signatories.filter(
+                      (_, i) => i % 2 !== 0
+                    );
+                    return (
+                      <View style={styles.signatureColumnsContainer}>
+                        <View style={styles.signatureColumn}>
+                          {leftColumn.map(
+                            (p) =>
+                              p && (
+                                <Text key={p.id} style={styles.signatureName}>
+                                  {p.name}
+                                </Text>
+                              )
+                          )}
+                        </View>
+                        <View style={styles.signatureColumn}>
+                          {rightColumn.map(
+                            (p) =>
+                              p && (
+                                <Text key={p.id} style={styles.signatureName}>
+                                  {p.name}
+                                </Text>
+                              )
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  );
-                })()}
-                <View style={styles.secretariaSignature}>
-                  <View style={styles.secretariaSignatureLine} />
-                  <Text>Secretaria Municipal</Text>
+                    );
+                  })()}
+                  <View style={styles.secretariaSignature}>
+                    <Text>Secretaria Municipal</Text>
+                  </View>
                 </View>
-              </View>
-              {act.clarifyingNote &&
-                act.clarifyingNote.trim() !== "<p></p>" && (
+                {hasClarifyingNote && (
                   <View style={styles.notaContainer}>
                     <Text>
                       <Text style={styles.notaTitle}>Nota Aclaratoria: </Text>
-                      {act.clarifyingNote.replace(/<[^>]*>/g, "")}
+                      {act.clarifyingNote!.replace(/<[^>]*>/g, "")}
                     </Text>
                   </View>
                 )}
-            </View>
-          ))}
+              </View>
+            );
+          })}
         </Page>
       )}
     </Document>

@@ -102,7 +102,7 @@ export const AgreementEditor = ({
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-hidden">
         <RichTextEditor content={localContent} onChange={handleContentChange} />
       </div>
 
