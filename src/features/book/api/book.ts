@@ -131,6 +131,45 @@ export const getActasByBookId = (bookId: string | undefined): Act[] => {
   return contentStore[bookId]?.acts || [];
 };
 
+export const updateBook = (
+  bookId: string,
+  updatedData: Partial<Book>
+): Book | undefined => {
+  const books = getBooksStore();
+  const contentStore = getContentStore();
+
+  const bookIndex = books.findIndex((b) => b.id === bookId);
+  if (bookIndex === -1) {
+    console.error("No se pudo actualizar: Libro no encontrado");
+    return undefined;
+  }
+
+  // Actualizar metadatos del libro (ej. fecha de modificación)
+  const existingBook = books[bookIndex];
+  books[bookIndex] = {
+    ...existingBook,
+    ...updatedData,
+    lastModified: new Date().toISOString(),
+    modifiedBy: "Usuario Actual (editado)",
+  };
+  setBooksStore(books);
+
+  // Guardar el contenido (actas y acuerdos) si se proporcionó
+  if (updatedData.acts) {
+    const newBookContent = {
+      ...(contentStore[bookId] || {}),
+      acts: updatedData.acts,
+    };
+    const newContentStore = {
+      ...contentStore,
+      [bookId]: newBookContent,
+    };
+    setContentStore(newContentStore);
+  }
+
+  return getBookById(bookId);
+};
+
 export const createAct = (
   bookId: string | undefined,
   actData?: { name?: string }

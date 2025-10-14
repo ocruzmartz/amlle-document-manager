@@ -1,113 +1,178 @@
-import { Page, Text, View, Document, StyleSheet } from "@react-pdf/renderer";
+// filepath: src/features/book/components/BookPdfDocument.tsx
+import React from "react";
+import {
+  Page,
+  Text,
+  View,
+  Document,
+  StyleSheet,
+  Font,
+} from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { numberToWords, capitalize } from "@/lib/textUtils";
 import { type Book, type Act } from "@/types";
 import type { JSX } from "react/jsx-runtime";
 
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 50,
-    paddingBottom: 50,
-    paddingHorizontal: 60,
-    fontFamily: "Helvetica",
-    fontSize: 11,
-    lineHeight: 1.5,
-    color: "#000",
-  },
-  coverContainer: {
-    textAlign: "left",
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  coverTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 40 },
-  coverText: {
-    fontSize: 11,
-    textAlign: "justify",
-    lineHeight: 1.6,
-    marginBottom: 12,
-  },
-  coverDate: { fontSize: 11, marginTop: 25 },
-  indexTitle: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    textAlign: "center",
-    marginBottom: 30,
-    textTransform: "uppercase",
-  },
-  indexItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    borderBottomStyle: "dotted",
-    paddingBottom: 2,
-  },
-  indexItemText: { fontSize: 11 },
-  indexItemPage: { fontSize: 11 },
-  actaContainer: { marginBottom: 40 },
-  actaHeader: {
-    fontSize: 11,
-    textAlign: "justify",
-    lineHeight: 1.6,
-  },
-  actaContent: {
-    fontSize: 11,
-    textAlign: "justify",
-    lineHeight: 1.5,
-  },
-  emptyParagraph: {
-    height: 11,
-  },
-  listContainer: { paddingLeft: 15, marginBottom: 5 },
-  listItem: { flexDirection: "row", marginBottom: 3 },
-  listItemBullet: { width: 15, fontSize: 10 },
-  listItemContent: { flex: 1 },
-  table: {
-    width: "100%",
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: "#bfbfbf",
-    marginBottom: 10,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-  },
-  tableRow: { flexDirection: "row" },
-  tableCell: {
-    padding: 5,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: "#bfbfbf",
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-  },
-  tableCellText: { fontSize: 9, textAlign: "left" },
-  signaturesSection: { marginTop: 60, textAlign: "center", fontSize: 11 },
-  mainSignatureName: { fontFamily: "Helvetica-Bold" },
-  mainSignatureRole: { marginBottom: 25 },
-  signatureColumnsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    textAlign: "left",
-  },
-  signatureColumn: { width: "48%", flexDirection: "column" },
-  signatureName: { marginBottom: 20, fontSize: 11 },
-  secretariaSignature: {
-    marginTop: 30,
-    paddingTop: 5,
-    marginHorizontal: "auto",
-    width: "50%",
-  },
-  secretariaSignatureLine: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#000",
-    marginBottom: 5,
-  },
-  notaContainer: { marginTop: 30, fontSize: 9, textAlign: "justify" },
-  notaTitle: { fontFamily: "Helvetica-Bold" },
+// --- Registro de Fuentes Locales (sin cambios) ---
+Font.register({
+  family: "Museo Sans",
+  fonts: [
+    { src: "/fonts/MuseoSans-100.otf", fontWeight: 100 },
+    {
+      src: "/fonts/MuseoSans-100Italic.otf",
+      fontWeight: 100,
+      fontStyle: "italic",
+    },
+    { src: "/fonts/MuseoSans-300.otf", fontWeight: 300 },
+    {
+      src: "/fonts/MuseoSans-300Italic.otf",
+      fontWeight: 300,
+      fontStyle: "italic",
+    },
+    { src: "/fonts/MuseoSans_500.otf", fontWeight: 500 },
+    {
+      src: "/fonts/MuseoSans_500_Italic.otf",
+      fontWeight: 500,
+      fontStyle: "italic",
+    },
+    { src: "/fonts/MuseoSans_700.otf", fontWeight: 700 },
+    {
+      src: "/fonts/MuseoSans-700Italic.otf",
+      fontWeight: 700,
+      fontStyle: "italic",
+    },
+    { src: "/fonts/MuseoSans_900.otf", fontWeight: 900 },
+    {
+      src: "/fonts/MuseoSans-900Italic.otf",
+      fontWeight: 900,
+      fontStyle: "italic",
+    },
+  ],
 });
 
+// --- ✅ ESTILOS AHORA SON UNA FUNCIÓN QUE ACEPTA EL TAMAÑO DE FUENTE ---
+const getStyles = (fontSize = 11) =>
+  StyleSheet.create({
+    page: {
+      fontFamily: "Museo Sans",
+      fontSize: fontSize, // ✅ Usa el tamaño de fuente base
+      color: "#000",
+      fontWeight: 500,
+    },
+    coverContainer: {
+      textAlign: "left",
+      flex: 1,
+    },
+    coverTitle: {
+      fontSize: fontSize + 1,
+      fontFamily: "Museo Sans",
+      fontWeight: 700,
+      marginBottom: 40,
+    },
+    coverText: {
+      fontSize: fontSize,
+      textAlign: "justify",
+      marginBottom: 12,
+    },
+    coverDate: { fontSize: fontSize, marginTop: 40 },
+    indexTitle: {
+      fontSize: fontSize + 5, // Título del índice más grande
+      fontFamily: "Museo Sans",
+      fontWeight: 700,
+      textAlign: "center",
+      marginBottom: 30,
+      textTransform: "uppercase",
+    },
+    // ... (el resto de los estilos que no dependen del tamaño de fuente se mantienen igual)
+    indexItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      marginBottom: 8,
+    },
+    indexAgreementItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      marginBottom: 8,
+      paddingLeft: 20,
+    },
+    indexItemText: { flexShrink: 1, textAlign: "left" },
+    indexItemDots: {
+      flexGrow: 1,
+      borderBottomWidth: 1,
+      borderBottomColor: "#ccc",
+      borderBottomStyle: "dotted",
+      marginHorizontal: 5,
+      marginBottom: 4,
+    },
+    indexItemPage: { flexShrink: 0, textAlign: "right" },
+    actaContainer: { marginBottom: 40 },
+    actaHeader: {
+      fontSize: fontSize,
+      textAlign: "justify",
+    },
+    emptyParagraph: { height: 8 },
+    listContainer: { paddingLeft: 15, marginBottom: 5 },
+    listItem: { flexDirection: "row", marginBottom: 3 },
+    listItemBullet: { width: 15, fontSize: fontSize - 1 },
+    listItemContent: { flex: 1 },
+    table: {
+      width: "100%",
+      borderStyle: "solid",
+      borderWidth: 1,
+      borderColor: "#bfbfbf",
+      marginBottom: 10,
+      borderRightWidth: 0,
+      borderBottomWidth: 0,
+    },
+    tableRow: { flexDirection: "row" },
+    tableCell: {
+      padding: 5,
+      borderStyle: "solid",
+      borderWidth: 1,
+      borderColor: "#bfbfbf",
+      borderLeftWidth: 0,
+      borderTopWidth: 0,
+    },
+    tableCellText: { fontSize: fontSize - 2, textAlign: "left" },
+    signaturesSection: {
+      marginTop: 60,
+      textAlign: "center",
+      fontSize: fontSize,
+    },
+    mainSignatureName: { fontFamily: "Museo Sans", fontWeight: 700 },
+    mainSignatureRole: { fontSize: fontSize - 1, marginBottom: 25 },
+    signatureColumnsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      textAlign: "left",
+    },
+    signatureColumn: { width: "48%", flexDirection: "column" },
+    signatureName: { marginBottom: 20, fontSize: fontSize },
+    secretariaSignature: {
+      marginTop: 30,
+      paddingTop: 5,
+      marginHorizontal: "auto",
+      width: "50%",
+    },
+    secretariaSignatureLine: {
+      borderBottomWidth: 0.5,
+      borderBottomColor: "#000",
+      marginBottom: 5,
+    },
+    notaContainer: {
+      marginTop: 30,
+      fontSize: fontSize - 2,
+      textAlign: "justify",
+    },
+    notaTitle: { fontFamily: "Museo Sans", fontWeight: 700 },
+  });
+
+// --- (El resto del código del motor de renderizado se mantiene igual) ---
+
+// --- Motor de Renderizado ---
 const renderInlineFormatting = (text: string) => {
   const parts = text
     .replace(/<p[^>]*>|<\/p>|<li[^>]*>|<\/li>/g, "")
@@ -117,7 +182,10 @@ const renderInlineFormatting = (text: string) => {
   return parts.map((part, partIndex) => {
     if (part.startsWith("<strong>"))
       return (
-        <Text key={partIndex} style={{ fontFamily: "Helvetica-Bold" }}>
+        <Text
+          key={partIndex}
+          style={{ fontFamily: "Museo Sans", fontWeight: 700 }}
+        >
           {part.replace(/<\/?strong>/g, "")}
         </Text>
       );
@@ -169,9 +237,9 @@ const renderContentBlocks = (
       if (maxColumns === 0) maxColumns = 1;
 
       return (
-        <View key={`table-${blockIndex}`} style={styles.table}>
+        <View key={`table-${blockIndex}`} style={getStyles().table}>
           {rows.map((rowContent, rowIndex) => (
-            <View key={`row-${rowIndex}`} style={styles.tableRow}>
+            <View key={`row-${rowIndex}`} style={getStyles().tableRow}>
               {(
                 rowContent.match(/<(?:td|th)[^>]*>(.*?)<\/(?:td|th)>/gs) || []
               ).map((cellContent, cellIndex) => {
@@ -187,11 +255,12 @@ const renderContentBlocks = (
                 return (
                   <View
                     key={`cell-${cellIndex}`}
-                    style={{ ...styles.tableCell, width: cellWidth }}
+                    style={{ ...getStyles().tableCell, width: cellWidth }}
                   >
                     {renderContentBlocks(innerHtml, {
-                      ...styles.tableCellText,
-                      fontFamily: isHeader ? "Helvetica-Bold" : "Helvetica",
+                      ...getStyles().tableCellText,
+                      fontFamily: "Museo Sans",
+                      fontWeight: isHeader ? 700 : 500,
                     })}
                   </View>
                 );
@@ -206,13 +275,13 @@ const renderContentBlocks = (
       const isOrdered = block.trim().startsWith("<ol");
       const listItems = block.match(/<li[^>]*>(.*?)<\/li>/gs) || [];
       return (
-        <View key={`list-${blockIndex}`} style={styles.listContainer}>
+        <View key={`list-${blockIndex}`} style={getStyles().listContainer}>
           {listItems.map((item, itemIndex) => (
-            <View key={`item-${itemIndex}`} style={styles.listItem}>
-              <Text style={styles.listItemBullet}>
+            <View key={`item-${itemIndex}`} style={getStyles().listItem}>
+              <Text style={getStyles().listItemBullet}>
                 {isOrdered ? `${itemIndex + 1}.` : "•"}
               </Text>
-              <View style={styles.listItemContent}>
+              <View style={getStyles().listItemContent}>
                 {renderContentBlocks(item, baseTextStyle)}
               </View>
             </View>
@@ -225,9 +294,7 @@ const renderContentBlocks = (
       const innerHtml = block.replace(/<\/?p[^>]*>/g, "").trim();
       if (innerHtml === "" || innerHtml === "<br>" || innerHtml === "&nbsp;") {
         return (
-          <Text key={`p-${blockIndex}`} style={styles.emptyParagraph}>
-            {" "}
-          </Text>
+          <View key={`p-${blockIndex}`} style={getStyles().emptyParagraph} />
         );
       }
       const alignMatch = block.match(
@@ -242,16 +309,15 @@ const renderContentBlocks = (
         </Text>
       );
     }
-
     return null;
   });
 };
 
-const renderHtmlContent = (htmlContent: string) => {
-  return renderContentBlocks(htmlContent, styles.actaContent);
+const renderHtmlContent = (htmlContent: string, style: object) => {
+  return renderContentBlocks(htmlContent, style);
 };
 
-const generateActHeader = (act: Act) => {
+const generateActHeaderContent = (act: Act) => {
   const sessionType = act.sessionType || "ordinary";
   const sessionTime = act.sessionTime || "diez horas";
   const formatDateInWords = (dateString: string): string => {
@@ -270,18 +336,18 @@ const generateActHeader = (act: Act) => {
   const dateInWords = formatDateInWords(
     act.sessionDate || new Date().toISOString()
   );
+
   return (
-    <Text style={styles.actaHeader}>
-      <Text style={{ fontFamily: "Helvetica-Bold" }}>{act.name}</Text>. Sesión{" "}
-      {sessionType} celebrada por el Concejo Municipal en el salón de reuniones
-      de la Alcaldía Municipal de Antiguo Cuscatlán, a las {sessionTime} del día{" "}
-      {dateInWords}, presidió la reunión la señora Alcaldesa Municipal Licda.
-      Zoila Milagro Navas Quintanilla, con la asistencia del señor Síndico
-      Municipal Licenciado {sindicoName} y de los concejales propietarios:{" "}
-      {attendeesList} y la Secretaria Municipal del Concejo Sra.{" "}
-      {secretariaName}. Seguidamente la sesión dio inicio con los siguientes
-      puntos:
-    </Text>
+    <>
+      <Text style={{ fontWeight: 700 }}>{act.name}</Text>. Sesión {sessionType}{" "}
+      celebrada por el Concejo Municipal en el salón de reuniones de la Alcaldía
+      Municipal de Antiguo Cuscatlán, a las {sessionTime} del día {dateInWords},
+      presidió la reunión la señora Alcaldesa Municipal Licda. Zoila Milagro
+      Navas Quintanilla, con la asistencia del señor Síndico Municipal
+      Licenciado {sindicoName} y de los concejales propietarios: {attendeesList}{" "}
+      y la Secretaria Municipal del Concejo Sra. {secretariaName}. Seguidamente
+      la sesión dio inicio con los siguientes puntos:
+    </>
   );
 };
 
@@ -289,84 +355,104 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
   if (!book) {
     return (
       <Document>
-        <Page size="A4" style={styles.page}>
+        <Page size="A4" style={getStyles().page}>
           <Text>No hay libro seleccionado</Text>
         </Page>
       </Document>
     );
   }
+
+  const settings = book.pdfSettings || {
+    pageSize: "A4",
+    orientation: "portrait",
+    margins: { top: 50, bottom: 50, left: 60, right: 60 },
+    lineHeight: 1.5,
+    fontSize: 11,
+  };
+
+  // ✅ Obtiene los estilos dinámicos basados en la configuración
+  const styles = getStyles(settings.fontSize);
+
+  const dynamicPageStyle = {
+    paddingTop: settings.margins.top,
+    paddingBottom: settings.margins.bottom,
+    paddingLeft: settings.margins.left,
+    paddingRight: settings.margins.right,
+    fontFamily: "Museo Sans",
+    fontSize: settings.fontSize,
+    color: "#000",
+    fontWeight: 500,
+  };
+
+  const dynamicTextStyle = {
+    fontSize: settings.fontSize,
+    textAlign: "justify" as const,
+    lineHeight: settings.lineHeight,
+  };
+
   const creationDate = new Date(book.createdAt);
   const yearInWords = capitalize(numberToWords(creationDate.getFullYear()));
   const dayInWords = numberToWords(creationDate.getDate());
   const monthName = format(creationDate, "MMMM", { locale: es });
+
   return (
     <Document title={`Libro de Actas - ${book.name}`}>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size={settings.pageSize}
+        orientation={settings.orientation}
+        style={dynamicPageStyle}
+      >
         <View style={styles.coverContainer}>
           <View>
             <Text style={styles.coverTitle}>
               La Suscrita Alcaldesa Municipal
             </Text>
-            <Text style={styles.coverText}>
+            <Text
+              style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
+            >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
               y Acuerdos Municipales, de las Sesiones que celebre durante el año{" "}
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                {yearInWords}
-              </Text>{" "}
-              numeradas correlativamente.
+              <Text style={{ fontWeight: 700 }}>{yearInWords}</Text> numeradas
+              correlativamente.
             </Text>
-            <Text style={styles.coverDate}>
+            <Text
+              style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
+            >
               Alcaldía Municipal de Antiguo Cuscatlán, a los{" "}
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
+              <Text style={{ fontWeight: 700 }}>
                 {dayInWords} días del mes de {monthName}
               </Text>{" "}
-              de{" "}
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                {yearInWords}
-              </Text>
-              .
+              de <Text style={{ fontWeight: 700 }}>{yearInWords}</Text>.
             </Text>
           </View>
           <View>
-            <View
-              style={{
-                marginTop: 80,
-                flexDirection: "row",
-                justifyContent: "space-around",
-                textAlign: "center",
-              }}
-            >
-              <View style={{ width: "45%" }}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+            <View style={{ flexDirection: "row" }}>
+              <View style={{ marginTop: 80, width: "50%" }}>
+                <Text style={{ fontWeight: 700 }}>
                   Licda. Zoila Milagro Navas Quintanilla
                 </Text>
-                <View
-                  style={{
-                    borderBottom: 1,
-                    borderColor: "#000",
-                    marginVertical: 5,
-                  }}
-                />
-                <Text>Alcaldesa Municipal</Text>
+                <Text style={{ fontWeight: 700, marginLeft: 50 }}>
+                  Alcaldesa Municipal
+                </Text>
               </View>
-              <View style={{ width: "45%" }}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>Ante Mí,</Text>
-                <View style={{ height: 22 }} />
-                <View
-                  style={{
-                    borderBottom: 1,
-                    borderColor: "#000",
-                    marginVertical: 5,
-                  }}
-                />
-                <Text>Secretaria Municipal</Text>
+              <View
+                style={{ marginTop: 100, textAlign: "center", width: "50%" }}
+              >
+                <Text>Ante Mí,</Text>
+                <Text style={{ marginTop: 60, fontWeight: 700 }}>
+                  Secretaria Municipal
+                </Text>
               </View>
             </View>
           </View>
         </View>
       </Page>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size={settings.pageSize}
+        orientation={settings.orientation}
+        style={dynamicPageStyle}
+      >
         <Text style={styles.indexTitle}>Índice</Text>
         {!book.acts || book.acts.length === 0 ? (
           <View
@@ -376,17 +462,32 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
           </View>
         ) : (
           <View>
-            {book.acts.map((act, index) => (
-              <View key={act.id} style={styles.indexItem}>
-                <Text style={styles.indexItemText}>{act.name}</Text>
-                <Text style={styles.indexItemPage}>{index + 3}</Text>
-              </View>
+            {book.acts.map((act, actIndex) => (
+              <React.Fragment key={act.id}>
+                <View style={styles.indexItem}>
+                  <Text style={styles.indexItemText}>{act.name}</Text>
+                  <View style={styles.indexItemDots} />
+                  <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
+                </View>
+                {act.agreements.map((agreement) => (
+                  <View key={agreement.id} style={styles.indexAgreementItem}>
+                    <Text style={styles.indexItemText}>{agreement.name}</Text>
+                    <View style={styles.indexItemDots} />
+                    <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
+                  </View>
+                ))}
+              </React.Fragment>
             ))}
           </View>
         )}
       </Page>
       {book.acts && book.acts.length > 0 && (
-        <Page size="A4" style={styles.page} wrap>
+        <Page
+          size={settings.pageSize}
+          orientation={settings.orientation}
+          style={dynamicPageStyle}
+          wrap
+        >
           {book.acts.map((act: Act) => {
             const hasBodyContent =
               act.bodyContent &&
@@ -402,28 +503,37 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
                 break={false}
                 wrap
               >
-                {generateActHeader(act)}
+                <Text
+                  style={{
+                    ...styles.actaHeader,
+                    lineHeight: settings.lineHeight,
+                  }}
+                >
+                  {generateActHeaderContent(act)}
+                </Text>
                 {hasBodyContent && (
-                  <View style={{ marginTop: 11 }}>
-                    {renderHtmlContent(act.bodyContent)}
+                  <View style={{ marginTop: 8 }}>
+                    {renderHtmlContent(act.bodyContent, dynamicTextStyle)}
                   </View>
                 )}
                 {hasAgreements && (
                   <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
-                        {renderHtmlContent(agreement.content)}
+                        {renderHtmlContent(agreement.content, dynamicTextStyle)}
                       </View>
                     ))}
                   </View>
                 )}
                 <View style={styles.signaturesSection}>
-                  <Text style={{ textAlign: "justify" }}>
+                  <Text>
                     Y no habiendo más que hacer constar se termina la presente
                     Acta que firmamos.
                   </Text>
                   <View style={{ marginTop: 40 }}>
-                    <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
+                    <Text style={styles.mainSignatureName}>
+                      Licda. Zoila Milagro Navas Quintanilla
+                    </Text>
                     <Text style={styles.mainSignatureRole}>
                       Alcaldesa Municipal
                     </Text>
@@ -465,6 +575,7 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
                     );
                   })()}
                   <View style={styles.secretariaSignature}>
+                    <View style={styles.secretariaSignatureLine} />
                     <Text>Secretaria Municipal</Text>
                   </View>
                 </View>

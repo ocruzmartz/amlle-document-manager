@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
-import { ChevronLeft, PanelRightOpen, X } from "lucide-react";
-import { createAct, getBookById } from "../api/book";
+import { ChevronLeft, PanelRightOpen, X, RefreshCw } from "lucide-react";
+import { createAct, getBookById, updateBook } from "../api/book";
 import { type Book } from "@/types";
 import { type WorkspaceView } from "../types";
 import {
@@ -34,6 +34,9 @@ export const BookWorkspacePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const previewKey = book ? book.lastModified + JSON.stringify(book.pdfSettings) : "";
+
 
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
     const initialActId = location.state?.initialActId;
@@ -72,6 +75,11 @@ export const BookWorkspacePage = () => {
         ...updatedBookData,
         lastModified: new Date().toISOString(),
       };
+
+      if (bookId) {
+        updateBook(bookId, newBook);
+      }
+
       return newBook;
     });
     setHasUnsavedChanges(true);
@@ -114,7 +122,7 @@ export const BookWorkspacePage = () => {
   };
 
   if (isLoading || !book) {
-    return <div>Cargando espacio de trabajo...</div>;
+    return <div className="flex justify-centers items-center">Cargando espacio de trabajo...</div>;
   }
 
   return (
@@ -142,11 +150,20 @@ export const BookWorkspacePage = () => {
             </Button>
           </SheetTrigger>
           <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
-            <SheetHeader className="border-b">
+            <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
               <SheetTitle>Vista Previa del Libro (PDF)</SheetTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBookUpdate({})}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recargar
+              </Button>
             </SheetHeader>
+
             <div className="flex-1 overflow-hidden">
-              <BookPdfPreview key={book.lastModified} book={book} />
+              <BookPdfPreview key={previewKey} book={book} />
             </div>
           </SheetContent>
         </Sheet>

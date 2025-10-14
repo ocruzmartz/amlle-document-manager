@@ -214,7 +214,7 @@ export const ActEditor = ({
               <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="min-h-[400px]">
+              <div className="min-h-[400px] overflow-hidden">
                 <RichTextEditor
                   content={bodyContentState}
                   onChange={(content) => {

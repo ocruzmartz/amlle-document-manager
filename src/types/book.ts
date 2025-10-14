@@ -11,7 +11,18 @@ export type Book = {
   pageCount: number;
   acts?: Act[];
   actCount: number;
-
+  pdfSettings?: {
+    pageSize: "A4" | "LETTER";
+    orientation: "portrait" | "landscape";
+    margins: {
+      top: number;
+      bottom: number;
+      left: number;
+      right: number;
+    };
+    lineHeight: number;
+    fontSize?: number;
+  };
   createdAt: string;
   createdBy: string;
   lastModified: string;

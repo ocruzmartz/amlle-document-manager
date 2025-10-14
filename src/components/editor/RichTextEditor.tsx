@@ -1,20 +1,20 @@
 // filepath: src/components/editor/RichTextEditor.tsx
-import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import { useEditor, EditorContent } from "@tiptap/react";
+import { Table } from "@tiptap/extension-table";
 import { Color } from "@tiptap/extension-color";
-import { TextStyle } from "@tiptap/extension-text-style";
-import { RomanOrderedList } from "./extensions/RomanOrderedList"; // ✅ Importar extensión personalizada
+import { FontSize, TextStyle } from "@tiptap/extension-text-style";
+import { RomanOrderedList } from "./extensions/RomanOrderedList"; 
 import { Toolbar } from "./ToolBar";
 import { useEffect } from "react"; // ✅ 1. Importar useEffect
 
@@ -107,6 +107,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
         types: ["textStyle"],
       }),
       TextStyle,
+      FontSize,
     ],
     content: content,
     editorProps: {
@@ -141,12 +142,10 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="flex flex-col h-full border-t">
+    <div className="flex flex-col border-t  w-full overflow-hidden">
       <Toolbar editor={editor} />
-      <div className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-8">
-        <div className="mx-auto max-w-4xl min-h-full bg-background shadow-lg rounded-sm p-8">
-          <EditorContent editor={editor} />
-        </div>
+      <div className="tiptap-editor overflow-hidden w-full">
+        <EditorContent editor={editor} className="w-full" />
       </div>
     </div>
   );

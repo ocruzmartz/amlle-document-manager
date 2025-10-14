@@ -21,7 +21,7 @@ import {
   Type,
   CheckSquare,
   Minus,
-  Hash,
+  Hash
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,11 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
   };
 
   const addTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    editor
+      .chain()
+      .focus()
+      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+      .run();
   };
 
   const deleteTable = () => {
@@ -100,6 +104,10 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
 
   const deleteRow = () => {
     editor.chain().focus().deleteRow().run();
+  };
+
+  const getCurrentFontSize = () => {
+    return editor.getAttributes("textStyle").fontSize || "12px";
   };
 
   return (
@@ -160,6 +168,25 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         </Select>
       </div>
 
+      <Select
+        value={getCurrentFontSize()}
+        onValueChange={(value) => {
+          editor.chain().focus().setFontSize(value).run();
+        }}
+      >
+        <SelectTrigger className="w-24 h-8 border-none shadow-none bg-transparent cursor-pointer hover:bg-gray-100">
+          <SelectValue placeholder="Tamaño" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="12px">12 pt</SelectItem>
+          <SelectItem value="14px">14 pt</SelectItem>
+          <SelectItem value="16px">16 pt</SelectItem>
+          <SelectItem value="18px">18 pt</SelectItem>
+          <SelectItem value="20px">20 pt</SelectItem>
+          <SelectItem value="24px">24 pt</SelectItem>
+        </SelectContent>
+      </Select>
+
       {/* Formato de texto */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Toggle
@@ -204,28 +231,36 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         <Toggle
           size="sm"
           pressed={editor.isActive({ textAlign: "left" })}
-          onPressedChange={() => editor.chain().focus().setTextAlign("left").run()}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("left").run()
+          }
         >
           <AlignLeft className="h-4 w-4" />
         </Toggle>
         <Toggle
           size="sm"
           pressed={editor.isActive({ textAlign: "center" })}
-          onPressedChange={() => editor.chain().focus().setTextAlign("center").run()}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("center").run()
+          }
         >
           <AlignCenter className="h-4 w-4" />
         </Toggle>
         <Toggle
           size="sm"
           pressed={editor.isActive({ textAlign: "right" })}
-          onPressedChange={() => editor.chain().focus().setTextAlign("right").run()}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("right").run()
+          }
         >
           <AlignRight className="h-4 w-4" />
         </Toggle>
         <Toggle
           size="sm"
           pressed={editor.isActive({ textAlign: "justify" })}
-          onPressedChange={() => editor.chain().focus().setTextAlign("justify").run()}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("justify").run()
+          }
         >
           <AlignJustify className="h-4 w-4" />
         </Toggle>
@@ -236,30 +271,36 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         <Toggle
           size="sm"
           pressed={editor.isActive("bulletList")}
-          onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+          onPressedChange={() =>
+            editor.chain().focus().toggleBulletList().run()
+          }
         >
           <List className="h-4 w-4" />
         </Toggle>
-        
+
         {/* ✅ Lista ordenada normal */}
         <Toggle
           size="sm"
           pressed={editor.isActive("orderedList")}
-          onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+          onPressedChange={() =>
+            editor.chain().focus().toggleOrderedList().run()
+          }
         >
           <ListOrdered className="h-4 w-4" />
         </Toggle>
-        
+
         {/* ✅ Lista romana - usando la extensión personalizada */}
         <Toggle
           size="sm"
           pressed={editor.isActive("romanOrderedList")}
-          onPressedChange={() => editor.chain().focus().toggleRomanOrderedList().run()}
+          onPressedChange={() =>
+            editor.chain().focus().toggleRomanOrderedList().run()
+          }
           title="Lista con numeración romana (I, II, III...)"
         >
           <Hash className="h-4 w-4" />
         </Toggle>
-        
+
         <Toggle
           size="sm"
           pressed={editor.isActive("taskList")}
@@ -274,7 +315,9 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         <Toggle
           size="sm"
           pressed={editor.isActive("blockquote")}
-          onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+          onPressedChange={() =>
+            editor.chain().focus().toggleBlockquote().run()
+          }
         >
           <Quote className="h-4 w-4" />
         </Toggle>
@@ -298,10 +341,10 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
-              className={editor.isActive('link') ? 'bg-gray-200' : ''}
+              className={editor.isActive("link") ? "bg-gray-200" : ""}
             >
               <Link className="h-4 w-4" />
             </Button>
@@ -309,7 +352,7 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <PopoverContent className="w-80">
             <div className="grid gap-2">
               <h4 className="font-medium">
-                {editor.isActive('link') ? 'Editar enlace' : 'Agregar enlace'}
+                {editor.isActive("link") ? "Editar enlace" : "Agregar enlace"}
               </h4>
               <Input
                 placeholder="https://ejemplo.com"
@@ -318,9 +361,9 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
               />
               <div className="flex gap-2">
                 <Button onClick={addLink} size="sm">
-                  {editor.isActive('link') ? 'Actualizar' : 'Agregar'}
+                  {editor.isActive("link") ? "Actualizar" : "Agregar"}
                 </Button>
-                {editor.isActive('link') && (
+                {editor.isActive("link") && (
                   <Button onClick={removeLink} variant="outline" size="sm">
                     Quitar
                   </Button>
@@ -353,10 +396,10 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
-              className={editor.isActive('table') ? 'bg-gray-200' : ''}
+              className={editor.isActive("table") ? "bg-gray-200" : ""}
             >
               <Table className="h-4 w-4" />
             </Button>
@@ -364,7 +407,7 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <PopoverContent className="w-64">
             <div className="grid gap-2">
               <h4 className="font-medium">Tabla</h4>
-              {!editor.isActive('table') ? (
+              {!editor.isActive("table") ? (
                 <Button onClick={addTable} size="sm">
                   Insertar tabla 3x3
                 </Button>
@@ -382,13 +425,22 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
                   <Button onClick={addRowAfter} size="sm" variant="outline">
                     + Fila Abj
                   </Button>
-                  <Button onClick={deleteColumn} size="sm" variant="destructive">
+                  <Button
+                    onClick={deleteColumn}
+                    size="sm"
+                    variant="destructive"
+                  >
                     - Columna
                   </Button>
                   <Button onClick={deleteRow} size="sm" variant="destructive">
                     - Fila
                   </Button>
-                  <Button onClick={deleteTable} size="sm" variant="destructive" className="col-span-2">
+                  <Button
+                    onClick={deleteTable}
+                    size="sm"
+                    variant="destructive"
+                    className="col-span-2"
+                  >
                     Eliminar tabla
                   </Button>
                 </div>
@@ -411,8 +463,18 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
               <h4 className="font-medium">Color de texto</h4>
               <div className="grid grid-cols-6 gap-1">
                 {[
-                  "#000000", "#374151", "#DC2626", "#EA580C", "#D97706", "#65A30D",
-                  "#059669", "#0891B2", "#2563EB", "#7C3AED", "#C026D3", "#DC2626"
+                  "#000000",
+                  "#374151",
+                  "#DC2626",
+                  "#EA580C",
+                  "#D97706",
+                  "#65A30D",
+                  "#059669",
+                  "#0891B2",
+                  "#2563EB",
+                  "#7C3AED",
+                  "#C026D3",
+                  "#DC2626",
                 ].map((color) => (
                   <button
                     key={color}
