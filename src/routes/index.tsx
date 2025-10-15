@@ -22,7 +22,7 @@ export const router = createBrowserRouter([...publicRoutes, shellRoute]);
 
 
 /*const shellRoute: RouteObject = {
-  // Usar ProtectedRoutes para envolver las rutas privadas.
+  // ⬇️ ¡CAMBIO CLAVE! Usar ProtectedRoutes para envolver las rutas privadas.
   element: <ProtectedRoutes />, 
 
   children: [
