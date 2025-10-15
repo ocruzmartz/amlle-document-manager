@@ -27,6 +27,11 @@ export const mainNavItems: NavItem[] = [
     url: "/agreements",
     icon: FileText,
   },
+  {
+    title: "Auditoría",
+    url: "/audit",
+    icon: Logs,
+  }
 ];
 
 export const adminNavItems: NavItem[] = [
