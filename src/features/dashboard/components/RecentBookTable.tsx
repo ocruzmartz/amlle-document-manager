@@ -1,4 +1,4 @@
-import { Link } from "react-router"; 
+import { Link } from "react-router";
 import {
   Card,
   CardContent,
@@ -22,6 +22,8 @@ import { es } from "date-fns/locale";
 
 // Importamos el tipo desde su archivo dedicado
 import { type RecentBook } from "@/types/book";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 interface RecentBooksTableProps {
   books: RecentBook[];
@@ -31,11 +33,19 @@ interface RecentBooksTableProps {
 export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
   return (
     <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle>Estado de Libros Recientes</CardTitle>
-        <CardDescription>
-          Los últimos libros en los que se ha trabajado y su estado actual.
-        </CardDescription>
+      <CardHeader className="flex justify-between items-center">
+        <div>
+          <CardTitle>Estado de Libros Recientes</CardTitle>
+          <CardDescription>
+            Los últimos libros en los que se ha trabajado y su estado actual.
+          </CardDescription>
+        </div>
+        <Link to="/books">
+        <Button variant="link">
+          <ExternalLink  className="size-4" />
+          Ver más
+        </Button>
+        </Link>
       </CardHeader>
       <CardContent>
         <Table>

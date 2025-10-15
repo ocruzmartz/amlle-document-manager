@@ -1,9 +1,5 @@
-// src/lib/textUtils.ts
-
 export const numberToWords = (num: number): string => {
-  // ✅ Renamed from numeroALetras
   const units = [
-    // ✅ Renamed
     "",
     "uno",
     "dos",
@@ -16,7 +12,6 @@ export const numberToWords = (num: number): string => {
     "nueve",
   ];
   const tens = [
-    // ✅ Renamed
     "",
     "diez",
     "veinte",
@@ -29,7 +24,6 @@ export const numberToWords = (num: number): string => {
     "noventa",
   ];
   const hundreds = [
-    // ✅ Renamed
     "",
     "ciento",
     "doscientos",
@@ -41,9 +35,7 @@ export const numberToWords = (num: number): string => {
     "ochocientos",
     "novecientos",
   ];
-
   const specials: { [key: number]: string } = {
-    // ✅ Renamed
     10: "diez",
     11: "once",
     12: "doce",
@@ -61,15 +53,13 @@ export const numberToWords = (num: number): string => {
   if (specials[num]) return specials[num];
   if (num > 15 && num < 20) return "dieci" + units[num - 10];
   if (num > 20 && num < 30) return "veinti" + units[num % 10];
-
   if (num >= 2000 && num < 3000) {
-    const remainder = num - 2000; // ✅ Renamed
+    const remainder = num - 2000;
     return "dos mil" + (remainder > 0 ? " " + numberToWords(remainder) : "");
   }
-
   if (num >= 100) {
-    const exactHundred = Math.floor(num / 100); // ✅ Renamed
-    const remainder = num % 100; // ✅ Renamed
+    const exactHundred = Math.floor(num / 100);
+    const remainder = num % 100;
     if (num === 100) return "cien";
     return (
       hundreds[exactHundred] +
@@ -77,9 +67,8 @@ export const numberToWords = (num: number): string => {
     );
   }
 
-  const ten = Math.floor(num / 10); // ✅ Renamed
-  const one = num % 10; // ✅ Renamed
-
+  const ten = Math.floor(num / 10);
+  const one = num % 10;
   let str = "";
   if (ten > 0) str += tens[ten] + (one > 0 ? " y " : "");
   if (one > 0) str += units[one];

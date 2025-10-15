@@ -1,4 +1,4 @@
-// filepath: c:\Users\mosca\Escritorio\HS v2\amlle-document-manager\src\components\editor\RichTextEditor.tsx
+// filepath: src/components/editor/RichTextEditor.tsx
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -16,6 +16,7 @@ import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { RomanOrderedList } from "./extensions/RomanOrderedList"; // ✅ Importar extensión personalizada
 import { Toolbar } from "./ToolBar";
+import { useEffect } from "react"; // ✅ 1. Importar useEffect
 
 const cleanPastedHtml = (html: string): string => {
   // Elimina clases y estilos específicos de Word/Office
@@ -32,7 +33,7 @@ const cleanPastedHtml = (html: string): string => {
   cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");
 
   // Elimina comentarios de HTML
-  cleanedHtml = cleanedHtml.replace(/<!--[^>]*-->/g, "");
+  cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, "");
 
   return cleanedHtml;
 };
@@ -111,7 +112,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     editorProps: {
       attributes: {
         class:
-          "max-w-none min-h-[400px] w-full rounded-b-md border-r border-b border-l border-input bg-background px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none",
+          "max-w-none min-h-[400px] w-full border-input bg-background px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none",
       },
       transformPastedHTML(html) {
         return cleanPastedHtml(html);
@@ -124,12 +125,24 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     immediatelyRender: false,
   });
 
+  // ✅ 2. Añadir el hook useEffect para sincronizar el editor
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      const editorContent = editor.getHTML();
+      // Comparamos el contenido actual del editor con el que viene de las props.
+      // Si son diferentes, actualizamos el editor para reflejar el cambio externo (como la importación).
+      if (content !== editorContent) {
+        editor.commands.setContent(content, { emitUpdate: false });
+      }
+    }
+  }, [content, editor]);
+
   if (!editor) {
     return null;
   }
 
   return (
-    <div className="flex flex-col border rounded-lg overflow-hidden">
+    <div className="flex flex-col border-t">
       <Toolbar editor={editor} />
       <div className="tiptap-editor flex-1 overflow-hidden">
         <EditorContent editor={editor} />

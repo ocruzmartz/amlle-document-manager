@@ -7,12 +7,13 @@ export type Book = {
   name: string;
   tome?: number;
   status: BookStatus;
-  actaCount: number;
-  acuerdoCount: number;
+  agreementCount: number;
   pageCount: number;
   acts?: Act[];
-  bookId?: string;
+  actCount: number;
+
   createdAt: string;
+  createdBy: string;
   lastModified: string;
   modifiedBy: string;
 };
