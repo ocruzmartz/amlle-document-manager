@@ -21,7 +21,7 @@ import {
   Type,
   CheckSquare,
   Minus,
-  Hash
+  Hash,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
@@ -106,8 +106,9 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
     editor.chain().focus().deleteRow().run();
   };
 
+  // ✅ CORREGIDO: Ahora no devuelve un valor por defecto para detectar cuándo no hay estilo
   const getCurrentFontSize = () => {
-    return editor.getAttributes("textStyle").fontSize || "12px";
+    return editor.getAttributes("textStyle").fontSize;
   };
 
   return (
@@ -132,8 +133,8 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         </Button>
       </div>
 
-      {/* Headings */}
-      <div className="flex gap-1 mr-2 border-r pr-2">
+      {/* Headings y Tamaño de Fuente */}
+      <div className="flex gap-1 mr-2 border-r pr-2 items-center">
         <Select
           value={
             editor.isActive("heading", { level: 1 })
@@ -166,28 +167,34 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
             <SelectItem value="h3">Título 3</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* ✅ SELECTOR DE TAMAÑO DE FUENTE MEJORADO */}
+        <Select
+          value={getCurrentFontSize() || "default"}
+          onValueChange={(value) => {
+            if (value === "default") {
+              editor.chain().focus().unsetFontSize().run();
+            } else {
+              editor.chain().focus().setFontSize(value).run();
+            }
+          }}
+        >
+          <SelectTrigger className="w-28 h-8 border-none shadow-none bg-transparent cursor-pointer hover:bg-gray-100">
+            <SelectValue placeholder="Tamaño" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Defecto</SelectItem>
+            <SelectItem value="10pt">10 pt</SelectItem>
+            <SelectItem value="11pt">11 pt</SelectItem>
+            <SelectItem value="12pt">12 pt</SelectItem>
+            <SelectItem value="14pt">14 pt</SelectItem>
+            <SelectItem value="16pt">16 pt</SelectItem>
+            <SelectItem value="18pt">18 pt</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <Select
-        value={getCurrentFontSize()}
-        onValueChange={(value) => {
-          editor.chain().focus().setFontSize(value).run();
-        }}
-      >
-        <SelectTrigger className="w-24 h-8 border-none shadow-none bg-transparent cursor-pointer hover:bg-gray-100">
-          <SelectValue placeholder="Tamaño" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="12px">12 pt</SelectItem>
-          <SelectItem value="14px">14 pt</SelectItem>
-          <SelectItem value="16px">16 pt</SelectItem>
-          <SelectItem value="18px">18 pt</SelectItem>
-          <SelectItem value="20px">20 pt</SelectItem>
-          <SelectItem value="24px">24 pt</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {/* Formato de texto */}
+      {/* (El resto de la barra de herramientas se mantiene igual) */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Toggle
           size="sm"
@@ -225,8 +232,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <Highlighter className="h-4 w-4" />
         </Toggle>
       </div>
-
-      {/* Alineación */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Toggle
           size="sm"
@@ -265,8 +270,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <AlignJustify className="h-4 w-4" />
         </Toggle>
       </div>
-
-      {/* Listas - Versión simplificada */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Toggle
           size="sm"
@@ -277,8 +280,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         >
           <List className="h-4 w-4" />
         </Toggle>
-
-        {/* ✅ Lista ordenada normal */}
         <Toggle
           size="sm"
           pressed={editor.isActive("orderedList")}
@@ -288,8 +289,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         >
           <ListOrdered className="h-4 w-4" />
         </Toggle>
-
-        {/* ✅ Lista romana - usando la extensión personalizada */}
         <Toggle
           size="sm"
           pressed={editor.isActive("romanOrderedList")}
@@ -300,7 +299,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
         >
           <Hash className="h-4 w-4" />
         </Toggle>
-
         <Toggle
           size="sm"
           pressed={editor.isActive("taskList")}
@@ -309,8 +307,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <CheckSquare className="h-4 w-4" />
         </Toggle>
       </div>
-
-      {/* Elementos especiales */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Toggle
           size="sm"
@@ -336,8 +332,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           <Minus className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Enlaces e imágenes */}
       <div className="flex gap-1 mr-2 border-r pr-2">
         <Popover>
           <PopoverTrigger asChild>
@@ -372,7 +366,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
             </div>
           </PopoverContent>
         </Popover>
-
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -393,7 +386,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
             </div>
           </PopoverContent>
         </Popover>
-
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -449,8 +441,6 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
           </PopoverContent>
         </Popover>
       </div>
-
-      {/* Color de texto */}
       <div className="flex gap-1">
         <Popover>
           <PopoverTrigger asChild>

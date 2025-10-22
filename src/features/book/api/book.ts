@@ -4,12 +4,11 @@ import { type Book, type Act, type Agreement } from "@/types";
 
 import {
   allCouncilMembers,
-  bookContentData,
-  booksData,
   booksData as initialBooks,
   bookContentData as initialContent,
 } from "@/features/book/data/mock";
 import { numberToWords } from "@/lib/textUtils";
+import { generateActHeaderHtml } from "@/features/act/lib/actHelpers"; // ✅ 1. Importar el nuevo ayudante
 
 declare global {
   interface Window {
@@ -18,7 +17,7 @@ declare global {
   }
 }
 
-// --- Almacenes en Memoria (resistentes a HMR) ---
+// --- Almacenes en Memoria (sin cambios) ---
 const getBooksStore = (): Book[] => {
   if (import.meta.env.DEV) {
     if (!window.booksStore) {
@@ -51,7 +50,7 @@ const setContentStore = (content: typeof initialContent) => {
   }
 };
 
-// --- Funciones Exportadas ---
+// --- Funciones Exportadas (solo createAct tiene cambios) ---
 
 export const getBooks = (): Book[] => {
   const books = getBooksStore();
@@ -69,7 +68,6 @@ export const getBookById = (id: string | undefined): Book | undefined => {
   const bookData = books.find((book) => book.id === id);
   if (!bookData) return undefined;
 
-  // Unimos los datos del libro con su contenido de actas
   return {
     ...bookData,
     acts: contentStore[id]?.acts || [],
@@ -144,7 +142,6 @@ export const updateBook = (
     return undefined;
   }
 
-  // Actualizar metadatos del libro (ej. fecha de modificación)
   const existingBook = books[bookIndex];
   books[bookIndex] = {
     ...existingBook,
@@ -154,7 +151,6 @@ export const updateBook = (
   };
   setBooksStore(books);
 
-  // Guardar el contenido (actas y acuerdos) si se proporcionó
   if (updatedData.acts) {
     const newBookContent = {
       ...(contentStore[bookId] || {}),
@@ -170,6 +166,7 @@ export const updateBook = (
   return getBookById(bookId);
 };
 
+// ✅ 2. Lógica de `createAct` actualizada
 export const createAct = (
   bookId: string | undefined,
   actData?: { name?: string }
@@ -178,14 +175,14 @@ export const createAct = (
 
   const books = getBooksStore();
   const contentStore = getContentStore();
-
   const bookIndex = books.findIndex((b) => b.id === bookId);
   const book = books[bookIndex];
-
   if (!book) return null;
 
   const actNumber = (contentStore[bookId]?.acts.length || 0) + 1;
   const actNumberInWords = numberToWords(actNumber);
+  const now = new Date().toISOString();
+  const currentUser = "Usuario Actual";
 
   const defaultAttendees = {
     syndic: allCouncilMembers.find((m) => m.role === "SYNDIC") || null,
@@ -193,41 +190,41 @@ export const createAct = (
     secretary: allCouncilMembers.find((m) => m.role === "SECRETARY") || null,
   };
 
-  const now = new Date().toISOString();
-  const currentUser = "Usuario Actual"; // Esto será dinámico con un sistema de login
+  // Se crea un objeto parcial del acta para generar el encabezado
+  const actName: string = actData?.name ?? `Acta número ${actNumberInWords}`;
+  const partialAct: Partial<Act> = {
+    name: actName,
+    sessionDate: now,
+    sessionType: "Ordinary",
+    sessionTime: "diez horas",
+    attendees: defaultAttendees,
+  };
 
   const newAct: Act = {
     id: crypto.randomUUID(),
-    name: actData?.name ?? `Acta número ${actNumberInWords}`,
     bookId: book.id,
     bookName: book.name,
-    sessionDate: now,
-    attendees: defaultAttendees,
-    bodyContent: "",
     agreements: [],
-    actNumber: actNumber,
-    sessionType: "Ordinary",
-    sessionTime: "diez horas",
     sessionPoints: [],
-
-    // ✅ INICIALIZANDO CAMPOS DE RASTREO
+    clarifyingNote: "",
+    name: actName, // Asegura que 'name' siempre es string
+    sessionDate: partialAct.sessionDate!,
+    sessionType: partialAct.sessionType!,
+    sessionTime: partialAct.sessionTime!,
+    attendees: partialAct.attendees!,
+    bodyContent: generateActHeaderHtml(partialAct), // Se genera el HTML del encabezado
+    actNumber,
     createdAt: now,
     createdBy: currentUser,
     lastModified: now,
     modifiedBy: currentUser,
   };
 
-  // --- INICIO DE CAMBIOS ---
-
-  // 1. Clonamos el contenido del libro para no mutarlo
   const newBookContent = contentStore[bookId]
     ? { ...contentStore[bookId], acts: [...contentStore[bookId].acts, newAct] }
     : { acts: [newAct] };
 
-  const newContentStore = {
-    ...contentStore,
-    [bookId]: newBookContent,
-  };
+  const newContentStore = { ...contentStore, [bookId]: newBookContent };
   setContentStore(newContentStore);
 
   const updatedBooks = [...books];
@@ -242,8 +239,8 @@ export const createAct = (
 };
 
 export const getAllActs = (): Act[] => {
-  const allActs = booksData.flatMap((book) => {
-    const content = bookContentData[book.id];
+  const allActs = initialBooks.flatMap((book) => {
+    const content = initialContent[book.id];
     if (!content || !content.acts) {
       return [];
     }
@@ -261,19 +258,17 @@ export const getAllActs = (): Act[] => {
 };
 
 export const getAllAgreements = (): Agreement[] => {
-  const allAgreements = booksData.flatMap((book) => {
-    const content = bookContentData[book.id];
+  const allAgreements = initialBooks.flatMap((book) => {
+    const content = initialContent[book.id];
     if (!content || !content.acts) {
-      return []; // Si el libro no tiene actas, no puede tener acuerdos.
+      return [];
     }
 
-    // Ahora, para cada acta, extraemos sus acuerdos
     return content.acts.flatMap((act) => {
       if (!act.agreements || act.agreements.length === 0) {
         return [];
       }
 
-      // Para cada acuerdo, crea un nuevo objeto que incluye los datos del acta y el libro.
       return act.agreements.map((agreement) => ({
         ...agreement,
         actId: act.id,
@@ -284,7 +279,6 @@ export const getAllAgreements = (): Agreement[] => {
     });
   });
 
-  // Ordenar por fecha de modificación más reciente
   return allAgreements.sort(
     (a, b) =>
       new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()

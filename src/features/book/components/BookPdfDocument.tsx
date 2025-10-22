@@ -8,13 +8,25 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import type { Style, HyphenationCallback } from "@react-pdf/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { numberToWords, capitalize } from "@/lib/textUtils";
 import { type Book, type Act } from "@/types";
 import type { JSX } from "react/jsx-runtime";
 
-// --- Registro de Fuentes Locales (sin cambios) ---
+import createHyphenator from "hyphen";
+import patternsEs from "hyphen/patterns/es";
+
+const hyphenator = createHyphenator(patternsEs);
+const hyphenationCallback: HyphenationCallback = (word) => {
+  if (word.length < 8) {
+    return [word];
+  }
+  const result = hyphenator(word);
+  return Array.isArray(result) ? result : [word];
+};
+
 Font.register({
   family: "Museo Sans",
   fonts: [
@@ -51,40 +63,125 @@ Font.register({
   ],
 });
 
-// --- ✅ ESTILOS AHORA SON UNA FUNCIÓN QUE ACEPTA EL TAMAÑO DE FUENTE ---
+const parseStyleAttribute = (styleString: string | null): Style => {
+  if (!styleString) return {};
+  const style: Style = {};
+  styleString.split(";").forEach((declaration) => {
+    const [property, value] = declaration.split(":");
+    if (property && value) {
+      const prop = property.trim();
+      const val = value.trim();
+      switch (prop) {
+        case "font-size":
+          style.fontSize = parseFloat(val);
+          break;
+        case "text-align":
+          style.textAlign = val as "left" | "right" | "center" | "justify";
+          break;
+        case "color":
+          style.color = val;
+          break;
+        case "background-color":
+          style.backgroundColor = val;
+          break;
+        case "width":
+          style.width = val;
+          break;
+      }
+    }
+  });
+  return style;
+};
+
+const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
+  if (!html) return [];
+
+  const cleanHtml = html.replace(/&nbsp;/g, " ");
+
+  const regex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|([^<]+)/g;
+  let match;
+  const nodes = [];
+  let key = 0;
+
+  while ((match = regex.exec(cleanHtml)) !== null) {
+    const [, tagName, attributes, innerHtml, plainText] = match;
+
+    if (plainText) {
+      nodes.push(
+        <Text key={key++} style={baseStyle}>
+          {plainText}
+        </Text>
+      );
+      continue;
+    }
+
+    if (tagName) {
+      let style: Style = { ...baseStyle };
+      const styleAttr = attributes.match(/style="([^"]*)"/);
+      const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
+
+      switch (tagName.toLowerCase()) {
+        case "strong":
+          style = { ...style, fontWeight: 700 };
+          break;
+        case "em":
+          style = { ...style, fontStyle: "italic" };
+          break;
+        case "u":
+          style = { ...style, textDecoration: "underline" };
+          break;
+        case "span":
+          style = { ...style, ...inlineStyle };
+          break;
+        case "p":
+          style = { ...style, ...inlineStyle };
+          nodes.push(
+            <Text
+              key={key++}
+              style={style}
+              hyphenationCallback={hyphenationCallback}
+            >
+              {renderHtmlNodes(innerHtml, {})}
+            </Text>
+          );
+          continue;
+      }
+
+      nodes.push(
+        <Text key={key++} style={style}>
+          {renderHtmlNodes(innerHtml, {})}
+        </Text>
+      );
+    }
+  }
+  return nodes;
+};
+
 const getStyles = (fontSize = 11) =>
   StyleSheet.create({
     page: {
       fontFamily: "Museo Sans",
-      fontSize: fontSize, // ✅ Usa el tamaño de fuente base
+      fontSize: fontSize,
       color: "#000",
       fontWeight: 500,
     },
-    coverContainer: {
-      textAlign: "left",
-      flex: 1,
-    },
+    coverContainer: { textAlign: "left", flex: 1 },
     coverTitle: {
       fontSize: fontSize + 1,
       fontFamily: "Museo Sans",
       fontWeight: 700,
       marginBottom: 40,
     },
-    coverText: {
-      fontSize: fontSize,
-      textAlign: "justify",
-      marginBottom: 12,
-    },
+    coverText: { fontSize: fontSize, textAlign: "justify", marginBottom: 12 },
     coverDate: { fontSize: fontSize, marginTop: 40 },
     indexTitle: {
-      fontSize: fontSize + 5, // Título del índice más grande
+      fontSize: fontSize + 5,
       fontFamily: "Museo Sans",
       fontWeight: 700,
       textAlign: "center",
       marginBottom: 30,
       textTransform: "uppercase",
     },
-    // ... (el resto de los estilos que no dependen del tamaño de fuente se mantienen igual)
     indexItem: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -109,10 +206,6 @@ const getStyles = (fontSize = 11) =>
     },
     indexItemPage: { flexShrink: 0, textAlign: "right" },
     actaContainer: { marginBottom: 40 },
-    actaHeader: {
-      fontSize: fontSize,
-      textAlign: "justify",
-    },
     emptyParagraph: { height: 8 },
     listContainer: { paddingLeft: 15, marginBottom: 5 },
     listItem: { flexDirection: "row", marginBottom: 3 },
@@ -135,6 +228,7 @@ const getStyles = (fontSize = 11) =>
       borderColor: "#bfbfbf",
       borderLeftWidth: 0,
       borderTopWidth: 0,
+      flexWrap: "wrap",
     },
     tableCellText: { fontSize: fontSize - 2, textAlign: "left" },
     signaturesSection: {
@@ -170,44 +264,9 @@ const getStyles = (fontSize = 11) =>
     notaTitle: { fontFamily: "Museo Sans", fontWeight: 700 },
   });
 
-// --- (El resto del código del motor de renderizado se mantiene igual) ---
-
-// --- Motor de Renderizado ---
-const renderInlineFormatting = (text: string) => {
-  const parts = text
-    .replace(/<p[^>]*>|<\/p>|<li[^>]*>|<\/li>/g, "")
-    .trim()
-    .split(/(<strong>.*?<\/strong>|<em>.*?<\/em>|<u>.*?<\/u>)/g)
-    .filter(Boolean);
-  return parts.map((part, partIndex) => {
-    if (part.startsWith("<strong>"))
-      return (
-        <Text
-          key={partIndex}
-          style={{ fontFamily: "Museo Sans", fontWeight: 700 }}
-        >
-          {part.replace(/<\/?strong>/g, "")}
-        </Text>
-      );
-    if (part.startsWith("<em>"))
-      return (
-        <Text key={partIndex} style={{ fontStyle: "italic" }}>
-          {part.replace(/<\/?em>/g, "")}
-        </Text>
-      );
-    if (part.startsWith("<u>"))
-      return (
-        <Text key={partIndex} style={{ textDecoration: "underline" }}>
-          {part.replace(/<\/?u>/g, "")}
-        </Text>
-      );
-    return <Text key={partIndex}>{part.replace(/<[^>]*>/g, "")}</Text>;
-  });
-};
-
 const renderContentBlocks = (
   html: string,
-  baseTextStyle: object
+  baseTextStyle: Style
 ): (JSX.Element | null)[] | null => {
   if (!html || !html.trim()) return null;
   const cleanHtml = html.replace(
@@ -215,7 +274,7 @@ const renderContentBlocks = (
     ""
   );
 
-  const blockRegex = /<(p|ul|ol|table)[^>]*>.*?<\/\1>/gs;
+  const blockRegex = /<(p|ul|ol|table)[^>]*>[\s\S]*?<\/\1>/gs;
   const blocks: string[] = cleanHtml.match(blockRegex) || [];
 
   if (blocks.length === 0 && cleanHtml.trim()) {
@@ -224,47 +283,40 @@ const renderContentBlocks = (
 
   return blocks.map((block, blockIndex) => {
     if (block.trim().startsWith("<table")) {
-      const rows = block.match(/<tr[^>]*>(.*?)<\/tr>/gs) || [];
-      let maxColumns = 0;
-      rows.forEach((row) => {
-        const cells = row.match(/<(?:td|th)[^>]*>.*?<\/(?:td|th)>/gs) || [];
-        let colCount = 0;
-        cells.forEach((cell) => {
-          colCount += parseInt(cell.match(/colspan="(\d+)"/)?.[1] || "1", 10);
-        });
-        if (colCount > maxColumns) maxColumns = colCount;
-      });
-      if (maxColumns === 0) maxColumns = 1;
-
+      const rows = block.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gs) || [];
       return (
         <View key={`table-${blockIndex}`} style={getStyles().table}>
           {rows.map((rowContent, rowIndex) => (
             <View key={`row-${rowIndex}`} style={getStyles().tableRow}>
-              {(
-                rowContent.match(/<(?:td|th)[^>]*>(.*?)<\/(?:td|th)>/gs) || []
-              ).map((cellContent, cellIndex) => {
-                const colspan = parseInt(
-                  cellContent.match(/colspan="(\d+)"/)?.[1] || "1",
-                  10
-                );
-                const cellWidth = `${(100 / maxColumns) * colspan}%`;
-                const isHeader = cellContent.trim().startsWith("<th");
-                const innerHtml = cellContent
-                  .replace(/<(?:td|th)[^>]*>/, "")
-                  .replace(/<\/(?:td|th)>$/, "");
-                return (
-                  <View
-                    key={`cell-${cellIndex}`}
-                    style={{ ...getStyles().tableCell, width: cellWidth }}
-                  >
-                    {renderContentBlocks(innerHtml, {
-                      ...getStyles().tableCellText,
-                      fontFamily: "Museo Sans",
-                      fontWeight: isHeader ? 700 : 500,
-                    })}
-                  </View>
-                );
-              })}
+              {(rowContent.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gs) || []).map(
+                (cellHtml, cellIndex) => {
+                  const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
+                  const isHeader = cellTagMatch
+                    ? cellTagMatch[1] === "th"
+                    : false;
+                  const attributes = cellTagMatch ? cellTagMatch[2] : "";
+                  const styleAttr = attributes.match(/style="([^"]*)"/);
+                  const cellInlineStyle = parseStyleAttribute(
+                    styleAttr ? styleAttr[1] : null
+                  );
+
+                  const innerHtml = cellHtml
+                    .replace(/<t[dh][^>]*>/, "")
+                    .replace(/<\/t[dh]>$/, "");
+
+                  return (
+                    <View
+                      key={`cell-${cellIndex}`}
+                      style={{ ...getStyles().tableCell, ...cellInlineStyle }}
+                    >
+                      {renderHtmlNodes(innerHtml, {
+                        ...getStyles().tableCellText,
+                        fontWeight: isHeader ? 700 : 500,
+                      })}
+                    </View>
+                  );
+                }
+              )}
             </View>
           ))}
         </View>
@@ -273,7 +325,7 @@ const renderContentBlocks = (
 
     if (block.trim().startsWith("<ol") || block.trim().startsWith("<ul")) {
       const isOrdered = block.trim().startsWith("<ol");
-      const listItems = block.match(/<li[^>]*>(.*?)<\/li>/gs) || [];
+      const listItems = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
       return (
         <View key={`list-${blockIndex}`} style={getStyles().listContainer}>
           {listItems.map((item, itemIndex) => (
@@ -282,7 +334,10 @@ const renderContentBlocks = (
                 {isOrdered ? `${itemIndex + 1}.` : "•"}
               </Text>
               <View style={getStyles().listItemContent}>
-                {renderContentBlocks(item, baseTextStyle)}
+                {renderContentBlocks(
+                  item.replace(/<\/?li[^>]*>/g, ""),
+                  baseTextStyle
+                )}
               </View>
             </View>
           ))}
@@ -297,58 +352,20 @@ const renderContentBlocks = (
           <View key={`p-${blockIndex}`} style={getStyles().emptyParagraph} />
         );
       }
-      const alignMatch = block.match(
-        /text-align:\s*(left|center|right|justify)/
-      );
-      const textAlign = alignMatch
-        ? (alignMatch[1] as "left" | "center" | "right" | "justify")
-        : "justify";
+      const styleAttr = block.match(/style="([^"]*)"/);
+      const pStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
       return (
-        <Text key={`p-${blockIndex}`} style={{ ...baseTextStyle, textAlign }}>
-          {renderInlineFormatting(block)}
+        <Text
+          key={`p-${blockIndex}`}
+          style={{ ...baseTextStyle, ...pStyle }}
+          hyphenationCallback={hyphenationCallback}
+        >
+          {renderHtmlNodes(innerHtml, {})}
         </Text>
       );
     }
     return null;
   });
-};
-
-const renderHtmlContent = (htmlContent: string, style: object) => {
-  return renderContentBlocks(htmlContent, style);
-};
-
-const generateActHeaderContent = (act: Act) => {
-  const sessionType = act.sessionType || "ordinary";
-  const sessionTime = act.sessionTime || "diez horas";
-  const formatDateInWords = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = numberToWords(date.getDate());
-    const month = format(date, "MMMM", { locale: es });
-    const year = numberToWords(date.getFullYear());
-    return `${day} de ${month} del año ${year}`;
-  };
-  const generateAttendeesList = (): string => {
-    return act.attendees?.owners?.map((p) => p.name).join(", ") || "";
-  };
-  const sindicoName = act.attendees?.syndic?.name || "[Síndico]";
-  const secretariaName = act.attendees?.secretary?.name || "[Secretaria]";
-  const attendeesList = generateAttendeesList();
-  const dateInWords = formatDateInWords(
-    act.sessionDate || new Date().toISOString()
-  );
-
-  return (
-    <>
-      <Text style={{ fontWeight: 700 }}>{act.name}</Text>. Sesión {sessionType}{" "}
-      celebrada por el Concejo Municipal en el salón de reuniones de la Alcaldía
-      Municipal de Antiguo Cuscatlán, a las {sessionTime} del día {dateInWords},
-      presidió la reunión la señora Alcaldesa Municipal Licda. Zoila Milagro
-      Navas Quintanilla, con la asistencia del señor Síndico Municipal
-      Licenciado {sindicoName} y de los concejales propietarios: {attendeesList}{" "}
-      y la Secretaria Municipal del Concejo Sra. {secretariaName}. Seguidamente
-      la sesión dio inicio con los siguientes puntos:
-    </>
-  );
 };
 
 export const BookPdfDocument = ({ book }: { book: Book | null }) => {
@@ -370,10 +387,9 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
     fontSize: 11,
   };
 
-  // ✅ Obtiene los estilos dinámicos basados en la configuración
   const styles = getStyles(settings.fontSize);
 
-  const dynamicPageStyle = {
+  const dynamicPageStyle: Style = {
     paddingTop: settings.margins.top,
     paddingBottom: settings.margins.bottom,
     paddingLeft: settings.margins.left,
@@ -384,9 +400,9 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
     fontWeight: 500,
   };
 
-  const dynamicTextStyle = {
+  const dynamicTextStyle: Style = {
     fontSize: settings.fontSize,
-    textAlign: "justify" as const,
+    textAlign: "justify",
     lineHeight: settings.lineHeight,
   };
 
@@ -409,6 +425,7 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
             </Text>
             <Text
               style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
+              hyphenationCallback={hyphenationCallback}
             >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
@@ -503,24 +520,19 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
                 break={false}
                 wrap
               >
-                <Text
-                  style={{
-                    ...styles.actaHeader,
-                    lineHeight: settings.lineHeight,
-                  }}
-                >
-                  {generateActHeaderContent(act)}
-                </Text>
                 {hasBodyContent && (
-                  <View style={{ marginTop: 8 }}>
-                    {renderHtmlContent(act.bodyContent, dynamicTextStyle)}
+                  <View>
+                    {renderContentBlocks(act.bodyContent, dynamicTextStyle)}
                   </View>
                 )}
                 {hasAgreements && (
                   <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
-                        {renderHtmlContent(agreement.content, dynamicTextStyle)}
+                        {renderContentBlocks(
+                          agreement.content,
+                          dynamicTextStyle
+                        )}
                       </View>
                     ))}
                   </View>
@@ -581,7 +593,7 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
                 </View>
                 {hasClarifyingNote && (
                   <View style={styles.notaContainer}>
-                    <Text>
+                    <Text hyphenationCallback={hyphenationCallback}>
                       <Text style={styles.notaTitle}>Nota Aclaratoria: </Text>
                       {act.clarifyingNote!.replace(/<[^>]*>/g, "")}
                     </Text>
