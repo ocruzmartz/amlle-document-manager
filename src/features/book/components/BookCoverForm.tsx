@@ -36,7 +36,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface BookCoverFormProps {
   book: Book;
-  onDone: (data: FormValues) => void; // ✅ Renombrado de 'onSave' a 'onDone'
+  onDone: (data: FormValues) => void;
 }
 
 export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {

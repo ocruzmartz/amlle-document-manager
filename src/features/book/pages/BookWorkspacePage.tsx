@@ -1,8 +1,9 @@
+// filepath: src/features/book/pages/BookWorkspacePage.tsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
-import { ChevronLeft, PanelRightOpen, X } from "lucide-react";
-import { createAct, getBookById } from "../api/book";
-import { type Book } from "@/types";
+import { ChevronLeft, PanelRightOpen, X, RefreshCw } from "lucide-react";
+import { createAct, getBookById, updateBook } from "../api/book";
+import { type Book, type Act } from "@/types"; // ✅ Se importa el tipo 'Act'
 import { type WorkspaceView } from "../types";
 import {
   Sheet,
@@ -35,6 +36,8 @@ export const BookWorkspacePage = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  const previewKey = book ? book.lastModified + JSON.stringify(book.pdfSettings) : "";
+
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
     const initialActId = location.state?.initialActId;
     const initialDetailView = location.state?.initialDetailView;
@@ -64,6 +67,7 @@ export const BookWorkspacePage = () => {
     }
   }, [bookId, navigate]);
 
+  // ✅ FUNCIÓN MEJORADA: Ahora actualiza cualquier parte del libro
   const handleBookUpdate = (updatedBookData: Partial<Book>) => {
     setBook((prevBook) => {
       if (!prevBook) return null;
@@ -72,10 +76,35 @@ export const BookWorkspacePage = () => {
         ...updatedBookData,
         lastModified: new Date().toISOString(),
       };
+
+      if (bookId) {
+        updateBook(bookId, newBook); // Guarda en el "backend" simulado
+      }
       return newBook;
     });
     setHasUnsavedChanges(true);
   };
+  
+  // ✅ NUEVA FUNCIÓN: Actualiza un acta específica dentro del libro en tiempo real
+  const handleActUpdate = (updatedAct: Act) => {
+    setBook(prevBook => {
+      if (!prevBook || !prevBook.acts) return prevBook;
+
+      const updatedActs = prevBook.acts.map(act => 
+        act.id === updatedAct.id ? updatedAct : act
+      );
+
+      const newBook = { ...prevBook, acts: updatedActs, lastModified: new Date().toISOString() };
+      
+      if (bookId) {
+        updateBook(bookId, newBook);
+      }
+
+      return newBook;
+    });
+    setHasUnsavedChanges(true);
+  };
+
 
   const handleCreateAct = () => {
     if (!bookId) return;
@@ -114,7 +143,7 @@ export const BookWorkspacePage = () => {
   };
 
   if (isLoading || !book) {
-    return <div>Cargando espacio de trabajo...</div>;
+    return <div className="flex justify-centers items-center">Cargando espacio de trabajo...</div>;
   }
 
   return (
@@ -142,11 +171,20 @@ export const BookWorkspacePage = () => {
             </Button>
           </SheetTrigger>
           <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
-            <SheetHeader className="border-b">
+            <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
               <SheetTitle>Vista Previa del Libro (PDF)</SheetTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBookUpdate({})} // Recarga forzando actualización
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recargar
+              </Button>
             </SheetHeader>
+
             <div className="flex-1 overflow-hidden">
-              <BookPdfPreview key={book.lastModified} book={book} />
+              <BookPdfPreview key={previewKey} book={book} />
             </div>
           </SheetContent>
         </Sheet>
@@ -167,6 +205,7 @@ export const BookWorkspacePage = () => {
             currentView={currentView}
             setCurrentView={setCurrentView}
             onUpdateBook={handleBookUpdate}
+            onUpdateAct={handleActUpdate} // ✅ Pasa la nueva función al editor
             onCreateActa={handleCreateAct}
             setHasUnsavedChanges={setHasUnsavedChanges}
           />

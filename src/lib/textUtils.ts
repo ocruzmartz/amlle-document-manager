@@ -1,39 +1,39 @@
 export const numberToWords = (num: number): string => {
   const units = [
     "",
-    "uno",
-    "dos",
-    "tres",
-    "cuatro",
-    "cinco",
-    "seis",
-    "siete",
-    "ocho",
-    "nueve",
+    "Uno",
+    "Dos",
+    "Tres",
+    "Cuatro",
+    "Cinco",
+    "Seis",
+    "Siete",
+    "Ocho",
+    "Nueve",
   ];
   const tens = [
     "",
-    "diez",
-    "veinte",
-    "treinta",
-    "cuarenta",
-    "cincuenta",
-    "sesenta",
-    "setenta",
-    "ochenta",
-    "noventa",
+    "Diez",
+    "Veinte",
+    "Treinta",
+    "Cuarenta",
+    "Cincuenta",
+    "Sesenta",
+    "Setenta",
+    "Ochenta",
+    "Noventa",
   ];
   const hundreds = [
     "",
-    "ciento",
-    "doscientos",
-    "trescientos",
-    "cuatrocientos",
-    "quinientos",
-    "seiscientos",
-    "setecientos",
-    "ochocientos",
-    "novecientos",
+    "Ciento",
+    "Doscientos",
+    "Trescientos",
+    "Cuatrocientos",
+    "Quinientos",
+    "Seiscientos",
+    "Setecientos",
+    "Ochocientos",
+    "Novecientos",
   ];
   const specials: { [key: number]: string } = {
     10: "diez",
@@ -51,8 +51,8 @@ export const numberToWords = (num: number): string => {
   };
 
   if (specials[num]) return specials[num];
-  if (num > 15 && num < 20) return "dieci" + units[num - 10];
-  if (num > 20 && num < 30) return "veinti" + units[num % 10];
+  if (num > 15 && num < 20) return "Dieci" + units[num - 10];
+  if (num > 20 && num < 30) return "Veinti" + units[num % 10];
   if (num >= 2000 && num < 3000) {
     const remainder = num - 2000;
     return "dos mil" + (remainder > 0 ? " " + numberToWords(remainder) : "");
@@ -60,7 +60,7 @@ export const numberToWords = (num: number): string => {
   if (num >= 100) {
     const exactHundred = Math.floor(num / 100);
     const remainder = num % 100;
-    if (num === 100) return "cien";
+    if (num === 100) return "Cien";
     return (
       hundreds[exactHundred] +
       (remainder > 0 ? " " + numberToWords(remainder) : "")

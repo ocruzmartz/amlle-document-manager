@@ -1,7 +1,8 @@
 export type MainView =
   | { type: "cover" }
   | { type: "act-list" }
-  | { type: "act-edit"; actId: string };
+  | { type: "act-edit"; actId: string }
+  | { type: "pdf-settings" };
 
 export type DetailView =
   | { type: "none" }

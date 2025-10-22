@@ -10,6 +10,7 @@ import { ActList } from "@/features/act/components/ActList";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { numberToWords } from "@/lib/textUtils";
+import { BookPdfSettingsForm } from "./BookPdfSettingsForm";
 
 interface BookEditorProps {
   book: Book;
@@ -146,10 +147,20 @@ export const BookEditor = ({
               });
             }}
             isAgreementsPanelVisible={isDetailPanelVisible}
-            setHasUnsavedChanges={setHasUnsavedChanges} 
+            setHasUnsavedChanges={setHasUnsavedChanges}
           />
         );
       }
+
+      case "pdf-settings":
+        return (
+          <BookPdfSettingsForm
+            book={book}
+            onUpdateSettings={(settings) => {
+              onUpdateBook({ pdfSettings: settings });
+            }}
+          />
+        );
 
       case "act-list":
       default:
@@ -215,7 +226,7 @@ export const BookEditor = ({
                 detail: { type: "agreement-list" },
               })
             }
-            setHasUnsavedChanges={setHasUnsavedChanges} 
+            setHasUnsavedChanges={setHasUnsavedChanges}
           />
         );
       }
