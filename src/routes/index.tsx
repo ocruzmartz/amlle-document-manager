@@ -14,6 +14,7 @@ const shellRoute: RouteObject = {
     ...booksRoutes,
     ...actRoutes,
     ...agreementRoutes,
+    ...auditRoutes
   ],
 };
 
