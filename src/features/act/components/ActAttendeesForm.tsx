@@ -44,6 +44,7 @@ export const ActAttendeesForm = ({
         <Button
           variant="outline"
           onClick={() => setIsModalOpen(true)}
+          className="shadow-none"
         >
           Gestionar
         </Button>
@@ -108,7 +109,7 @@ export const ActAttendeesForm = ({
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 text-muted-foreground">
             <UserX className="h-4 w-4" />
-            <span className="text-sm italic">No hay concejales presentes</span>
+            <span className="text-sm italic">No se han registrado concejales presentes  </span>
           </div>
         )}
       </div>

@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react"; // ✅ Agregar useState y useEffect
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -53,34 +51,6 @@ const generateTimeOptions = () => {
 const timeOptions = generateTimeOptions();
 
 export const ActSessionForm = ({ act, onActChange }: ActSessionFormProps) => {
-  // ✅ Estado local para el input del número
-  const [actNumberInput, setActNumberInput] = useState(
-    act.actNumber?.toString() || "1"
-  );
-
-  // ✅ Sincronizar con el prop cuando cambie
-  useEffect(() => {
-    setActNumberInput(act.actNumber?.toString() || "1");
-  }, [act.actNumber]);
-
-  // ✅ Función para actualizar el número de acta
-  const handleActNumberChange = (value: string) => {
-    setActNumberInput(value); // ✅ Actualizar estado local inmediatamente
-
-    const newNumber = parseInt(value, 10);
-
-    // ✅ Solo validar si hay un número válido
-    if (!isNaN(newNumber) && newNumber >= 1) {
-      const actNumberInWords = capitalize(numberToWords(newNumber)); // ✅ Usar la función existente
-      const newName = `Acta número ${actNumberInWords}`;
-
-      // ✅ Actualizar todos los campos relacionados
-      onActChange("actNumber", newNumber);
-      onActChange("name", newName);
-      onActChange("bodyContent", `<p><strong>${newName}</strong></p>`);
-    }
-  };
-
   // ✅ Función para manejar el cambio de fecha
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
@@ -93,20 +63,6 @@ export const ActSessionForm = ({ act, onActChange }: ActSessionFormProps) => {
       <div className="space-y-4">
         {/* Número del Acta y Tipo de Sesión */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Número del Acta
-            </label>
-            <Input
-              type="number"
-              value={actNumberInput} // ✅ Usar estado local
-              onChange={(e) => handleActNumberChange(e.target.value)} // ✅ Actualizar estado local
-              min={1}
-              placeholder="Ingresa el número del acta"
-              className="w-full shadow-none"
-            />
-          </div>
-
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
               Tipo de Sesión

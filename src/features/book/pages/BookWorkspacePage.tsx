@@ -25,6 +25,51 @@ import { Button } from "@/components/ui/button";
 import { BookSidebarNav } from "../components/BookSidebarNav";
 import { BookEditor } from "../components/BookEditor";
 import { BookPdfPreview } from "../components/BookPdfPreview";
+import { capitalize, numberToWords } from "@/lib/textUtils";
+
+const reorderArray = <T extends { id: string }>(
+  list: T[],
+  itemId: string,
+  direction: "up" | "down"
+): T[] => {
+  const index = list.findIndex((item) => item.id === itemId);
+  if (index === -1) return list;
+
+  const newIndex = direction === "up" ? index - 1 : index + 1;
+  if (newIndex < 0 || newIndex >= list.length) return list;
+
+  const result = Array.from(list);
+  const [removed] = result.splice(index, 1);
+  result.splice(newIndex, 0, removed);
+
+  return result;
+};
+
+const recalculateNumbers = (bookState: Book): Book => {
+  const recalculatedActs = bookState.acts?.map((act, actIndex) => {
+    const newActNumber = actIndex + 1;
+    const newActName = `Acta número ${capitalize(numberToWords(newActNumber))}`;
+
+    const recalculatedAgreements = act.agreements.map(
+      (agreement, agreementIndex) => {
+        const newAgreementNumber = agreementIndex + 1;
+        const newAgreementName = `Acuerdo número ${capitalize(
+          numberToWords(newAgreementNumber)
+        )}`;
+        return { ...agreement, name: newAgreementName };
+      }
+    );
+
+    return {
+      ...act,
+      actNumber: newActNumber,
+      name: newActName,
+      agreements: recalculatedAgreements,
+    };
+  });
+
+  return { ...bookState, acts: recalculatedActs };
+};
 
 export const BookWorkspacePage = () => {
   const navigate = useNavigate();
@@ -35,23 +80,31 @@ export const BookWorkspacePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
 
-  const previewKey = book ? book.lastModified + JSON.stringify(book.pdfSettings) : "";
+  const previewKey = book
+    ? book.lastModified + JSON.stringify(book.pdfSettings)
+    : "";
 
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
     const initialActId = location.state?.initialActId;
     const initialDetailView = location.state?.initialDetailView;
+    const initialAgreementId = initialDetailView?.type === 'agreement-editor'
+      ? initialDetailView.agreementId
+      : null;
     if (initialActId) {
       return {
         main: { type: "act-edit", actId: initialActId },
         detail: initialDetailView || { type: "agreement-list" },
         activeActId: initialActId,
+        activeAgreementId: initialAgreementId,
       };
     }
     return {
       main: { type: "cover" },
       detail: { type: "none" },
       activeActId: null,
+      activeAgreementId: null,
     };
   });
 
@@ -71,31 +124,49 @@ export const BookWorkspacePage = () => {
   const handleBookUpdate = (updatedBookData: Partial<Book>) => {
     setBook((prevBook) => {
       if (!prevBook) return null;
-      const newBook = {
+
+      let newBook = {
         ...prevBook,
-        ...updatedBookData,
+        ...updatedBookData, 
         lastModified: new Date().toISOString(),
       };
 
+      if (updatedBookData.acts) {
+        newBook = recalculateNumbers(newBook);
+      }
+
+      console.log("=== PAYLOAD COMPLETO DEL LIBRO ===");
+      console.log(JSON.stringify(newBook, null, 2));
+
+      // 🔍 Tamaño aproximado del payload
+      const payloadSize = new Blob([JSON.stringify(newBook)]).size;
+      console.log(
+        `📦 Tamaño del payload: ${(payloadSize / 1024).toFixed(2)} KB`
+      );
+
       if (bookId) {
-        updateBook(bookId, newBook); // Guarda en el "backend" simulado
+        updateBook(bookId, newBook);
       }
       return newBook;
     });
     setHasUnsavedChanges(true);
   };
-  
+
   // ✅ NUEVA FUNCIÓN: Actualiza un acta específica dentro del libro en tiempo real
   const handleActUpdate = (updatedAct: Act) => {
-    setBook(prevBook => {
+    setBook((prevBook) => {
       if (!prevBook || !prevBook.acts) return prevBook;
 
-      const updatedActs = prevBook.acts.map(act => 
+      const updatedActs = prevBook.acts.map((act) =>
         act.id === updatedAct.id ? updatedAct : act
       );
 
-      const newBook = { ...prevBook, acts: updatedActs, lastModified: new Date().toISOString() };
-      
+      const newBook = {
+        ...prevBook,
+        acts: updatedActs,
+        lastModified: new Date().toISOString(),
+      };
+
       if (bookId) {
         updateBook(bookId, newBook);
       }
@@ -104,7 +175,6 @@ export const BookWorkspacePage = () => {
     });
     setHasUnsavedChanges(true);
   };
-
 
   const handleCreateAct = () => {
     if (!bookId) return;
@@ -117,6 +187,7 @@ export const BookWorkspacePage = () => {
           main: { type: "act-edit", actId: newAct.id },
           detail: { type: "agreement-list" },
           activeActId: newAct.id,
+          activeAgreementId: null,
         });
         setHasUnsavedChanges(true);
       }
@@ -142,14 +213,39 @@ export const BookWorkspacePage = () => {
     navigate("/books");
   };
 
+  const handleReorderAct = (actId: string, direction: "up" | "down") => {
+    setBook((prevBook) => {
+      if (!prevBook || !prevBook.acts) return prevBook;
+
+      // 1. Obtener el orden visual
+      const reorderedActs = reorderArray(prevBook.acts, actId, direction);
+
+      // 2. Recalcular números y nombres
+      const newState = recalculateNumbers({ ...prevBook, acts: reorderedActs });
+
+      // 3. Guardar en la "API"
+      if (bookId) {
+        updateBook(bookId, newState);
+      }
+
+      // 4. Actualizar la UI
+      return newState;
+    });
+    setHasUnsavedChanges(true);
+  };
+
   if (isLoading || !book) {
-    return <div className="flex justify-centers items-center">Cargando espacio de trabajo...</div>;
+    return (
+      <div className="flex justify-centers items-center">
+        Cargando espacio de trabajo...
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <div className="flex-shrink-0 p-3 border-b bg-background flex justify-between items-center">
+      <div className="shrink-0 p-3 border-b bg-background flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={handleBackClick}>
             <ChevronLeft className="h-4 w-4" />
@@ -191,7 +287,7 @@ export const BookWorkspacePage = () => {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div className="w-[300px] border-r flex-shrink-0 overflow-y-auto bg-white">
+        <div className="w-[300px] border-r shrink-0 overflow-y-auto bg-white">
           <BookSidebarNav
             acts={book.acts || []}
             currentView={currentView}
@@ -208,6 +304,7 @@ export const BookWorkspacePage = () => {
             onUpdateAct={handleActUpdate} // ✅ Pasa la nueva función al editor
             onCreateActa={handleCreateAct}
             setHasUnsavedChanges={setHasUnsavedChanges}
+            onReorderAct={handleReorderAct} // ✅ Pasar la nueva prop
           />
         </div>
       </div>

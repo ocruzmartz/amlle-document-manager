@@ -23,6 +23,7 @@ export type Book = {
     lineHeight: number;
     fontSize?: number;
   };
+  authorizationDate?: string;
   createdAt: string;
   createdBy: string;
   lastModified: string;

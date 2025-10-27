@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { numberToWords, capitalize } from "@/lib/textUtils";
 import { FileImporter } from "@/components/editor/FileImporter";
-import { ArrowLeft, Save, Check } from "lucide-react";
+import { Check, Save } from "lucide-react";
 
 interface AgreementEditorProps {
   agreement: Agreement;
@@ -91,7 +91,7 @@ export const AgreementEditor = ({
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b">
+      <div className="shrink-0 p-4 border-b">
         <h3 className="text-xl font-bold">
           Acuerdo número {agreementNumberInWords}
         </h3>
@@ -107,10 +107,9 @@ export const AgreementEditor = ({
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 p-4 border-t bg-white">
+      <div className="shrink-0 p-4 border-t bg-white">
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
           <Button

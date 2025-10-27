@@ -1,5 +1,5 @@
 // filepath: src/features/book/components/BookEditor.tsx
-import { type Book, type Agreement } from "@/types";
+import { type Book, type Agreement, type Act } from "@/types";
 import { type WorkspaceView } from "../types";
 import { BookCoverForm } from "./BookCoverForm";
 import { ActEditor } from "@/features/act/components/ActEditor";
@@ -12,13 +12,33 @@ import { Button } from "@/components/ui/button";
 import { numberToWords } from "@/lib/textUtils";
 import { BookPdfSettingsForm } from "./BookPdfSettingsForm";
 
+const reorderArray = <T extends { id: string }>(
+  list: T[],
+  itemId: string,
+  direction: "up" | "down"
+): T[] => {
+  const index = list.findIndex((item) => item.id === itemId);
+  if (index === -1) return list;
+
+  const newIndex = direction === "up" ? index - 1 : index + 1;
+  if (newIndex < 0 || newIndex >= list.length) return list;
+
+  const result = Array.from(list);
+  const [removed] = result.splice(index, 1);
+  result.splice(newIndex, 0, removed);
+
+  return result;
+};
+
 interface BookEditorProps {
   book: Book;
   currentView: WorkspaceView;
   setCurrentView: (view: WorkspaceView) => void;
   onUpdateBook: (updatedBookData: Partial<Book>) => void;
   onCreateActa: () => void;
+  onUpdateAct: (updatedAct: Act) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
+  onReorderAct: (actId: string, direction: "up" | "down") => void;
 }
 
 export const BookEditor = ({
@@ -28,6 +48,7 @@ export const BookEditor = ({
   onUpdateBook,
   onCreateActa,
   setHasUnsavedChanges,
+  onReorderAct,
 }: BookEditorProps) => {
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
 
@@ -73,6 +94,7 @@ export const BookEditor = ({
         type: "agreement-editor",
         agreementId: newAgreement.id,
       },
+      activeAgreementId: newAgreement.id,
     });
   };
 
@@ -101,6 +123,29 @@ export const BookEditor = ({
     onUpdateBook({ acts: updatedActs });
   };
 
+  const handleReorderAgreement = (
+    agreementId: string,
+    direction: "up" | "down"
+  ) => {
+    if (!currentView.activeActId) return;
+
+    const updatedActs = book.acts?.map((act) => {
+      if (act.id === currentView.activeActId) {
+        const reorderedAgreements = reorderArray(
+          act.agreements,
+          agreementId,
+          direction
+        );
+        return { ...act, agreements: reorderedAgreements };
+      }
+      return act;
+    });
+
+    setCurrentView({ ...currentView, activeAgreementId: agreementId });
+    onUpdateBook({ acts: updatedActs });
+    setHasUnsavedChanges(true);
+  };
+
   const isAgreementFocusMode =
     currentView.main.type === "act-edit" &&
     currentView.detail.type === "agreement-editor";
@@ -112,10 +157,18 @@ export const BookEditor = ({
           <BookCoverForm
             book={book}
             onDone={(data) => {
-              onUpdateBook(data);
+              const updatePayload: Partial<Book> = {
+                name: data.name,
+                tome: data.tome,
+                authorizationDate: data.authorizationDate.toISOString(), // Convertir aquí
+              };
+              onUpdateBook(updatePayload);
               setCurrentView({
                 ...currentView,
                 main: { type: "act-list" },
+                detail: { type: "none" }, // Reset detail view
+                activeActId: null, // No act is active when showing the list
+                activeAgreementId: null, // ✅ Add this line
               });
             }}
           />
@@ -144,6 +197,7 @@ export const BookEditor = ({
                 main: { type: "act-list" },
                 detail: { type: "none" },
                 activeActId: null,
+                activeAgreementId: null,
               });
             }}
             isAgreementsPanelVisible={isDetailPanelVisible}
@@ -158,6 +212,13 @@ export const BookEditor = ({
             book={book}
             onUpdateSettings={(settings) => {
               onUpdateBook({ pdfSettings: settings });
+
+              setCurrentView({
+                main: { type: "act-list" },
+                detail: { type: "none" },
+                activeActId: null,
+                activeAgreementId: null, // ✅ Add if navigating
+              });
             }}
           />
         );
@@ -173,8 +234,18 @@ export const BookEditor = ({
                 main: { type: "act-edit", actId },
                 detail: { type: "agreement-list" },
                 activeActId: actId,
+                activeAgreementId: null,
               })
             }
+            onReorderAct={(actId, direction) => {
+              setCurrentView({
+                ...currentView,
+                activeActId: actId,
+                activeAgreementId: null,
+              });
+              onReorderAct(actId, direction);
+            }}
+            activeActId={currentView.activeActId}
           />
         );
     }
@@ -221,9 +292,11 @@ export const BookEditor = ({
             agreementNumber={agreementIndex + 1}
             onUpdate={handleUpdateAgreement}
             onBack={() =>
+              // ✅ Poner la lógica directamente aquí
               setCurrentView({
                 ...currentView,
                 detail: { type: "agreement-list" },
+                // Mantenemos el activeAgreementId que ya está en currentView
               })
             }
             setHasUnsavedChanges={setHasUnsavedChanges}
@@ -243,8 +316,18 @@ export const BookEditor = ({
                   type: "agreement-editor",
                   agreementId: agreementId,
                 },
+                activeAgreementId: agreementId,
               })
             }
+            onReorderAgreement={(agreementId, direction) => {
+              // ✅ Actualizar vista al reordenar acuerdo
+              setCurrentView({
+                ...currentView,
+                activeAgreementId: agreementId,
+              });
+              handleReorderAgreement(agreementId, direction);
+            }}
+            activeAgreementId={currentView.activeAgreementId}
           />
         );
     }
@@ -264,7 +347,7 @@ export const BookEditor = ({
       {currentView.activeActId && isDetailPanelVisible && (
         <div
           className={cn(
-            "w-[500px] flex-shrink-0 bg-white overflow-y-auto",
+            "w-[500px] shrink-0 bg-white overflow-y-auto",
             isAgreementFocusMode && "w-full flex-1"
           )}
         >

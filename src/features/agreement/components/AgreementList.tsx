@@ -8,19 +8,30 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"; // ✅ Importar Collapsible
-import { PlusCircle, ChevronsUpDown, Search } from "lucide-react"; // ✅ Importar iconos
+import {
+  PlusCircle,
+  ChevronsUpDown,
+  Search,
+  ArrowDown,
+  ArrowUp,
+} from "lucide-react"; // ✅ Importar iconos
 import { numberToWords, capitalize } from "@/lib/textUtils";
+import { cn } from "@/lib/utils";
 
 interface AgreementListProps {
   act: Act;
   onAddAgreement: () => void;
   onEditAgreement: (agreementId: string) => void;
+  onReorderAgreement: (agreementId: string, direction: "up" | "down") => void;
+  activeAgreementId: string | null;
 }
 
 export const AgreementList = ({
   act,
   onAddAgreement,
   onEditAgreement,
+  onReorderAgreement,
+  activeAgreementId,
 }: AgreementListProps) => {
   const [searchQuery, setSearchQuery] = useState(""); // ✅ Estado para el buscador
 
@@ -36,7 +47,7 @@ export const AgreementList = ({
   return (
     <div className="h-full flex flex-col bg-muted/20">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b">
+      <div className="shrink-0 p-4 border-b">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold">Acuerdos del Acta</h3>
@@ -92,26 +103,68 @@ export const AgreementList = ({
             </div>
           ) : (
             /* ✅ Caso 3: Hay acuerdos que mostrar */
-            <div className="grid gap-4">
-              {filteredAgreements.map((agreement, index) => (
-                <div key={agreement.id} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold truncate">
-                      Acuerdo número {capitalize(numberToWords(index + 1))}
-                    </h4>
+            filteredAgreements.length > 0 && (
+              <div className="grid gap-4">
+                {filteredAgreements.map((agreement, index) => {
+                  const isActive = agreement.id === activeAgreementId;
 
-                    <Button
-                      onClick={() => onEditAgreement(agreement.id)}
-                      variant="outline"
-                      size="sm"
-                      className="flex-shrink-0 ml-4"
+                  return (
+                    <div
+                      key={agreement.id}
+                      className={cn(
+                        "border rounded-lg p-3 bg-white transition-colors",
+                        isActive
+                          ? "bg-blue-50 border-blue-300 ring-1 ring-blue-300" // Estilo si está activo
+                          : "hover:bg-gray-50" // Estilo normal
+                      )}
                     >
-                      Editar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div className="flex items-center justify-between">
+                        {/* ✅ Mostrar número dinámicamente */}
+                        <h4 className="font-semibold truncate">
+                          Acuerdo número {capitalize(numberToWords(index + 1))}
+                        </h4>
+
+                        {/* ✅ Grupo de botones */}
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          {/* ✅ Botones de reordenación */}
+                          <div className="flex flex-col">
+                            <Button
+                              onClick={() =>
+                                onReorderAgreement(agreement.id, "up")
+                              }
+                              disabled={index === 0}
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                onReorderAgreement(agreement.id, "down")
+                              }
+                              disabled={index === filteredAgreements.length - 1}
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <Button
+                            onClick={() => onEditAgreement(agreement.id)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           )}
         </CollapsibleContent>
       </Collapsible>

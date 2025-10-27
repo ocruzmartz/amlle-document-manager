@@ -14,25 +14,16 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { Color } from "@tiptap/extension-color";
 import { FontSize, TextStyle } from "@tiptap/extension-text-style";
-import { RomanOrderedList } from "./extensions/RomanOrderedList"; 
+import { RomanOrderedList } from "./extensions/RomanOrderedList";
 import { Toolbar } from "./ToolBar";
-import { useEffect } from "react"; // ✅ 1. Importar useEffect
+import { useEffect } from "react";
 
 const cleanPastedHtml = (html: string): string => {
-  // Elimina clases y estilos específicos de Word/Office
-  let cleanedHtml = html.replace(/class="[^"]*"/g, ""); // Elimina todas las clases
-
-  // Elimina atributos de estilo en línea, excepto los de alineación de texto
+  let cleanedHtml = html.replace(/class="[^"]*"/g, "");
   cleanedHtml = cleanedHtml.replace(/style="((?!text-align)[^"]*)"/g, "");
-
-  // Elimina etiquetas vacías que no aportan nada, comunes en Word
   cleanedHtml = cleanedHtml.replace(/<o:p>&nbsp;<\/o:p>/g, "");
   cleanedHtml = cleanedHtml.replace(/<o:p><\/o:p>/g, "");
-
-  // Elimina espacios de nombres de XML de Office
   cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");
-
-  // Elimina comentarios de HTML
   cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, "");
 
   return cleanedHtml;
@@ -69,13 +60,18 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
             class: "list-item",
           },
         },
+        paragraph: {
+          HTMLAttributes: {
+            style: "text-align: justify",
+          },
+        },
       }),
-      RomanOrderedList, // ✅ Agregar extensión personalizada
+      RomanOrderedList,
       Underline,
       TextAlign.configure({
         types: ["heading", "paragraph"],
         alignments: ["left", "center", "right", "justify"],
-        defaultAlignment: "left",
+        defaultAlignment: "justify",
       }),
       Highlight.configure({
         multicolor: true,
@@ -142,7 +138,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="flex flex-col border-t  w-full overflow-hidden">
+    <div className="flex flex-col border-t w-full overflow-hidden">
       <Toolbar editor={editor} />
       <div className="tiptap-editor overflow-hidden w-full">
         <EditorContent editor={editor} className="w-full" />

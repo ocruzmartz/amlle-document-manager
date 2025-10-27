@@ -283,11 +283,26 @@ body {
 
 /* ===== PÁRRAFOS ===== */
 .ProseMirror p {
-  margin: 0.75rem 0;
-  line-height: 1.6;
+  margin: 0; /* ✅ ELIMINAMOS EL MARGEN INFERIOR */
+  line-height: 1.5;
+  text-align: justify;
 }
 
-/* ===== CITAS ===== */
+/* ✅ Párrafos vacíos también tienen espaciado */
+.ProseMirror p:empty {
+  min-height: 8pt;
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+.tiptap-editor .ProseMirror p:empty {
+  min-height: 8pt;
+}
+
 .ProseMirror blockquote {
   border-left: 4px solid #e5e7eb;
   margin: 1.5rem 0;
@@ -296,7 +311,6 @@ body {
   color: #6b7280;
 }
 
-/* ===== CÓDIGO ===== */
 .ProseMirror code {
   background-color: #f3f4f6;
   border-radius: 0.25rem;

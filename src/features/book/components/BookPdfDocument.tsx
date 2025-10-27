@@ -98,13 +98,14 @@ const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
 
   const cleanHtml = html.replace(/&nbsp;/g, " ");
 
-  const regex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|([^<]+)/g;
+  // ✅ 1. Regex actualizada para capturar <br> (etiqueta aut-cerrada)
+  const regex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
   const nodes = [];
   let key = 0;
 
   while ((match = regex.exec(cleanHtml)) !== null) {
-    const [, tagName, attributes, innerHtml, plainText] = match;
+    const [, tagName, attributes, innerHtml, brTag, plainText] = match;
 
     if (plainText) {
       nodes.push(
@@ -112,6 +113,11 @@ const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
           {plainText}
         </Text>
       );
+      continue;
+    }
+
+    if (brTag) {
+      nodes.push(<Text key={key++}>{"\n"}</Text>);
       continue;
     }
 
@@ -406,10 +412,13 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
     lineHeight: settings.lineHeight,
   };
 
-  const creationDate = new Date(book.createdAt);
-  const yearInWords = capitalize(numberToWords(creationDate.getFullYear()));
-  const dayInWords = numberToWords(creationDate.getDate());
-  const monthName = format(creationDate, "MMMM", { locale: es });
+  const authDateString = book.authorizationDate || book.createdAt;
+  const authorizationDate = new Date(authDateString);
+  const yearInWords = capitalize(
+    numberToWords(authorizationDate.getFullYear())
+  );
+  const dayInWords = numberToWords(authorizationDate.getDate());
+  const monthName = format(authorizationDate, "MMMM", { locale: es });
 
   return (
     <Document title={`Libro de Actas - ${book.name}`}>

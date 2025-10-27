@@ -13,4 +13,5 @@ export type WorkspaceView = {
   main: MainView;
   detail: DetailView;
   activeActId: string | null;
+  activeAgreementId: string | null;
 };

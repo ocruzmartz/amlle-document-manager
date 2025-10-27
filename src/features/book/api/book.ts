@@ -76,9 +76,10 @@ export const getBookById = (id: string | undefined): Book | undefined => {
 
 export const createBook = (data: {
   name: string;
-  creationDate: Date;
+  creationDate: Date; // Mantenemos creationDate aquí como el momento de la creación
 }): Book => {
   let books = getBooksStore();
+  const now = new Date().toISOString();
   const newBook: Book = {
     id: crypto.randomUUID(),
     name: data.name,
@@ -86,9 +87,10 @@ export const createBook = (data: {
     actCount: 0,
     agreementCount: 0,
     pageCount: 1,
-    createdAt: new Date().toISOString(),
+    createdAt: now, // Fecha real de creación
+    authorizationDate: data.creationDate.toISOString(), // Fecha seleccionada como autorización inicial
     createdBy: "Usuario Actual",
-    lastModified: new Date().toISOString(),
+    lastModified: now,
     modifiedBy: "Usuario Actual",
     acts: [],
   };
@@ -167,6 +169,7 @@ export const updateBook = (
 };
 
 // ✅ 2. Lógica de `createAct` actualizada
+// ✅ 2. Lógica de `createAct` actualizada
 export const createAct = (
   bookId: string | undefined,
   actData?: { name?: string }
@@ -184,21 +187,10 @@ export const createAct = (
   const now = new Date().toISOString();
   const currentUser = "Usuario Actual";
 
-  const defaultAttendees = {
-    syndic: allCouncilMembers.find((m) => m.role === "SYNDIC") || null,
-    owners: allCouncilMembers.filter((m) => m.role === "OWNER"),
-    secretary: allCouncilMembers.find((m) => m.role === "SECRETARY") || null,
-  };
-
-  // Se crea un objeto parcial del acta para generar el encabezado
+  // Se mantiene el nombre por defecto
   const actName: string = actData?.name ?? `Acta número ${actNumberInWords}`;
-  const partialAct: Partial<Act> = {
-    name: actName,
-    sessionDate: now,
-    sessionType: "Ordinary",
-    sessionTime: "diez horas",
-    attendees: defaultAttendees,
-  };
+
+  // ❌ Se eliminan 'defaultAttendees' y 'partialAct'
 
   const newAct: Act = {
     id: crypto.randomUUID(),
@@ -207,19 +199,26 @@ export const createAct = (
     agreements: [],
     sessionPoints: [],
     clarifyingNote: "",
-    name: actName, // Asegura que 'name' siempre es string
-    sessionDate: partialAct.sessionDate!,
-    sessionType: partialAct.sessionType!,
-    sessionTime: partialAct.sessionTime!,
-    attendees: partialAct.attendees!,
-    bodyContent: generateActHeaderHtml(partialAct), // Se genera el HTML del encabezado
+    name: actName,
     actNumber,
     createdAt: now,
     createdBy: currentUser,
     lastModified: now,
     modifiedBy: currentUser,
+
+    // --- ✅ CAMBIOS CLAVE: Iniciar el acta vacía ---
+    
+    // Dejamos la fecha actual como base para el calendario
+    sessionDate: now, 
+    
+    // Todos los demás campos de sesión y contenido inician vacíos
+    sessionType: undefined,
+    sessionTime: undefined,
+    attendees: undefined,
+    bodyContent: "", // <-- ¡El cambio más importante!
   };
 
+  // (El resto de la función para guardar el acta no cambia)
   const newBookContent = contentStore[bookId]
     ? { ...contentStore[bookId], acts: [...contentStore[bookId].acts, newAct] }
     : { acts: [newAct] };
