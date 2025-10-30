@@ -1,7 +1,6 @@
-// filepath: src/features/book/components/BookPdfSettingsForm.tsx
+import { useMemo, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,21 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type Book } from "@/types";
-import { Check, Save } from "lucide-react";
-import { useState } from "react";
-
-const pdfSettingsSchema = z.object({
-  pageSize: z.enum(["A4", "LETTER"]),
-  orientation: z.enum(["portrait", "landscape"]),
-  marginTop: z.number().min(0),
-  marginBottom: z.number().min(0),
-  marginLeft: z.number().min(0),
-  marginRight: z.number().min(0),
-  lineHeight: z.number().min(1),
-  fontSize: z.number().min(8).max(16),
-});
-
-type PdfSettingsFormValues = z.infer<typeof pdfSettingsSchema>;
+import { useSaveAction } from "@/hooks/useSaveAction";
+import {
+  pdfSettingsSchema,
+  type PdfSettingsFormValues,
+} from "../schemas/pdfSettingsSchema";
 
 interface BookPdfSettingsFormProps {
   book: Book;
@@ -45,9 +34,6 @@ export const BookPdfSettingsForm = ({
   book,
   onUpdateSettings,
 }: BookPdfSettingsFormProps) => {
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
   const form = useForm<PdfSettingsFormValues>({
     resolver: zodResolver(pdfSettingsSchema),
     defaultValues: {
@@ -62,27 +48,70 @@ export const BookPdfSettingsForm = ({
     },
   });
 
-  const onSubmit = (data: PdfSettingsFormValues) => {
-    setSaveStatus("saving");
-    onUpdateSettings({
-      pageSize: data.pageSize,
-      orientation: data.orientation,
-      margins: {
-        top: data.marginTop,
-        bottom: data.marginBottom,
-        left: data.marginLeft,
-        right: data.marginRight,
+  const currentFormData = form.watch();
+
+  // Mapear datos para el hook
+  const initialHookData = useMemo(
+    () => ({
+      pageSize: book.pdfSettings?.pageSize || "A4",
+      orientation: book.pdfSettings?.orientation || "portrait",
+      marginTop: book.pdfSettings?.margins?.top || 50,
+      marginBottom: book.pdfSettings?.margins?.bottom || 50,
+      marginLeft: book.pdfSettings?.margins?.left || 60,
+      marginRight: book.pdfSettings?.margins?.right || 60,
+      lineHeight: book.pdfSettings?.lineHeight || 1.5,
+      fontSize: book.pdfSettings?.fontSize || 11,
+    }),
+    [book.pdfSettings]
+  );
+  const currentHookData = useMemo(() => currentFormData, [currentFormData]);
+
+  const { handleSave, isDirty, isSaving } =
+    useSaveAction<PdfSettingsFormValues>({
+      initialData: initialHookData,
+      currentData: currentHookData,
+      onSave: async (dataToSave) => {
+        onUpdateSettings({
+          pageSize: dataToSave.pageSize,
+          orientation: dataToSave.orientation,
+          margins: {
+            top: dataToSave.marginTop,
+            bottom: dataToSave.marginBottom,
+            left: dataToSave.marginLeft,
+            right: dataToSave.marginRight,
+          },
+          lineHeight: dataToSave.lineHeight,
+          fontSize: dataToSave.fontSize,
+        });
       },
-      lineHeight: data.lineHeight,
-      fontSize: data.fontSize,
+      onSuccess: (savedData) => {
+        form.reset(savedData);
+      },
+      loadingMessage: "Guardando configuración...",
+      successMessage: "Configuración guardada.",
+      errorMessage: "Error al guardar la configuración.",
     });
-    setSaveStatus("saved");
-    setTimeout(() => setSaveStatus("idle"), 2000);
+
+  useEffect(() => {
+    form.reset({
+      pageSize: book.pdfSettings?.pageSize || "A4",
+      orientation: book.pdfSettings?.orientation || "portrait",
+      marginTop: book.pdfSettings?.margins?.top || 50,
+      marginBottom: book.pdfSettings?.margins?.bottom || 50,
+      marginLeft: book.pdfSettings?.margins?.left || 60,
+      marginRight: book.pdfSettings?.margins?.right || 60,
+      lineHeight: book.pdfSettings?.lineHeight || 1.5,
+      fontSize: book.pdfSettings?.fontSize || 11,
+    });
+  }, [book.pdfSettings, form]);
+
+  const onSubmit: SubmitHandler<PdfSettingsFormValues> = () => {
+    handleSave();
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between pb-4 border-b p-4">
+      <div className="flex items-center justify-between pb-4 border-b p-4 ">
         <div>
           <h3 className="text-2xl font-bold">Configuración de PDF</h3>
           <p className="text-muted-foreground text-sm mt-1">
@@ -219,7 +248,6 @@ export const BookPdfSettingsForm = ({
                   </FormItem>
                 )}
               />
-
               <div>
                 <FormField
                   control={form.control}
@@ -249,10 +277,10 @@ export const BookPdfSettingsForm = ({
                 />
                 <p className="text-gray-500 text-xs mt-2">
                   Este valor cambia el contenido generado directamente en el
-                  PDF. Para cambiar el tamaño de la letra del contenido a insertar, se hace desde el editor.
+                  PDF. Para cambiar el tamaño de la letra del contenido a
+                  insertar, se hace desde el editor.
                 </p>
               </div>
-
               <FormField
                 control={form.control}
                 name="lineHeight"
@@ -278,22 +306,10 @@ export const BookPdfSettingsForm = ({
                   </FormItem>
                 )}
               />
-
-              <div className="flex-shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
+              <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
                 <div className="flex justify-end gap-4">
-                  <Button type="submit" disabled={saveStatus !== "idle"}>
-                    {saveStatus === "saving" && (
-                      <>
-                        <Save className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        Guardando...
-                      </>
-                    )}
-                    {saveStatus === "saved" && (
-                      <>
-                        <Check className="mr-2 h-4 w-4" /> ¡Guardado!
-                      </>
-                    )}
-                    {saveStatus === "idle" && <>Guardar Cambios</>}
+                  <Button type="submit" disabled={!isDirty || isSaving}>
+                    {isSaving ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
               </div>

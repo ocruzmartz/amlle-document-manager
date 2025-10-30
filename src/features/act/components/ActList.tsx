@@ -63,8 +63,8 @@ export const ActList = ({
             <p className="text-gray-500 mb-4">
               {acts.length > 0
                 ? `No hay actas que coicidan con "${searchQuery}"`
-                : "Aún no hay actas en este libro."}
-            </p>
+                : "No hay actas disponibles."
+            }</p>
             <Button onClick={onCreateAct} variant="outline">
               <PlusCircle className="mr-1 h-4 w-4" />
               Añadir nueva acta
@@ -97,7 +97,6 @@ export const ActList = ({
                         )}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {" "}
                         {act.agreements.length > 0
                           ? "Acuerdos registrados (" +
                             act.agreements.length +

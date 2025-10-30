@@ -1,5 +1,5 @@
-// filepath: src/features/act/components/ActEditor.tsx
-import { useState, useEffect, useRef, useCallback } from "react";
+// src/features/act/components/ActEditor.tsx
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
@@ -19,6 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateActHeaderHtml } from "../lib/actHelpers";
+import { useSaveAction } from "@/hooks/useSaveAction"; // ✅ Importar hook
 
 interface ActEditorProps {
   act: Act;
@@ -29,11 +30,6 @@ interface ActEditorProps {
   setHasUnsavedChanges: (hasChanges: boolean) => void;
 }
 
-const hasGeneratedHeader = (content: string): boolean => {
-  const headerRegex = /<p data-act-header="true">[\s\S]*?<\/p>/;
-  return headerRegex.test(content);
-};
-
 export const ActEditor = ({
   act,
   onUpdateAct,
@@ -42,117 +38,92 @@ export const ActEditor = ({
   isAgreementsPanelVisible = true,
   setHasUnsavedChanges,
 }: ActEditorProps) => {
+  // Estados locales
   const [localActData, setLocalActData] = useState<Partial<Act>>(act);
   const [editorContent, setEditorContent] = useState<string>(act.bodyContent);
   const [clarifyingNoteContent, setClarifyingNoteContent] = useState<string>(
     act.clarifyingNote || ""
   );
-  const [isHeaderInitiallyGenerated, setIsHeaderInitiallyGenerated] = useState(
-    hasGeneratedHeader(act.bodyContent)
+  const [headerExistsInContent, setHeaderExistsInContent] = useState(() =>
+    (act.bodyContent || "").includes('data-act-header="true"')
   );
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Combinar datos actuales para el hook
+  const currentCombinedData = useMemo(
+    () => ({
+      ...act,
+      ...localActData,
+      bodyContent: editorContent,
+      clarifyingNote: clarifyingNoteContent,
+    }),
+    [act, localActData, editorContent, clarifyingNoteContent]
+  );
+
+  // Usar el hook
+  const { handleSave, isDirty, isSaving } = useSaveAction<Act>({
+    initialData: act,
+    currentData: currentCombinedData,
+    onSave: onUpdateAct,
+    setHasUnsavedChanges: setHasUnsavedChanges,
+    loadingMessage: "Guardando acta...",
+    successMessage: "Acta guardada exitosamente.",
+    errorMessage: "Error al guardar el acta.",
+  });
+
+  // Sincronizar estados locales si 'act' cambia
   useEffect(() => {
     setLocalActData(act);
     setEditorContent(act.bodyContent);
     setClarifyingNoteContent(act.clarifyingNote || "");
-    setIsHeaderInitiallyGenerated(hasGeneratedHeader(act.bodyContent));
+    setHeaderExistsInContent(
+      (act.bodyContent || "").includes('data-act-header="true"')
+    );
+  }, [act]);
 
-    setHasUnsavedChanges(false);
-  }, [act, setHasUnsavedChanges]);
-
+  // Handlers simplificados (solo actualizan estado local)
   const handlePropertyChange = useCallback(
     <K extends keyof Act>(field: K, value: Act[K]) => {
       setLocalActData((prevState) => ({ ...prevState, [field]: value }));
-      setHasUnsavedChanges(true);
     },
-    [setHasUnsavedChanges]
+    []
   );
+  const handleBodyContentChange = useCallback((newContent: string) => {
+    setEditorContent(newContent);
+    setHeaderExistsInContent(
+      (newContent || "").includes('data-act-header="true"')
+    );
+  }, []);
+  const handleClarifyingNoteChange = useCallback((newContent: string) => {
+    setClarifyingNoteContent(newContent);
+  }, []);
 
-  const handleBodyContentChange = useCallback(
-    (newContent: string) => {
-      setEditorContent(newContent);
-      setHasUnsavedChanges(true);
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-      debounceTimeoutRef.current = setTimeout(() => {
-        onUpdateAct({
-          ...act,
-          ...localActData,
-          bodyContent: newContent,
-          clarifyingNote: clarifyingNoteContent,
-        } as Act);
-      }, 500);
-    },
-    [
-      act,
-      localActData,
-      onUpdateAct,
-      setHasUnsavedChanges,
-      clarifyingNoteContent,
-    ]
-  );
-
-  const handleClarifyingNoteChange = useCallback(
-    (newContent: string) => {
-      setClarifyingNoteContent(newContent);
-      setHasUnsavedChanges(true);
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-      debounceTimeoutRef.current = setTimeout(() => {
-        onUpdateAct({
-          ...act,
-          ...localActData,
-          bodyContent: editorContent,
-          clarifyingNote: newContent,
-        } as Act);
-      }, 500);
-    },
-    [act, localActData, onUpdateAct, setHasUnsavedChanges, editorContent]
-  );
-
+  // --- Lógica del Encabezado (sin cambios funcionales) ---
   const generateInitialHeader = () => {
     const headerHtml = generateActHeaderHtml(localActData);
-    setEditorContent(headerHtml);
-    setIsHeaderInitiallyGenerated(true);
-    setHasUnsavedChanges(true);
-    onUpdateAct({
-      ...act,
-      ...localActData,
-      bodyContent: headerHtml,
-      clarifyingNote: clarifyingNoteContent,
-    } as Act);
+    setEditorContent(headerHtml); // Actualiza estado local
+    setHeaderExistsInContent(true);
   };
-
   const regenerateHeader = () => {
     const newHeaderHtml = generateActHeaderHtml(localActData);
     const headerRegex = /<p data-act-header="true">[\s\S]*?<\/p>/;
     let newBodyContent = editorContent;
-
     if (headerRegex.test(editorContent)) {
       newBodyContent = editorContent.replace(headerRegex, newHeaderHtml);
     } else {
       newBodyContent = newHeaderHtml + "\n" + editorContent;
     }
-    setEditorContent(newBodyContent);
-    setHasUnsavedChanges(true);
-    onUpdateAct({
-      ...act,
-      ...localActData,
-      bodyContent: newBodyContent,
-      clarifyingNote: clarifyingNoteContent,
-    } as Act);
+    setEditorContent(newBodyContent); // Actualiza estado local
+    setHeaderExistsInContent(true);
   };
-
   const needsRegeneration = () => {
-    if (!isHeaderInitiallyGenerated) return false;
+    if (!headerExistsInContent) return false;
     const currentGeneratedHeader = generateActHeaderHtml(localActData);
     const headerRegex = /<p data-act-header="true">[\s\S]*?<\/p>/;
     const match = editorContent.match(headerRegex);
-    const editorHeader = match ? match[0] : null;
-    return editorHeader !== currentGeneratedHeader;
+    const editorHeaderInContent = match ? match[0] : null;
+    return editorHeaderInContent !== currentGeneratedHeader;
   };
-
   const canGenerateInitial =
-    localActData.name &&
     localActData.sessionDate &&
     localActData.attendees?.syndic &&
     localActData.attendees?.secretary;
@@ -179,19 +150,20 @@ export const ActEditor = ({
         </Button>
       </div>
 
-      {/* Contenido principal con scroll */}
+      {/* Contenido principal */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
+          {/* Sección del Encabezado */}
           <div className="mb-4 p-4 border rounded-lg bg-muted/30 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                {isHeaderInitiallyGenerated
-                  ? "Si los datos de la sesión o asistencia cambian, puedes regenerar el encabezado."
-                  : "Completa los datos de Sesión y Asistencia para generar el encabezado."}
+                {!headerExistsInContent
+                  ? "Completa los datos de Sesión y Asistencia para generar el encabezado."
+                  : "Si los datos de la sesión o asistencia cambian, puedes regenerar el encabezado."}
               </p>
             </div>
             <div>
-              {!isHeaderInitiallyGenerated ? (
+              {!headerExistsInContent ? (
                 <Button
                   onClick={generateInitialHeader}
                   disabled={!canGenerateInitial}
@@ -200,28 +172,25 @@ export const ActEditor = ({
                   <PlayIcon className="mr-2 h-4 w-4" /> Generar Encabezado
                 </Button>
               ) : (
-                needsRegeneration() && ( // Solo muestra el botón si es necesario regenerar
+                needsRegeneration() && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={regenerateHeader}
-                    className="shadow-none"
                   >
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                    Actualizar Encabezado
+                    <RefreshCcw className="mr-2 h-4 w-4" /> Regenerar Encabezado
                   </Button>
                 )
               )}
-              {/* Mensaje de encabezado actualizado (opcional) */}
-              {isHeaderInitiallyGenerated && !needsRegeneration() && (
+              {headerExistsInContent && !needsRegeneration() && (
                 <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                  <Check className="h-4 w-4" /> Encabezado actualizado
+                  <Check className="h-4 w-4" /> Encabezado Sincronizado
                 </p>
               )}
             </div>
           </div>
 
-          {/* Resto de Collapsibles sin cambios */}
+          {/* Collapsibles */}
           <Collapsible defaultOpen className="border rounded-lg">
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
               <h3 className="text-lg font-semibold">Datos de la Sesión</h3>
@@ -254,11 +223,10 @@ export const ActEditor = ({
               <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {!isHeaderInitiallyGenerated && !editorContent ? (
+              {!headerExistsInContent && !editorContent ? (
                 <div className="text-center p-8 text-sm text-muted-foreground">
-                  Encabezado no generado. Completa los datos de Sesión y
-                  Asistencia y haz clic en "Generar Encabezado" para crear el
-                  contenido inicial del acta.
+                  Genera el encabezado para empezar a editar o escribe
+                  directamente.
                 </div>
               ) : (
                 <div className="min-h-[400px] overflow-hidden">
@@ -296,6 +264,9 @@ export const ActEditor = ({
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={onBackToList}>
             Volver
+          </Button>
+          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+            {isSaving ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>
       </div>

@@ -1,7 +1,6 @@
-// filepath: src/features/book/components/BookCoverForm.tsx
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type SubmitHandler, type Resolver } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -23,39 +22,22 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { type Book } from "@/types";
-
-// ✅ Esquema corregido y simplificado
-const formSchema = z.object({
-  name: z
-    .string()
-    .min(5, { message: "El nombre debe tener al menos 5 caracteres." }),
-  // ✅ Validación de fecha requerida simplificada con refine
-  authorizationDate: z
-    .date()
-    .refine((val) => val !== null && val !== undefined, {
-      message: "La fecha de autorización es requerida.",
-    }),
-  // ✅ Preprocess para 'tome' simplificado
-  tome: z.preprocess(
-    (val) => (val === "" || val == null ? undefined : Number(val)),
-    z
-      .number()
-      .positive({ message: "El tomo debe ser un número positivo" })
-      .optional()
-  ),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { useSaveAction } from "@/hooks/useSaveAction";
+import {
+  bookCoverSchema,
+  type BookCoverFormValues,
+} from "../schemas/bookCoverSchema";
 
 interface BookCoverFormProps {
   book: Book;
-  onDone: (data: FormValues) => void;
+  onDone: (data: BookCoverFormValues) => void;
 }
 
 export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
-  // ✅ Tipado explícito de useForm
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as unknown as Resolver<FormValues>,
+  const form = useForm<BookCoverFormValues>({
+    resolver: zodResolver(
+      bookCoverSchema
+    ) as unknown as Resolver<BookCoverFormValues>,
     defaultValues: {
       name: book.name,
       authorizationDate: new Date(book.authorizationDate || book.createdAt),
@@ -63,9 +45,51 @@ export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
     },
   });
 
-  // ✅ Tipado explícito de onSubmit
-  const onSubmit: SubmitHandler<FormValues> = (data) => {
-    onDone(data);
+  const currentFormData = form.watch();
+  const initialHookData = useMemo(
+    () => ({
+      name: book.name,
+      authorizationDate: new Date(book.authorizationDate || book.createdAt),
+      tome: book.tome,
+    }),
+    [book]
+  );
+  const currentHookData = useMemo(
+    () => ({
+      name: currentFormData.name,
+      authorizationDate: currentFormData.authorizationDate,
+      tome: currentFormData.tome,
+    }),
+    [currentFormData]
+  );
+
+  // Usar el hook
+  const { handleSave, isDirty, isSaving } = useSaveAction<BookCoverFormValues>({
+    initialData: initialHookData,
+    currentData: currentHookData,
+    onSave: async (dataToSave) => {
+      onDone(dataToSave);
+    },
+    onSuccess: (savedData) => {
+      form.reset(savedData);
+    },
+    loadingMessage: "Guardando portada...",
+    successMessage: "Portada guardada exitosamente.",
+    errorMessage: "Error al guardar la portada.",
+  });
+
+  // Sincronizar form si 'book' cambia
+  useEffect(() => {
+    form.reset({
+      name: book.name,
+      authorizationDate: new Date(book.authorizationDate || book.createdAt),
+      tome: book.tome,
+    });
+  }, [book, form]);
+
+  // onSubmit ahora solo llama a handleSave
+  const onSubmit: SubmitHandler<BookCoverFormValues> = () => {
+    handleSave();
   };
 
   return (
@@ -79,9 +103,10 @@ export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
         </div>
       </div>
       <div className="p-4">
-        {/* Usar form directamente, tipo inferido correctamente */}
         <Form {...form}>
+          {/* Usamos handleSubmit para validación, pero llama a nuestro onSubmit */}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Campos del formulario (sin cambios) */}
             <FormField
               control={form.control}
               name="name"
@@ -109,7 +134,6 @@ export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
                       value={field.value ?? ""}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Pasar undefined si está vacío, sino el número
                         field.onChange(
                           value === "" ? undefined : Number(value)
                         );
@@ -150,7 +174,7 @@ export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange} // Calendar pasa Date | undefined
+                        onSelect={field.onChange}
                         initialFocus
                       />
                     </PopoverContent>
@@ -159,7 +183,10 @@ export const BookCoverForm = ({ book, onDone }: BookCoverFormProps) => {
                 </FormItem>
               )}
             />
-            <Button type="submit">Guardar Portada</Button>
+            {/* Botón de Guardar usa el estado y handler del hook */}
+            <Button type="submit" disabled={!isDirty || isSaving}>
+              {isSaving ? "Guardando..." : "Guardar"}
+            </Button>
           </form>
         </Form>
       </div>

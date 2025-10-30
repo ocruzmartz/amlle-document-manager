@@ -16,10 +16,17 @@ export const BookListPage = () => {
     navigate(`/books/${newBook.id}`);
   };
 
-    const statusFilterOptions = [
-    { label: "Borrador", value: "BORRADOR" },
-    { label: "Finalizado", value: "FINALIZADO" },
-    { label: "Archivado", value: "ARCHIVADO" },
+  // ✅ Actualizado al nuevo formato de array
+  const statusFilters = [
+    {
+      columnId: "status",
+      title: "Estado",
+      options: [
+        { label: "Borrador", value: "BORRADOR" },
+        { label: "Finalizado", value: "FINALIZADO" },
+        { label: "Archivado", value: "ARCHIVADO" },
+      ],
+    },
   ];
 
   return (
@@ -44,9 +51,7 @@ export const BookListPage = () => {
         data={books}
         filterColumnId="name"
         filterPlaceholder="Filtrar por nombre de libro..."
-        facetedFilterColumnId="status"
-        facetedFilterTitle="Estado"
-        facetedFilterOptions={statusFilterOptions}
+        facetedFilters={statusFilters}
       />
     </div>
   );
