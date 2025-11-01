@@ -2,7 +2,7 @@ import * as React from "react";
 // import { Command } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
-// import {NavAdmin} from "@/components/nav-administration";
+import {NavAdmin} from "@/components/nav-administration";
 // import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user";
 import {
@@ -51,7 +51,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain />
-        {/* <NavAdmin itemsAdmin={data.navAdmin} /> */}
+        <NavAdmin itemsAdmin={data.navAdmin} />
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" />  */}
       </SidebarContent>
       <SidebarFooter>

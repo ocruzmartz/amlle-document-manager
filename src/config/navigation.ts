@@ -35,9 +35,14 @@ export const adminNavItems: NavItem[] = [
     url: "/users",
     icon: Users,
   },
-  {
-    title: "Registro",
-    url: "/settings",
+  // {
+  //   title: "Registro",
+  //   url: "/settings",
+  //   icon: Logs,
+  // },
+   {
+    title: "Auditoría",
+    url: "/audit",
     icon: Logs,
   },
 ];

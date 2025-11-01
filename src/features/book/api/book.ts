@@ -1,23 +1,21 @@
-// src/features/books/lib/book-service.ts
-
-import { type Book, type Act, type Agreement } from "@/types";
+import { type Book, type Tome, type Act, type Agreement } from "@/types";
 
 import {
-  allCouncilMembers,
   booksData as initialBooks,
+  tomesData as initialTomes, // <-- NUEVO: Usar tomesData
   bookContentData as initialContent,
 } from "@/features/book/data/mock";
-import { numberToWords } from "@/lib/textUtils";
-import { generateActHeaderHtml } from "@/features/act/lib/actHelpers"; // ✅ 1. Importar el nuevo ayudante
+import { numberToRoman, numberToWords } from "@/lib/textUtils";
 
 declare global {
   interface Window {
     booksStore?: Book[];
+    tomesStore?: Tome[]; // <-- NUEVO: Almacén para Tomos
     bookContentStore?: typeof initialContent;
   }
 }
 
-// --- Almacenes en Memoria (sin cambios) ---
+// --- Almacenes en Memoria (Actualizados) ---
 const getBooksStore = (): Book[] => {
   if (import.meta.env.DEV) {
     if (!window.booksStore) {
@@ -27,13 +25,25 @@ const getBooksStore = (): Book[] => {
   }
   return [...initialBooks];
 };
-
 const setBooksStore = (books: Book[]) => {
-  if (import.meta.env.DEV) {
-    window.booksStore = books;
-  }
+  if (import.meta.env.DEV) window.booksStore = books;
 };
 
+// Nuevo almacén para Tomos
+const getTomesStore = (): Tome[] => {
+  if (import.meta.env.DEV) {
+    if (!window.tomesStore) {
+      window.tomesStore = [...initialTomes];
+    }
+    return window.tomesStore;
+  }
+  return [...initialTomes];
+};
+const setTomesStore = (tomes: Tome[]) => {
+  if (import.meta.env.DEV) window.tomesStore = tomes;
+};
+
+// Almacén de contenido (sin cambios, ya que usa ID)
 const getContentStore = (): typeof initialContent => {
   if (import.meta.env.DEV) {
     if (!window.bookContentStore) {
@@ -43,14 +53,9 @@ const getContentStore = (): typeof initialContent => {
   }
   return { ...initialContent };
 };
-
 const setContentStore = (content: typeof initialContent) => {
-  if (import.meta.env.DEV) {
-    window.bookContentStore = content;
-  }
+  if (import.meta.env.DEV) window.bookContentStore = content;
 };
-
-// --- Funciones Exportadas (solo createAct tiene cambios) ---
 
 export const getBooks = (): Book[] => {
   const books = getBooksStore();
@@ -60,73 +65,105 @@ export const getBooks = (): Book[] => {
   );
 };
 
+export const getTomes = (): Tome[] => {
+  const tomes = getTomesStore();
+  const books = getBooksStore();
+
+  const tomesWithBookNames = tomes.map((tome) => {
+    const parentBook = books.find((b) => b.id === tome.bookId);
+    return {
+      ...tome,
+      bookName: parentBook ? parentBook.name : "Libro Desconocido",
+    };
+  });
+
+  return [...tomesWithBookNames].sort(
+    (a, b) =>
+      new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+  );
+};
+
 export const getBookById = (id: string | undefined): Book | undefined => {
   if (!id) return undefined;
   const books = getBooksStore();
-  const contentStore = getContentStore();
+  const tomes = getTomesStore();
 
   const bookData = books.find((book) => book.id === id);
   if (!bookData) return undefined;
 
+  // Poblar los tomos del libro
+  bookData.tomos = tomes.filter((tome) => tome.bookId === id);
+  return bookData;
+};
+
+export const getTomeById = (id: string | undefined): Tome | undefined => {
+  if (!id) return undefined;
+  const tomes = getTomesStore();
+  const contentStore = getContentStore();
+
+  const tomeData = tomes.find((tome) => tome.id === id);
+  if (!tomeData) return undefined;
+
   return {
-    ...bookData,
+    ...tomeData,
     acts: contentStore[id]?.acts || [],
   };
 };
 
-export const createBook = (data: {
-  name: string;
-  creationDate: Date;
-}): Book => {
+export const createBook = (data: { name: string }): Tome => {
   let books = getBooksStore();
+  const now = new Date().toISOString();
   const newBook: Book = {
     id: crypto.randomUUID(),
     name: data.name,
+    createdAt: now,
+    createdBy: "Usuario Actual",
+    lastModified: now,
+    modifiedBy: "Usuario Actual",
+    tomos: [],
+  };
+  books = [newBook, ...books];
+  setBooksStore(books);
+
+  const newTome = createTome(newBook.id, {
+    tomeNumber: 1,
+  });
+
+  return newTome;
+};
+
+export const createTome = (
+  bookId: string,
+  data: { name?: string; tomeNumber: number }
+): Tome => {
+  let tomes = getTomesStore();
+  const books = getBooksStore();
+  const parentBook = books.find((b) => b.id === bookId);
+  if (!parentBook) throw new Error("Libro padre no encontrado");
+
+  const now = new Date().toISOString();
+  const romanNumeral = numberToRoman(data.tomeNumber);
+
+  const newTome: Tome = {
+    id: crypto.randomUUID(),
+    bookId: bookId,
+    bookName: parentBook.name,
+    name: data.name || `Tomo ${romanNumeral}`,
+    tomeNumber: data.tomeNumber,
     status: "BORRADOR",
     actCount: 0,
     agreementCount: 0,
     pageCount: 1,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    authorizationDate: now,
     createdBy: "Usuario Actual",
-    lastModified: new Date().toISOString(),
+    lastModified: now,
     modifiedBy: "Usuario Actual",
     acts: [],
   };
-  books = [newBook, ...books];
-  setBooksStore(books);
-  return newBook;
-};
-
-export const updateBookDetails = (
-  bookId: string,
-  updatedData: { name: string; creationDate: Date; tome?: number }
-): Book | undefined => {
-  const books = getBooksStore();
-  const bookIndex = books.findIndex((b) => b.id === bookId);
-
-  if (bookIndex === -1) {
-    console.error("No se pudo actualizar: Libro no encontrado");
-    return undefined;
-  }
-
-  const existingBook = books[bookIndex];
-  const updatedBook = {
-    ...existingBook,
-    name: updatedData.name,
-    createdAt: updatedData.creationDate.toISOString(),
-    tome: updatedData.tome,
-    lastModified: new Date().toISOString(),
-    modifiedBy: "Usuario Actual (editado)",
-  };
-  books[bookIndex] = updatedBook;
-  setBooksStore(books);
-  return updatedBook;
-};
-
-export const getActasByBookId = (bookId: string | undefined): Act[] => {
-  if (!bookId) return [];
-  const contentStore = getContentStore();
-  return contentStore[bookId]?.acts || [];
+  tomes = [newTome, ...tomes];
+  setTomesStore(tomes);
+  return newTome;
 };
 
 export const updateBook = (
@@ -134,120 +171,181 @@ export const updateBook = (
   updatedData: Partial<Book>
 ): Book | undefined => {
   const books = getBooksStore();
-  const contentStore = getContentStore();
-
   const bookIndex = books.findIndex((b) => b.id === bookId);
+
   if (bookIndex === -1) {
     console.error("No se pudo actualizar: Libro no encontrado");
     return undefined;
   }
 
   const existingBook = books[bookIndex];
+  const newName = updatedData.name || existingBook.name;
+
   books[bookIndex] = {
     ...existingBook,
-    ...updatedData,
+    ...updatedData, // Aplicar los cambios (ej. nuevo 'name')
+    name: newName,
     lastModified: new Date().toISOString(),
     modifiedBy: "Usuario Actual (editado)",
   };
   setBooksStore(books);
 
+  // También actualizamos el 'bookName' en todos los tomos hijos
+  let tomes = getTomesStore();
+  tomes = tomes.map((tome) =>
+    tome.bookId === bookId ? { ...tome, bookName: newName } : tome
+  );
+  setTomesStore(tomes);
+
+  console.log(
+    "Libro padre actualizado y tomos sincronizados:",
+    books[bookIndex]
+  );
+  return books[bookIndex];
+};
+
+export const updateTome = (
+  tomeId: string,
+  updatedData: Partial<Tome>
+): Tome | undefined => {
+  const tomes = getTomesStore();
+  const contentStore = getContentStore();
+
+  const tomeIndex = tomes.findIndex((t) => t.id === tomeId);
+  if (tomeIndex === -1) {
+    console.error("No se pudo actualizar: Tomo no encontrado");
+    return undefined;
+  }
+
+  const existingTome = tomes[tomeIndex];
+  tomes[tomeIndex] = {
+    ...existingTome,
+    ...updatedData,
+    lastModified: new Date().toISOString(),
+    modifiedBy: "Usuario Actual (editado)",
+  };
+  setTomesStore(tomes);
+
   if (updatedData.acts) {
-    const newBookContent = {
-      ...(contentStore[bookId] || {}),
+    const newTomeContent = {
+      ...(contentStore[tomeId] || {}),
       acts: updatedData.acts,
     };
     const newContentStore = {
       ...contentStore,
-      [bookId]: newBookContent,
+      [tomeId]: newTomeContent,
     };
     setContentStore(newContentStore);
   }
 
-  return getBookById(bookId);
+  return getTomeById(tomeId);
 };
 
-// ✅ 2. Lógica de `createAct` actualizada
+export const deleteTome = (tomeId: string): boolean => {
+  const tomes = getTomesStore();
+  const content = getContentStore();
+
+  const tomeIndex = tomes.findIndex((t) => t.id === tomeId);
+  if (tomeIndex === -1) {
+    console.error("No se pudo eliminar: Tomo no encontrado");
+    return false;
+  }
+
+  // Eliminar el tomo de la lista
+  tomes.splice(tomeIndex, 1);
+  setTomesStore(tomes);
+
+  // Eliminar el contenido (actas) asociado
+  if (content[tomeId]) {
+    delete content[tomeId];
+    setContentStore(content);
+  }
+
+  console.log("Tomo eliminado:", tomeId);
+  return true;
+};
+
+export const getActasByTomeId = (tomeId: string | undefined): Act[] => {
+  if (!tomeId) return [];
+  const contentStore = getContentStore();
+  return contentStore[tomeId]?.acts || [];
+};
+
+/**
+ * Crea una nueva Acta dentro de un Tomo.
+ */
 export const createAct = (
-  bookId: string | undefined,
+  tomeId: string | undefined,
   actData?: { name?: string }
 ): Act | null => {
-  if (!bookId) return null;
+  if (!tomeId) return null;
 
-  const books = getBooksStore();
+  const tomes = getTomesStore();
   const contentStore = getContentStore();
-  const bookIndex = books.findIndex((b) => b.id === bookId);
-  const book = books[bookIndex];
-  if (!book) return null;
+  const tomeIndex = tomes.findIndex((t) => t.id === tomeId);
+  const tome = tomes[tomeIndex];
+  if (!tome) return null;
 
-  const actNumber = (contentStore[bookId]?.acts.length || 0) + 1;
+  const actNumber = (contentStore[tomeId]?.acts.length || 0) + 1;
   const actNumberInWords = numberToWords(actNumber);
   const now = new Date().toISOString();
   const currentUser = "Usuario Actual";
 
-  const defaultAttendees = {
-    syndic: allCouncilMembers.find((m) => m.role === "SYNDIC") || null,
-    owners: allCouncilMembers.filter((m) => m.role === "OWNER"),
-    secretary: allCouncilMembers.find((m) => m.role === "SECRETARY") || null,
-  };
-
-  // Se crea un objeto parcial del acta para generar el encabezado
   const actName: string = actData?.name ?? `Acta número ${actNumberInWords}`;
-  const partialAct: Partial<Act> = {
-    name: actName,
-    sessionDate: now,
-    sessionType: "Ordinary",
-    sessionTime: "diez horas",
-    attendees: defaultAttendees,
-  };
 
   const newAct: Act = {
     id: crypto.randomUUID(),
-    bookId: book.id,
-    bookName: book.name,
+    tomeId: tome.id, // <-- CAMBIADO
+    tomeName: tome.name, // <-- CAMBIADO
     agreements: [],
     sessionPoints: [],
     clarifyingNote: "",
-    name: actName, // Asegura que 'name' siempre es string
-    sessionDate: partialAct.sessionDate!,
-    sessionType: partialAct.sessionType!,
-    sessionTime: partialAct.sessionTime!,
-    attendees: partialAct.attendees!,
-    bodyContent: generateActHeaderHtml(partialAct), // Se genera el HTML del encabezado
+    name: actName,
     actNumber,
     createdAt: now,
     createdBy: currentUser,
     lastModified: now,
     modifiedBy: currentUser,
+    sessionDate: now,
+    sessionType: undefined,
+    sessionTime: undefined,
+    attendees: undefined,
+    bodyContent: "",
   };
 
-  const newBookContent = contentStore[bookId]
-    ? { ...contentStore[bookId], acts: [...contentStore[bookId].acts, newAct] }
+  const newTomeContent = contentStore[tomeId]
+    ? { ...contentStore[tomeId], acts: [...contentStore[tomeId].acts, newAct] }
     : { acts: [newAct] };
 
-  const newContentStore = { ...contentStore, [bookId]: newBookContent };
+  const newContentStore = { ...contentStore, [tomeId]: newTomeContent };
   setContentStore(newContentStore);
 
-  const updatedBooks = [...books];
-  updatedBooks[bookIndex] = {
-    ...book,
-    actCount: newBookContent.acts.length,
+  // Actualizar el contador de actas en el Tomo
+  const updatedTomes = [...tomes];
+  updatedTomes[tomeIndex] = {
+    ...tome,
+    actCount: newTomeContent.acts.length,
     lastModified: new Date().toISOString(),
   };
-  setBooksStore(updatedBooks);
+  setTomesStore(updatedTomes);
 
   return newAct;
 };
 
+/**
+ * Obtiene TODAS las actas de TODOS los tomos.
+ */
 export const getAllActs = (): Act[] => {
-  const allActs = initialBooks.flatMap((book) => {
-    const content = initialContent[book.id];
+  const allTomes = getTomesStore();
+  const allActs = allTomes.flatMap((tome) => {
+    const content = initialContent[tome.id];
     if (!content || !content.acts) {
       return [];
     }
     return content.acts.map((act) => ({
       ...act,
-      bookId: book.id,
-      bookName: book.name,
+      tomeId: tome.id,
+      tomeName: tome.name,
     }));
   });
 
@@ -257,9 +355,13 @@ export const getAllActs = (): Act[] => {
   );
 };
 
+/**
+ * Obtiene TODOS los acuerdos de TODAS las actas.
+ */
 export const getAllAgreements = (): Agreement[] => {
-  const allAgreements = initialBooks.flatMap((book) => {
-    const content = initialContent[book.id];
+  const allTomes = getTomesStore();
+  const allAgreements = allTomes.flatMap((tome) => {
+    const content = initialContent[tome.id];
     if (!content || !content.acts) {
       return [];
     }
@@ -273,8 +375,8 @@ export const getAllAgreements = (): Agreement[] => {
         ...agreement,
         actId: act.id,
         actName: act.name,
-        bookId: book.id,
-        bookName: book.name,
+        tomeId: tome.id,
+        tomeName: tome.name,
       }));
     });
   });

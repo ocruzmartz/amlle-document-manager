@@ -1,12 +1,11 @@
-// filepath: src/features/book/data/book.mock.ts
-import { type Book, type CouncilMember, type Act } from "@/types";
+// filepath: src/features/book/data/mock.ts
+import { type Book, type Tome, type CouncilMember, type Act } from "@/types";
 
-// --- Helpers de Fecha para una línea de tiempo lógica ---
+// --- Helpers de Fecha y Usuarios (sin cambios) ---
 const now = new Date();
 const daysAgo = (days: number) =>
   new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-// --- Definición de Usuarios ---
 const users = {
   elena: "Elena Rivera",
   carlos: "Carlos Pérez",
@@ -14,14 +13,10 @@ const users = {
   admin: "Admin Sistema",
 };
 
+// --- CouncilMembers (sin cambios) ---
 export const allCouncilMembers: CouncilMember[] = [
-  // --- ALCALDESA / SECRETARIA ---
   { id: "cm-1", name: "Zoila Milagro Navas Quintanilla", role: "SECRETARY" },
-
-  // --- SÍNDICO ---
   { id: "cm-2", name: "Edwin Gilberto Orellana Núñez", role: "SYNDIC" },
-
-  // --- CONCEJALES PROPIETARIOS ---
   { id: "cm-3", name: "Sonia Elizabeth Andrade de Jovel", role: "OWNER" },
   { id: "cm-4", name: "Héctor Rafael Hernández Dale", role: "OWNER" },
   { id: "cm-5", name: "Francisco Antonio Castellón Belloso", role: "OWNER" },
@@ -30,20 +25,50 @@ export const allCouncilMembers: CouncilMember[] = [
   { id: "cm-8", name: "Ana Lucía Martínez de la O", role: "OWNER" },
   { id: "cm-9", name: "Carlos Alberto Godoy", role: "OWNER" },
   { id: "cm-10", name: "David Ernesto Reyes", role: "OWNER" },
-
-  // --- CONCEJALES SUPLENTES ---
   { id: "cm-11", name: "María Isabel Lemus", role: "SUBSTITUTE" },
   { id: "cm-12", name: "Ricardo José López", role: "SUBSTITUTE" },
   { id: "cm-13", name: "Ana Sofía Rivas", role: "SUBSTITUTE" },
   { id: "cm-14", name: "Marcos Antonio Henríquez", role: "SUBSTITUTE" },
 ];
 
-// --- DATOS PARA LA LISTA PRINCIPAL DE LIBROS ---
+// --- DATOS PARA LOS LIBROS (CONTENEDORES) ---
 export const booksData: Book[] = [
   {
-    id: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
+    id: "book-2025",
     name: "Libro de Actas Municipales 2025",
-    tome: 1,
+    createdAt: daysAgo(30).toISOString(),
+    createdBy: users.jorge,
+    lastModified: daysAgo(1).toISOString(),
+    modifiedBy: users.carlos,
+    tomos: [], // Se llenará dinámicamente por la API
+  },
+  {
+    id: "book-2024",
+    name: "Libro de Acuerdos Varios 2024",
+    createdAt: daysAgo(150).toISOString(),
+    createdBy: users.admin,
+    lastModified: daysAgo(45).toISOString(),
+    modifiedBy: users.elena,
+    tomos: [],
+  },
+  {
+    id: "book-proyectos",
+    name: "Tomo II - Proyectos Especiales 2025", // Nombre antiguo, lo mantenemos por ahora
+    createdAt: daysAgo(200).toISOString(),
+    createdBy: users.admin,
+    lastModified: daysAgo(180).toISOString(),
+    modifiedBy: users.admin,
+    tomos: [],
+  },
+];
+
+// --- DATOS PARA LOS TOMOS (LO QUE ANTES ERAN LIBROS) ---
+export const tomesData: Tome[] = [
+  {
+    id: "tome-2025-1", // ID del Tomo (antes f4a9b8c7...)
+    bookId: "book-2025", // ID del Libro padre
+    name: "Tomo 1 - 2025", // Nombre del Tomo
+    tomeNumber: 1, // Número de Tomo
     status: "BORRADOR",
     actCount: 2,
     agreementCount: 3,
@@ -54,8 +79,10 @@ export const booksData: Book[] = [
     modifiedBy: users.carlos,
   },
   {
-    id: "8a7b3c2e-4f5g-6h7i-8j9k-1l2m3n4o5p6q",
-    name: "Libro de Acuerdos Varios 2024",
+    id: "tome-2024-1", // ID del Tomo (antes 8a7b3c2e...)
+    bookId: "book-2024",
+    name: "Tomo 1 - 2024",
+    tomeNumber: 1,
     status: "FINALIZADO",
     actCount: 1,
     agreementCount: 2,
@@ -66,8 +93,10 @@ export const booksData: Book[] = [
     modifiedBy: users.elena,
   },
   {
-    id: "9b8c7d6e-5f6g-7h8i-9j0k-2l3m4n5o6p7q",
-    name: "Tomo II - Proyectos Especiales 2025",
+    id: "tome-proyectos-1", // ID del Tomo (antes 9b8c7d6e...)
+    bookId: "book-proyectos",
+    name: "Tomo 1 - Proyectos Especiales",
+    tomeNumber: 1,
     status: "ARCHIVADO",
     actCount: 0,
     agreementCount: 0,
@@ -79,15 +108,15 @@ export const booksData: Book[] = [
   },
 ];
 
-// --- CONTENIDO INTERNO DE EJEMPLO PARA UN LIBRO ESPECÍFICO ---
-export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
-  // Contenido para "Libro de Actas Municipales 2025"
-  "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o": {
+// --- CONTENIDO INTERNO (ACTAS) AHORA USANDO ID DEL TOMO ---
+export const bookContentData: { [tomeId: string]: { acts: Act[] } } = {
+  // Contenido para "Tomo 1 - 2025" (tome-2025-1)
+  "tome-2025-1": {
     acts: [
       {
         id: "acta-101",
-        bookId: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
-        bookName: "Libro de Actas Municipales 2025",
+        tomeId: "tome-2025-1", // <-- CAMBIADO
+        tomeName: "Tomo 1 - 2025", // <-- CAMBIADO
         name: "Acta número Uno",
         actNumber: 1,
         sessionDate: daysAgo(15).toISOString(),
@@ -100,8 +129,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
             id: "acuerdo-201",
             actId: "acta-101",
             actName: "Acta número Uno",
-            bookId: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
-            bookName: "Libro de Actas Municipales 2025",
+            tomeId: "tome-2025-1", // <-- CAMBIADO
+            tomeName: "Tomo 1 - 2025", // <-- CAMBIADO
             name: "Acuerdo número Uno",
             content:
               "<p><strong>Acuerdo número Uno:</strong> Visto el dictamen de la Comisión de Obras Públicas, se aprueba por unanimidad el inicio del proyecto de remodelación del parque central, según los planos y presupuesto presentados.</p>",
@@ -114,8 +143,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
             id: "acuerdo-202",
             actId: "acta-101",
             actName: "Acta número Uno",
-            bookId: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
-            bookName: "Libro de Actas Municipales 2025",
+            tomeId: "tome-2025-1", // <-- CAMBIADO
+            tomeName: "Tomo 1 - 2025", // <-- CAMBIADO
             name: "Acuerdo número Dos",
             content:
               "<p><strong>Acuerdo número Dos:</strong> Se autoriza al departamento de tesorería para que realice las gestiones pertinentes para la transferencia de fondos necesarios para el proyecto aprobado en el acuerdo anterior.</p>",
@@ -132,8 +161,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
       },
       {
         id: "acta-102",
-        bookId: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
-        bookName: "Libro de Actas Municipales 2025",
+        tomeId: "tome-2025-1", // <-- CAMBIADO
+        tomeName: "Tomo 1 - 2025", // <-- CAMBIADO
         name: "Acta número Dos",
         actNumber: 2,
         sessionDate: daysAgo(2).toISOString(),
@@ -146,8 +175,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
             id: "acuerdo-203",
             actId: "acta-102",
             actName: "Acta número Dos",
-            bookId: "f4a9b8c7-d6e5-4f3g-2h1i-0j9k8l7m6n5o",
-            bookName: "Libro de Actas Municipales 2025",
+            tomeId: "tome-2025-1", // <-- CAMBIADO
+            tomeName: "Tomo 1 - 2025", // <-- CAMBIADO
             name: "Acuerdo número Uno",
             content:
               "<p><strong>Acuerdo número Uno:</strong> Se acuerda instruir a la gerencia de servicios municipales para que realice un estudio de factibilidad técnica y financiera para la instalación de luminarias en la Colonia La Esperanza, debiendo presentar un informe en la próxima sesión ordinaria.</p>",
@@ -164,13 +193,13 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
       },
     ],
   },
-  // Contenido para "Libro de Acuerdos Varios 2024"
-  "8a7b3c2e-4f5g-6h7i-8j9k-1l2m3n4o5p6q": {
+  // Contenido para "Tomo 1 - 2024" (tome-2024-1)
+  "tome-2024-1": {
     acts: [
       {
         id: "acta-301",
-        bookId: "8a7b3c2e-4f5g-6h7i-8j9k-1l2m3n4o5p6q",
-        bookName: "Libro de Acuerdos Varios 2024",
+        tomeId: "tome-2024-1", // <-- CAMBIADO
+        tomeName: "Tomo 1 - 2024", // <-- CAMBIADO
         name: "Acta número Treinta y cinco",
         actNumber: 35,
         sessionDate: daysAgo(50).toISOString(),
@@ -183,8 +212,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
             id: "acuerdo-401",
             actId: "acta-301",
             actName: "Acta número Treinta y cinco",
-            bookId: "8a7b3c2e-4f5g-6h7i-8j9k-1l2m3n4o5p6q",
-            bookName: "Libro de Acuerdos Varios 2024",
+            tomeId: "tome-2024-1", // <-- CAMBIADO
+            tomeName: "Tomo 1 - 2024", // <-- CAMBIADO
             name: "Acuerdo número Ciento cincuenta y uno",
             content:
               "<p><strong>Acuerdo número Ciento cincuenta y uno:</strong> Se aprueba el informe financiero final del ejercicio fiscal 2024.</p>",
@@ -197,8 +226,8 @@ export const bookContentData: { [bookId: string]: { acts: Act[] } } = {
             id: "acuerdo-402",
             actId: "acta-301",
             actName: "Acta número Treinta y cinco",
-            bookId: "8a7b3c2e-4f5g-6h7i-8j9k-1l2m3n4o5p6q",
-            bookName: "Libro de Acuerdos Varios 2024",
+            tomeId: "tome-2024-1", // <-- CAMBIADO
+            tomeName: "Tomo 1 - 2024", // <-- CAMBIADO
             name: "Acuerdo número Ciento cincuenta y dos",
             content:
               "<p><strong>Acuerdo número Ciento cincuenta y dos:</strong> Se da por cerrado y finalizado el presente libro de actas.</p>",

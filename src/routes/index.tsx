@@ -4,6 +4,8 @@ import { dashboardRoutes } from "@/features/dashboard/routes";
 import { booksRoutes, booksWorkspaceRoutes } from "@/features/book/routes";
 import { actRoutes } from "@/features/act/routes";
 import { agreementRoutes } from "@/features/agreement/routes";
+import { auditRoutes } from "@/features/audit/routes";
+import { userRoutes } from "@/features/user/routes";
 
 const shellRoute: RouteObject = {
   element: <DashboardLayout />,
@@ -12,6 +14,8 @@ const shellRoute: RouteObject = {
     ...booksRoutes,
     ...actRoutes,
     ...agreementRoutes,
+    ...auditRoutes,
+    ...userRoutes,
   ],
 };
 

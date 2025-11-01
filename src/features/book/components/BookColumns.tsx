@@ -1,5 +1,4 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import { type Book } from "@/types/book";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,34 +19,33 @@ import {
 import { Link } from "react-router";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import type { Tome } from "@/types";
 
-export const columns: ColumnDef<Book>[] = [
+export const columns: ColumnDef<Tome>[] = [
   {
     accessorKey: "name",
-    header: "Nombre del Libro",
+    header: "Nombre del Tomo",
     cell: ({ row }) => {
-      const book = row.original;
+      const tome = row.original;
       return (
         <Link
-          to={`/books/${book.id}`}
+          to={`/books/${tome.id}`}
           className="font-medium text-primary hover:underline"
         >
-          {book.name}
+          {tome.bookName}
+          <p className="text-xs text-muted-foreground">{tome.name}</p>
         </Link>
       );
     },
   },
   {
-    accessorKey: "tome",
-    header: () => <div className="text-center">Tomo</div>,
+    accessorKey: "tomeNumber",
+    header: () => <div className="text-center">Tomo #</div>,
     cell: ({ row }) => {
-      const tome = row.getValue("tome");
-      const displayValue = tome ? tome : "Único";
-
-      return <div className="text-center">{String(displayValue)}</div>;
+      const tomeNum = row.getValue("tomeNumber");
+      return <div className="text-center">{String(tomeNum)}</div>;
     },
   },
-
   {
     accessorKey: "actCount",
     header: () => <div className="text-right"># Actas</div>,
@@ -59,9 +57,7 @@ export const columns: ColumnDef<Book>[] = [
     accessorKey: "agreementCount",
     header: () => <div className="text-right"># Acuerdos</div>,
     cell: ({ row }) => (
-      <div className="text-center">
-        {row.getValue("agreementCount")}
-      </div>
+      <div className="text-center">{row.getValue("agreementCount")}</div>
     ),
   },
   {
@@ -126,7 +122,7 @@ export const columns: ColumnDef<Book>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      const status = row.getValue("status") as Book["status"];
+      const status = row.getValue("status") as Tome["status"];
       return (
         <Badge
           className="capitalize"
@@ -146,7 +142,7 @@ export const columns: ColumnDef<Book>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      const book = row.original;
+      const tome = row.original;
       return (
         <div className="text-center">
           <DropdownMenu>
@@ -158,7 +154,7 @@ export const columns: ColumnDef<Book>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <Link to={`/books/${book.id}`}>
+              <Link to={`/books/${tome.id}`}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <Edit className="mr-2 h-4 w-4" />
                   <span>Editar</span>
@@ -166,7 +162,7 @@ export const columns: ColumnDef<Book>[] = [
               </Link>
               <DropdownMenuItem
                 onClick={() =>
-                  alert(`Exportando PDF para el libro: ${book.name}`)
+                  alert(`Exportando PDF para el tomo: ${tome.name}`)
                 }
               >
                 <Printer className="mr-2 h-4 w-4" />
@@ -177,12 +173,12 @@ export const columns: ColumnDef<Book>[] = [
                 className="text-destructive"
                 onClick={() =>
                   confirm(
-                    `¿Estás seguro de que quieres eliminar el libro: ${book.name}?`
+                    `¿Estás seguro de que quieres eliminar el tomo: ${tome.name}?`
                   )
                 }
               >
                 <Trash className="mr-2 h-4 w-4 text-destructive" />
-                Eliminar
+                <span>Eliminar</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

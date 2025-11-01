@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge"; // Usar Badge de Shadcn
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Usar ScrollArea de Shadcn
 
+
 interface AttendeeSelectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -156,75 +157,87 @@ export const AttendeeSelectionModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Gestionar Asistencia del Concejo</DialogTitle>
+          <DialogTitle className="text-2xl">
+            Gestionar Asistencia del Concejo
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden overflow-y-auto">
           <ScrollArea className="h-full pr-4 ">
             <div className="space-y-6 py-4 ">
-              
               {/* Grid de Autoridades y Resumen */}
               <div className="flex justify-between">
-                
                 {/* Síndico */}
                 <div className="flex gap-2">
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Síndico Municipal
                     </Label>
-                    <Select 
-                      value={selectedSyndicId || "none"} 
-                      onValueChange={(id) => setSelectedSyndicId(id === 'none' ? null : id)}
+                    <Select
+                      value={selectedSyndicId || "none"}
+                      onValueChange={(id) =>
+                        setSelectedSyndicId(id === "none" ? null : id)
+                      }
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Seleccionar..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none" className="text-muted-foreground italic">
+                        <SelectItem
+                          value="none"
+                          className="text-muted-foreground italic"
+                        >
                           No asistió
                         </SelectItem>
-                        {availableSyndics.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        {availableSyndics.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   {/* Secretaria */}
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Secretaria Municipal
                     </Label>
-                    <Select 
-                      value={selectedSecretaryId || "none"} 
-                      onValueChange={(id) => setSelectedSecretaryId(id === 'none' ? null : id)}
+                    <Select
+                      value={selectedSecretaryId || "none"}
+                      onValueChange={(id) =>
+                        setSelectedSecretaryId(id === "none" ? null : id)
+                      }
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Seleccionar..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none" className="text-muted-foreground italic">
+                        <SelectItem
+                          value="none"
+                          className="text-muted-foreground italic"
+                        >
                           No asistió
                         </SelectItem>
-                        {availableSecretaries.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        {availableSecretaries.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  
                 </div>
                 {/* Resumen de Asistencia */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Resumen
-                  </Label>
-                  <div className="h-11 flex items-center justify-between px-3 py-2 border rounded-md bg-muted/50">
-                    <span className="text-sm font-medium">Concejales presentes</span>
-                    <Badge variant="secondary" className="text-sm font-semibold">
-                      {ownerAttendance.filter(a => a.attended).length}/{defaultOwners.length}
-                    </Badge>
-                  </div>
+
+                <div className="h-11 flex items-center justify-between">
+                  <span className="text-sm font-medium mr-2">
+                    Concejales Presentes:
+                  </span>
+                  <Badge variant="secondary" className="text-sm font-semibold">
+                    {ownerAttendance.filter((a) => a.attended).length}/
+                    {defaultOwners.length}
+                  </Badge>
                 </div>
               </div>
 
@@ -237,21 +250,25 @@ export const AttendeeSelectionModal = ({
                   Concejales Propietarios
                 </h3>
 
+                
+
                 {/* Grid de Concejales - 2 columnas en pantallas grandes */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {defaultOwners.map((owner, index) => {
-                    const attendanceInfo = ownerAttendance.find(item => item.ownerId === owner.id);
+                    const attendanceInfo = ownerAttendance.find(
+                      (item) => item.ownerId === owner.id
+                    );
                     const attended = attendanceInfo?.attended ?? false;
                     const substituteId = attendanceInfo?.substituteId ?? null;
                     const hasSubstitute = attended && substituteId;
 
                     return (
-                      <div 
-                        key={owner.id} 
+                      <div
+                        key={owner.id}
                         className={`p-4 rounded-lg border transition-all ${
-                          attended 
-                            ? 'bg-muted/50 border-muted-foreground/20' 
-                            : 'hover:bg-muted/20'
+                          attended
+                            ? "bg-muted/50 border-muted-foreground/20"
+                            : "hover:bg-muted/20"
                         }`}
                       >
                         {/* Header del Concejal */}
@@ -259,12 +276,14 @@ export const AttendeeSelectionModal = ({
                           <Checkbox
                             id={`owner-${owner.id}`}
                             checked={attended}
-                            onCheckedChange={(checked) => handleOwnerAttendanceChange(owner.id, checked)}
+                            onCheckedChange={(checked) =>
+                              handleOwnerAttendanceChange(owner.id, checked)
+                            }
                             className="h-5 w-5 mt-0.5"
                           />
                           <div className="flex-1 min-w-0">
-                            <Label 
-                              htmlFor={`owner-${owner.id}`} 
+                            <Label
+                              htmlFor={`owner-${owner.id}`}
                               className="cursor-pointer font-semibold text-base leading-tight block"
                             >
                               {owner.name}
@@ -285,31 +304,41 @@ export const AttendeeSelectionModal = ({
                         {/* Selector de Sustituto */}
                         {attended && (
                           <div className="pl-8 space-y-2">
-                            <Label 
-                              htmlFor={`substitute-${owner.id}`} 
+                            <Label
+                              htmlFor={`substitute-${owner.id}`}
                               className="text-xs text-muted-foreground"
                             >
                               ¿Quién asiste?
                             </Label>
                             <Select
                               value={substituteId || "none"}
-                              onValueChange={(id) => handleSubstituteChange(owner.id, id)}
+                              onValueChange={(id) =>
+                                handleSubstituteChange(owner.id, id)
+                              }
                             >
-                              <SelectTrigger 
-                                id={`substitute-${owner.id}`} 
+                              <SelectTrigger
+                                id={`substitute-${owner.id}`}
                                 className="h-9"
                               >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">
-                                  <span className="font-medium">{owner.name}</span>
-                                  <span className="text-muted-foreground ml-2">(Propietario)</span>
+                                  <span className="font-medium">
+                                    {owner.name}
+                                  </span>
+                                  <span className="text-muted-foreground ml-2">
+                                    (Propietario)
+                                  </span>
                                 </SelectItem>
-                                {availableSubstitutes.map(sub => (
+                                {availableSubstitutes.map((sub) => (
                                   <SelectItem key={sub.id} value={sub.id}>
-                                    <span className="font-medium">{sub.name}</span>
-                                    <span className="text-muted-foreground ml-2">(Sustituto)</span>
+                                    <span className="font-medium">
+                                      {sub.name}
+                                    </span>
+                                    <span className="text-muted-foreground ml-2">
+                                      (Sustituto)
+                                    </span>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -321,7 +350,6 @@ export const AttendeeSelectionModal = ({
                   })}
                 </div>
               </div>
-
             </div>
             <ScrollBar orientation="vertical" />
           </ScrollArea>
@@ -329,7 +357,9 @@ export const AttendeeSelectionModal = ({
 
         <DialogFooter className="gap-2">
           <DialogClose asChild>
-            <Button variant="outline" size="lg">Cancelar</Button>
+            <Button variant="outline" size="lg">
+              Cancelar
+            </Button>
           </DialogClose>
           <Button onClick={handleConfirm} size="lg" className="px-8">
             Confirmar

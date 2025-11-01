@@ -1,39 +1,15 @@
-import type { Act } from "./act";
+import type { Tome, RecentTome, BookStatus } from "./tome";
 
-export type BookStatus = "BORRADOR" | "PENDIENTE" | "FINALIZADO" | "ARCHIVADO";
+export type { BookStatus, RecentTome };
 
 export type Book = {
   id: string;
   name: string;
-  tome?: number;
-  status: BookStatus;
-  agreementCount: number;
-  pageCount: number;
-  acts?: Act[];
-  actCount: number;
-  pdfSettings?: {
-    pageSize: "A4" | "LETTER";
-    orientation: "portrait" | "landscape";
-    margins: {
-      top: number;
-      bottom: number;
-      left: number;
-      right: number;
-    };
-    lineHeight: number;
-    fontSize?: number;
-  };
+  tomos?: Tome[];
   createdAt: string;
   createdBy: string;
   lastModified: string;
   modifiedBy: string;
 };
 
-export type RecentBook = {
-  id: string;
-  name: string;
-  status: BookStatus;
-  lastModified: string;
-  url: string;
-  modifiedBy: string;
-};
+export type RecentBook = RecentTome;

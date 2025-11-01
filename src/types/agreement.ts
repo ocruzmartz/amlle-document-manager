@@ -4,8 +4,8 @@ export type Agreement = {
   content: string;
   actId: string;
   actName: string;
-  bookId: string;
-  bookName: string;
+  tomeId: string; 
+  tomeName: string; 
   createdAt: string;
   createdBy: string;
   lastModified: string;
