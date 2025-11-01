@@ -1,13 +1,13 @@
-import { type Book } from "@/types";
+import { type Tome } from "@/types";
 import { BookPdfRenderer } from "./BookPdfRenderer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface BookPdfPreview {
-  book: Book;
+  tome: Tome;
 }
 
-export const BookPdfPreview = ({ book }: BookPdfPreview) => {
-  console.log("🖼️ BookPdfPreview - Libro actualizado:", book);
+export const BookPdfPreview = ({ tome }: BookPdfPreview) => {
+  console.log("🖼️ BookPdfPreview - Libro actualizado:", tome);
 
   return (
     <section className=" lg:flex flex bg-muted/40 overflow-hidden h-full min-w-[700px]">
@@ -47,7 +47,7 @@ export const BookPdfPreview = ({ book }: BookPdfPreview) => {
             </div>
           }
         >
-          <BookPdfRenderer book={book} />
+          <BookPdfRenderer tome={tome} />
         </ErrorBoundary>
       </div>
     </section>

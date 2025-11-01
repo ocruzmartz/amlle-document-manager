@@ -5,4 +5,5 @@ export * from "./act";
 export * from "./agreement";
 export * from "./book";
 export * from "./council";
+export * from "./tome";
 

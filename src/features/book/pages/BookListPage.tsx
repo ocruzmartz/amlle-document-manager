@@ -2,21 +2,21 @@ import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 import { DataTable } from "@/components/ui/DataTable";
-import { createBook, getBooks } from "../api/book";
+import { createBook, getTomes } from "../api/book";
 import { columns } from "../components/BookColumns";
 
 export const BookListPage = () => {
   const navigate = useNavigate();
-  const books = getBooks();
+  const tomes = getTomes();
+
   const handleCreateBook = () => {
-    const newBook = createBook({
+    const newTome = createBook({
       name: `Nuevo Libro - ${new Date().toLocaleDateString()}`,
-      creationDate: new Date(),
     });
-    navigate(`/books/${newBook.id}`);
+
+    navigate(`/books/${newTome.id}`);
   };
 
-  // ✅ Actualizado al nuevo formato de array
   const statusFilters = [
     {
       columnId: "status",
@@ -48,8 +48,8 @@ export const BookListPage = () => {
       </div>
       <DataTable
         columns={columns}
-        data={books}
-        filterColumnId="name"
+        data={tomes}
+        filterColumnId="bookName"
         filterPlaceholder="Filtrar por nombre de libro..."
         facetedFilters={statusFilters}
       />

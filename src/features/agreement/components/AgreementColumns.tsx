@@ -15,7 +15,7 @@ export const columns: ColumnDef<Agreement>[] = [
       const agreement = row.original;
       return (
         <Link
-          to={`/books/${agreement.bookId}`}
+          to={`/books/${agreement.tomeId}`}
           state={{
             initialActId: agreement.actId,
             initialDetailView: {
@@ -37,7 +37,7 @@ export const columns: ColumnDef<Agreement>[] = [
       const agreement = row.original;
       return (
         <Link
-          to={`/books/${agreement.bookId}`}
+          to={`/books/${agreement.tomeId}`}
           state={{ initialActId: agreement.actId }}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
@@ -47,16 +47,16 @@ export const columns: ColumnDef<Agreement>[] = [
     },
   },
   {
-    accessorKey: "bookName",
-    header: "Libro de Origen",
+    accessorKey: "tomeName",
+    header: "Tomo de Origen",
     cell: ({ row }) => {
       const agreement = row.original;
       return (
         <Link
-          to={`/books/${agreement.bookId}`}
+          to={`/books/${agreement.tomeId}`}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
-          {agreement.bookName}
+          {agreement.tomeName}
         </Link>
       );
     },

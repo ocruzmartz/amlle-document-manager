@@ -16,20 +16,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-// Importamos las funciones necesarias de date-fns
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-
-// Importamos el tipo desde su archivo dedicado
-import { type RecentBook } from "@/types/book";
+import { type RecentTome } from "@/types/book";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
 interface RecentBooksTableProps {
-  books: RecentBook[];
+  books: RecentTome[];
 }
 
-// Usamos la convención de función de flecha que prefieres
 export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
   return (
     <Card className="shadow-none">
@@ -41,10 +37,10 @@ export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
           </CardDescription>
         </div>
         <Link to="/books">
-        <Button variant="link">
-          <ExternalLink  className="size-4" />
-          Ver más
-        </Button>
+          <Button variant="link">
+            <ExternalLink className="size-4" />
+            Ver más
+          </Button>
         </Link>
       </CardHeader>
       <CardContent>
@@ -66,6 +62,9 @@ export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
                   >
                     {book.name}
                   </Link>
+                  <p className="text-xs text-muted-foreground">
+                    Del libro: {book.bookName}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Modificado por {book.modifiedBy}
                   </p>

@@ -9,6 +9,7 @@ export const bookCoverSchema = z.object({
     .refine((val) => val !== null && val !== undefined, {
       message: "La fecha de autorización es requerida.",
     }),
+  closingDate: z.date().optional(),
   tome: z.preprocess(
     (val) => (val === "" || val == null ? undefined : Number(val)),
     z

@@ -1,10 +1,11 @@
 import { useMemo, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, type SubmitHandler, type Resolver } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -18,51 +19,68 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Book } from "@/types";
+import { type Tome } from "@/types";
 import { useSaveAction } from "@/hooks/useSaveAction";
 import {
   pdfSettingsSchema,
   type PdfSettingsFormValues,
 } from "../schemas/pdfSettingsSchema";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface BookPdfSettingsFormProps {
-  book: Book;
-  onUpdateSettings: (settings: Book["pdfSettings"]) => void;
+  tome: Tome;
+  onUpdateSettings: (settings: Tome["pdfSettings"]) => void;
 }
 
 export const BookPdfSettingsForm = ({
-  book,
+  tome,
   onUpdateSettings,
 }: BookPdfSettingsFormProps) => {
   const form = useForm<PdfSettingsFormValues>({
-    resolver: zodResolver(pdfSettingsSchema),
+    resolver: zodResolver(
+      pdfSettingsSchema
+    ) as unknown as Resolver<PdfSettingsFormValues>,
     defaultValues: {
-      pageSize: book.pdfSettings?.pageSize || "A4",
-      orientation: book.pdfSettings?.orientation || "portrait",
-      marginTop: book.pdfSettings?.margins?.top || 50,
-      marginBottom: book.pdfSettings?.margins?.bottom || 50,
-      marginLeft: book.pdfSettings?.margins?.left || 60,
-      marginRight: book.pdfSettings?.margins?.right || 60,
-      lineHeight: book.pdfSettings?.lineHeight || 1.5,
-      fontSize: book.pdfSettings?.fontSize || 11,
+      pageSize: tome.pdfSettings?.pageSize || "A4",
+      orientation: tome.pdfSettings?.orientation || "portrait",
+      marginTop: tome.pdfSettings?.margins?.top || 50,
+      marginBottom: tome.pdfSettings?.margins?.bottom || 50,
+      marginLeft: tome.pdfSettings?.margins?.left || 60,
+      marginRight: tome.pdfSettings?.margins?.right || 60,
+      lineHeight: tome.pdfSettings?.lineHeight || 1.5,
+      fontSize: tome.pdfSettings?.fontSize || 11,
+      enablePageNumbering: tome.pdfSettings?.enablePageNumbering || false,
+      pageNumberingOffset: tome.pdfSettings?.pageNumberingOffset || 0,
+      pageNumberingPosition:
+        tome.pdfSettings?.pageNumberingPosition || "center",
+      pageNumberingFormat: tome.pdfSettings?.pageNumberingFormat || "simple",
     },
   });
 
   const currentFormData = form.watch();
 
-  // Mapear datos para el hook
+  const enableNumbering = form.watch("enablePageNumbering");
+
   const initialHookData = useMemo(
     () => ({
-      pageSize: book.pdfSettings?.pageSize || "A4",
-      orientation: book.pdfSettings?.orientation || "portrait",
-      marginTop: book.pdfSettings?.margins?.top || 50,
-      marginBottom: book.pdfSettings?.margins?.bottom || 50,
-      marginLeft: book.pdfSettings?.margins?.left || 60,
-      marginRight: book.pdfSettings?.margins?.right || 60,
-      lineHeight: book.pdfSettings?.lineHeight || 1.5,
-      fontSize: book.pdfSettings?.fontSize || 11,
+      pageSize: tome.pdfSettings?.pageSize || "A4",
+      orientation: tome.pdfSettings?.orientation || "portrait",
+      marginTop: tome.pdfSettings?.margins?.top || 50,
+      marginBottom: tome.pdfSettings?.margins?.bottom || 50,
+      marginLeft: tome.pdfSettings?.margins?.left || 60,
+      marginRight: tome.pdfSettings?.margins?.right || 60,
+      lineHeight: tome.pdfSettings?.lineHeight || 1.5,
+      fontSize: tome.pdfSettings?.fontSize || 11,
+      enablePageNumbering: tome.pdfSettings?.enablePageNumbering || false,
+      pageNumberingOffset: tome.pdfSettings?.pageNumberingOffset || 0,
+      pageNumberingPosition:
+        tome.pdfSettings?.pageNumberingPosition || "center",
+      pageNumberingFormat: tome.pdfSettings?.pageNumberingFormat || "simple",
     }),
-    [book.pdfSettings]
+    [tome.pdfSettings]
   );
   const currentHookData = useMemo(() => currentFormData, [currentFormData]);
 
@@ -82,6 +100,10 @@ export const BookPdfSettingsForm = ({
           },
           lineHeight: dataToSave.lineHeight,
           fontSize: dataToSave.fontSize,
+          enablePageNumbering: dataToSave.enablePageNumbering,
+          pageNumberingOffset: dataToSave.pageNumberingOffset,
+          pageNumberingPosition: dataToSave.pageNumberingPosition,
+          pageNumberingFormat: dataToSave.pageNumberingFormat,
         });
       },
       onSuccess: (savedData) => {
@@ -94,16 +116,21 @@ export const BookPdfSettingsForm = ({
 
   useEffect(() => {
     form.reset({
-      pageSize: book.pdfSettings?.pageSize || "A4",
-      orientation: book.pdfSettings?.orientation || "portrait",
-      marginTop: book.pdfSettings?.margins?.top || 50,
-      marginBottom: book.pdfSettings?.margins?.bottom || 50,
-      marginLeft: book.pdfSettings?.margins?.left || 60,
-      marginRight: book.pdfSettings?.margins?.right || 60,
-      lineHeight: book.pdfSettings?.lineHeight || 1.5,
-      fontSize: book.pdfSettings?.fontSize || 11,
+      pageSize: tome.pdfSettings?.pageSize || "A4",
+      orientation: tome.pdfSettings?.orientation || "portrait",
+      marginTop: tome.pdfSettings?.margins?.top || 50,
+      marginBottom: tome.pdfSettings?.margins?.bottom || 50,
+      marginLeft: tome.pdfSettings?.margins?.left || 60,
+      marginRight: tome.pdfSettings?.margins?.right || 60,
+      lineHeight: tome.pdfSettings?.lineHeight || 1.5,
+      fontSize: tome.pdfSettings?.fontSize || 11,
+      enablePageNumbering: tome.pdfSettings?.enablePageNumbering || false,
+      pageNumberingOffset: tome.pdfSettings?.pageNumberingOffset || 0,
+      pageNumberingPosition:
+        tome.pdfSettings?.pageNumberingPosition || "center",
+      pageNumberingFormat: tome.pdfSettings?.pageNumberingFormat || "simple",
     });
-  }, [book.pdfSettings, form]);
+  }, [tome.pdfSettings, form]);
 
   const onSubmit: SubmitHandler<PdfSettingsFormValues> = () => {
     handleSave();
@@ -306,7 +333,160 @@ export const BookPdfSettingsForm = ({
                   </FormItem>
                 )}
               />
-              <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
+
+              <div className="space-y-6">
+                <Separator />
+                <h4 className="text-base font-semibold">
+                  Numeración de Página
+                </h4>
+                <FormField
+                  control={form.control}
+                  name="enablePageNumbering"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Activar numeración de página
+                        </FormLabel>
+                        <FormDescription>
+                          Añade números de página al pie del documento PDF.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {enableNumbering && (
+                  <div className="space-y-6 pl-4 border-l-2 ml-4">
+                    {/* ... (Campo 'pageNumberingOffset' sin cambios) ... */}
+                    <FormField
+                      control={form.control}
+                      name="pageNumberingOffset"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Páginas sin numerar al inicio</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Ej: Escriba '2' para omitir la Portada y el Índice.
+                            La página 3 mostrará el número "1".
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* ✅ CORREGIDO: Campo 'pageNumberingPosition' */}
+                    <FormField
+                      control={form.control}
+                      name="pageNumberingPosition"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel>Posición del número</FormLabel>
+                          {/* El <FormControl> envuelve al <RadioGroup> */}
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-row gap-4"
+                            >
+                              {/* Esta es la estructura plana correcta */}
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="left"
+                                  id={`pos-left-${field.name}`}
+                                />
+                                <Label
+                                  htmlFor={`pos-left-${field.name}`}
+                                  className="font-normal cursor-pointer"
+                                >
+                                  Izquierda
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="center"
+                                  id={`pos-center-${field.name}`}
+                                />
+                                <Label
+                                  htmlFor={`pos-center-${field.name}`}
+                                  className="font-normal cursor-pointer"
+                                >
+                                  Centro
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="right"
+                                  id={`pos-right-${field.name}`}
+                                />
+                                <Label
+                                  htmlFor={`pos-right-${field.name}`}
+                                  className="font-normal cursor-pointer"
+                                >
+                                  Derecha
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="pageNumberingFormat"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Formato del número</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="simple">
+                                Simple (ej: 1)
+                              </SelectItem>
+                              <SelectItem value="dash">
+                                Con guiones (ej: - 1 -)
+                              </SelectItem>
+                              <SelectItem value="page">
+                                Página X (ej: Página 1)
+                              </SelectItem>
+                              <SelectItem value="pageTotal">
+                                Página X de Y (ej: Página 1 de 45)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+              <Separator />
+              <div className="shrink-0 p-4  bg-white sticky bottom-0 z-10">
                 <div className="flex justify-end gap-4">
                   <Button type="submit" disabled={!isDirty || isSaving}>
                     {isSaving ? "Guardando..." : "Guardar"}

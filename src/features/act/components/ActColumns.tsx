@@ -14,7 +14,7 @@ export const columns: ColumnDef<Act>[] = [
       const act = row.original;
       return (
         <Link
-          to={`/books/${act.bookId}`}
+          to={`/books/${act.tomeId}`}
           state={{ initialActId: act.id }}
           className="font-medium text-primary hover:underline"
         >
@@ -24,21 +24,20 @@ export const columns: ColumnDef<Act>[] = [
     },
   },
   {
-    accessorKey: "bookName",
-    header: "Libro de Origen",
+    accessorKey: "tomeName",
+    header: "Tomo de Origen",
     cell: ({ row }) => {
       const act = row.original;
       return (
         <Link
-          to={`/books/${act.bookId}`}
+          to={`/books/${act.tomeId}`}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
-          {act.bookName}
+          {act.tomeName}
         </Link>
       );
     },
   },
-
   {
     accessorKey: "agreementsCount",
     header: () => <div className="text-right"># Acuerdos</div>,

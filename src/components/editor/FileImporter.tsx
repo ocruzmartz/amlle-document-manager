@@ -11,6 +11,17 @@ interface FileImporterProps {
   acceptedFormats?: string;
 }
 
+// ✅ AÑADIDO: Helper para limpiar el HTML de Excel
+const extractExcelTable = (fullHtml: string): string => {
+  // Extrae solo el contenido de la tabla
+  const tableMatch = fullHtml.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  if (tableMatch) {
+    // Devolvemos solo la tabla. Tiptap la manejará.
+    return tableMatch[0];
+  }
+  return fullHtml; // Fallback por si algo falla
+};
+
 export const FileImporter = ({
   onImport,
   acceptedFormats = ".docx, .xlsx, .xls",
@@ -39,14 +50,18 @@ export const FileImporter = ({
         setError("No se pudo procesar el archivo .docx.");
       }
     } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      // Lógica para archivos de Excel (.xlsx, .xls)
       try {
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
 
-        const html = XLSX.utils.sheet_to_html(worksheet);
-        onImport(html);
+        const fullHtml = XLSX.utils.sheet_to_html(worksheet);
+        
+        // ✅ CORRECCIÓN: Limpiar el HTML de Excel antes de importar
+        const tableHtml = extractExcelTable(fullHtml);
+        onImport(tableHtml);
       } catch (err) {
         console.error("Error al procesar el archivo de Excel:", err);
         setError("No se pudo procesar el archivo de Excel.");
@@ -58,7 +73,6 @@ export const FileImporter = ({
     }
 
     setIsLoading(false);
-    // Resetea el input para poder subir el mismo archivo de nuevo
     event.target.value = "";
   };
 

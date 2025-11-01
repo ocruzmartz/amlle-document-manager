@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select"; // Usar Select de Shadcn
 import { Badge } from "@/components/ui/badge"; // Usar Badge de Shadcn
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Usar ScrollArea de Shadcn
-import { Input } from "@/components/ui/input";
+
 
 interface AttendeeSelectionModalProps {
   isOpen: boolean;
@@ -250,7 +250,6 @@ export const AttendeeSelectionModal = ({
                   Concejales Propietarios
                 </h3>
 
-                <Input placeholder="Buscar concejales..." />
                 
 
                 {/* Grid de Concejales - 2 columnas en pantallas grandes */}

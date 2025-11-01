@@ -224,7 +224,7 @@ body {
 /* ===== TABLAS ===== */
 .ProseMirror table {
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
   margin: 1rem 0;
   overflow: hidden;
@@ -239,6 +239,8 @@ body {
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ProseMirror table th {

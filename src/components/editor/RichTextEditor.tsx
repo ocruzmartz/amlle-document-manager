@@ -20,7 +20,10 @@ import { useEffect } from "react";
 
 const cleanPastedHtml = (html: string): string => {
   let cleanedHtml = html.replace(/class="[^"]*"/g, "");
-  cleanedHtml = cleanedHtml.replace(/style="((?!text-align)[^"]*)"/g, "");
+  cleanedHtml = cleanedHtml.replace(
+    /style="((?!(text-align|border|width|background-color))[^"]*)"/g,
+    ""
+  );
   cleanedHtml = cleanedHtml.replace(/<o:p>&nbsp;<\/o:p>/g, "");
   cleanedHtml = cleanedHtml.replace(/<o:p><\/o:p>/g, "");
   cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");

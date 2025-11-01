@@ -1,3 +1,4 @@
+// src/types/act.ts
 import { type Agreement } from "./agreement";
 import type { CouncilMember } from "./council";
 
@@ -6,8 +7,8 @@ export type ActSessionType = "Ordinary" | "Extraordinary" | "Special";
 export type Act = {
   id: string;
   name: string;
-  bookId: string;
-  bookName: string;
+  tomeId: string;
+  tomeName: string;
   sessionDate: string;
   actNumber?: number;
   sessionType?: ActSessionType;

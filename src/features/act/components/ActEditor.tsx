@@ -1,5 +1,4 @@
-// src/features/act/components/ActEditor.tsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
@@ -19,7 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateActHeaderHtml } from "../lib/actHelpers";
-import { useSaveAction } from "@/hooks/useSaveAction"; // ✅ Importar hook
+import { useSaveAction } from "@/hooks/useSaveAction"; 
 
 interface ActEditorProps {
   act: Act;
@@ -38,7 +37,6 @@ export const ActEditor = ({
   isAgreementsPanelVisible = true,
   setHasUnsavedChanges,
 }: ActEditorProps) => {
-  // Estados locales
   const [localActData, setLocalActData] = useState<Partial<Act>>(act);
   const [editorContent, setEditorContent] = useState<string>(act.bodyContent);
   const [clarifyingNoteContent, setClarifyingNoteContent] = useState<string>(
@@ -48,7 +46,6 @@ export const ActEditor = ({
     (act.bodyContent || "").includes('data-act-header="true"')
   );
 
-  // Combinar datos actuales para el hook
   const currentCombinedData = useMemo(
     () => ({
       ...act,
@@ -59,7 +56,6 @@ export const ActEditor = ({
     [act, localActData, editorContent, clarifyingNoteContent]
   );
 
-  // Usar el hook
   const { handleSave, isDirty, isSaving } = useSaveAction<Act>({
     initialData: act,
     currentData: currentCombinedData,
@@ -70,7 +66,6 @@ export const ActEditor = ({
     errorMessage: "Error al guardar el acta.",
   });
 
-  // Sincronizar estados locales si 'act' cambia
   useEffect(() => {
     setLocalActData(act);
     setEditorContent(act.bodyContent);
@@ -80,7 +75,6 @@ export const ActEditor = ({
     );
   }, [act]);
 
-  // Handlers simplificados (solo actualizan estado local)
   const handlePropertyChange = useCallback(
     <K extends keyof Act>(field: K, value: Act[K]) => {
       setLocalActData((prevState) => ({ ...prevState, [field]: value }));
@@ -97,10 +91,9 @@ export const ActEditor = ({
     setClarifyingNoteContent(newContent);
   }, []);
 
-  // --- Lógica del Encabezado (sin cambios funcionales) ---
   const generateInitialHeader = () => {
     const headerHtml = generateActHeaderHtml(localActData);
-    setEditorContent(headerHtml); // Actualiza estado local
+    setEditorContent(headerHtml);
     setHeaderExistsInContent(true);
   };
   const regenerateHeader = () => {
@@ -112,7 +105,7 @@ export const ActEditor = ({
     } else {
       newBodyContent = newHeaderHtml + "\n" + editorContent;
     }
-    setEditorContent(newBodyContent); // Actualiza estado local
+    setEditorContent(newBodyContent);
     setHeaderExistsInContent(true);
   };
   const needsRegeneration = () => {
@@ -130,7 +123,6 @@ export const ActEditor = ({
 
   return (
     <form onSubmit={(e) => e.preventDefault()} className="flex flex-col h-full">
-      {/* Header */}
       <div className="shrink-0 p-3 border-b bg-white flex justify-between items-center sticky top-0 z-10">
         <h2 className="text-lg font-bold truncate" title={act.name}>
           {act.name}

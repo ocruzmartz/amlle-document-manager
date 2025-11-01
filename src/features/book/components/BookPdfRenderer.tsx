@@ -1,30 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { type Book } from "@/types";
+import { type Tome } from "@/types";
 
 interface BookPdfRendererProps {
-  book: Book;
+  tome: Tome;
   currentPageIndex?: number;
 }
 
-// ✅ Componente lazy para el PDFViewer
 const PDFPreview = React.lazy(async () => {
   try {
     console.log("1. Iniciando carga diferida de PDFPreview...");
     const { PDFViewer } = await import("@react-pdf/renderer");
-
-    // PASO CLAVE DE DEPURACIÓN
-    const bookDocumentModule = await import("./BookPdfDocument");
-    console.log("2. Módulo BookDocument importado:", bookDocumentModule);
-    console.log(
-      "3. ¿Existe BookDocument dentro del módulo?:",
-      bookDocumentModule.BookPdfDocument
-    );
-    // FIN DEL PASO DE DEPURACIÓN
-
     const { BookPdfDocument } = await import("./BookPdfDocument");
 
     return {
-      default: ({ book }: { book: Book }) => (
+      default: ({ tome }: { tome: Tome }) => (
         <PDFViewer
           style={{
             width: "100%",
@@ -33,15 +22,15 @@ const PDFPreview = React.lazy(async () => {
           }}
           showToolbar={true}
         >
-          <BookPdfDocument book={book} />
+          <BookPdfDocument tome={tome} />
         </PDFViewer>
       ),
     };
   } catch (error) {
     console.error("Error loading PDF components:", error);
-    // Fallback component
+
     return {
-      default: ({ book }: { book: Book }) => (
+      default: ({ tome }: { tome: Tome }) => (
         <div className="flex items-center justify-center h-full bg-gray-50 border rounded-lg">
           <div className="text-center p-8">
             <div className="text-red-500 mb-4">
@@ -67,21 +56,23 @@ const PDFPreview = React.lazy(async () => {
               libro:
             </p>
             <div className="text-left bg-white p-4 rounded border">
-              <h4 className="font-bold mb-2">{book.name}</h4>
-              <p className="text-sm text-gray-600 mb-2">Tomo: {book.tome}</p>
+              <h4 className="font-bold mb-2">{tome.name}</h4>
               <p className="text-sm text-gray-600 mb-2">
-                Creado: {new Date(book.createdAt).toLocaleDateString()}
+                Tomo: {tome.tomeNumber}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                Creado: {new Date(tome.createdAt).toLocaleDateString()}
               </p>
               <p className="text-sm text-gray-600">
-                Actas: {book.acts?.length || 0}
+                Actas: {tome.acts?.length || 0}
               </p>
-              {book.acts && book.acts.length > 0 && (
+              {tome.acts && tome.acts.length > 0 && (
                 <div className="mt-4">
                   <h5 className="font-semibold text-sm mb-2">
                     Lista de Actas:
                   </h5>
                   <ul className="text-xs space-y-1">
-                    {book.acts.map((act, index) => (
+                    {tome.acts.map((act, index) => (
                       <li key={act.id} className="text-gray-600">
                         {index + 1}. {act.name}
                       </li>
@@ -97,7 +88,7 @@ const PDFPreview = React.lazy(async () => {
   }
 });
 
-export const BookPdfRenderer = ({ book }: BookPdfRendererProps) => {
+export const BookPdfRenderer = ({ tome }: BookPdfRendererProps) => {
   const [isClient, setIsClient] = useState(false);
 
   // ✅ Solo renderizar en el cliente para evitar errores de hidratación
@@ -107,9 +98,9 @@ export const BookPdfRenderer = ({ book }: BookPdfRendererProps) => {
 
   // ✅ Debug para ver la estructura del libro
   useEffect(() => {
-    console.log("📚 BookPageRenderer - Libro recibido:", book);
-    console.log("📋 Actas disponibles:", book.acts?.length || 0);
-  }, [book]);
+    console.log("📚 BookPageRenderer - Tomo recibido:", tome);
+    console.log("📋 Actas disponibles:", tome.acts?.length || 0);
+  }, [tome]);
 
   if (!isClient) {
     return (
@@ -138,7 +129,7 @@ export const BookPdfRenderer = ({ book }: BookPdfRendererProps) => {
           </div>
         }
       >
-        <PDFPreview book={book} />
+        <PDFPreview tome={tome} />
       </React.Suspense>
     </div>
   );

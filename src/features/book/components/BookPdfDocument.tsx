@@ -8,15 +8,15 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import { Table, TR, TH, TD } from "@ag-media/react-pdf-table";
 import type { Style, HyphenationCallback } from "@react-pdf/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { numberToWords, capitalize } from "@/lib/textUtils";
-import { type Book, type Act } from "@/types";
-import type { JSX } from "react/jsx-runtime";
-
+import { type Tome, type Act } from "@/types";
 import createHyphenator from "hyphen";
 import patternsEs from "hyphen/patterns/es";
+import { allCouncilMembers } from "../data/mock";
 
 const hyphenator = createHyphenator(patternsEs);
 const hyphenationCallback: HyphenationCallback = (word) => {
@@ -26,7 +26,6 @@ const hyphenationCallback: HyphenationCallback = (word) => {
   const result = hyphenator(word);
   return Array.isArray(result) ? result : [word];
 };
-
 Font.register({
   family: "Museo Sans",
   fonts: [
@@ -62,7 +61,6 @@ Font.register({
     },
   ],
 });
-
 const parseStyleAttribute = (styleString: string | null): Style => {
   if (!styleString) return {};
   const style: Style = {};
@@ -92,13 +90,14 @@ const parseStyleAttribute = (styleString: string | null): Style => {
   });
   return style;
 };
-
-const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
+const renderHtmlNodes = (
+  html: string,
+  baseStyle: Style
+): React.ReactElement[] => {
   if (!html) return [];
 
   const cleanHtml = html.replace(/&nbsp;/g, " ");
 
-  // ✅ 1. Regex actualizada para capturar <br> (etiqueta aut-cerrada)
   const regex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
   const nodes = [];
@@ -109,7 +108,11 @@ const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
 
     if (plainText) {
       nodes.push(
-        <Text key={key++} style={baseStyle}>
+        <Text
+          key={key++}
+          style={baseStyle}
+          hyphenationCallback={hyphenationCallback}
+        >
           {plainText}
         </Text>
       );
@@ -154,7 +157,11 @@ const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
       }
 
       nodes.push(
-        <Text key={key++} style={style}>
+        <Text
+          key={key++}
+          style={style}
+          hyphenationCallback={hyphenationCallback}
+        >
           {renderHtmlNodes(innerHtml, {})}
         </Text>
       );
@@ -163,7 +170,12 @@ const renderHtmlNodes = (html: string, baseStyle: Style): JSX.Element[] => {
   return nodes;
 };
 
-const getStyles = (fontSize = 11) =>
+// ... (getStyles sin cambios)
+const getStyles = (
+  fontSize = 11,
+  pageNumberPosition: "left" | "center" | "right" = "center",
+  margins = { top: 50, bottom: 50, left: 60, right: 60 }
+) =>
   StyleSheet.create({
     page: {
       fontFamily: "Museo Sans",
@@ -217,29 +229,13 @@ const getStyles = (fontSize = 11) =>
     listItem: { flexDirection: "row", marginBottom: 3 },
     listItemBullet: { width: 15, fontSize: fontSize - 1 },
     listItemContent: { flex: 1 },
-    table: {
-      width: "100%",
-      borderStyle: "solid",
-      borderWidth: 1,
-      borderColor: "#bfbfbf",
-      marginBottom: 10,
-      borderRightWidth: 0,
-      borderBottomWidth: 0,
-    },
-    tableRow: { flexDirection: "row" },
-    tableCell: {
-      padding: 5,
-      borderStyle: "solid",
-      borderWidth: 1,
-      borderColor: "#bfbfbf",
-      borderLeftWidth: 0,
-      borderTopWidth: 0,
-      flexWrap: "wrap",
-    },
-    tableCellText: { fontSize: fontSize - 2, textAlign: "left" },
+    // Estilos de tabla manuales (ya no se usan para layout)
+    table: {},
+    tableRow: {},
+    tableCell: {},
+    tableCellText: {},
     signaturesSection: {
       marginTop: 60,
-      textAlign: "center",
       fontSize: fontSize,
     },
     mainSignatureName: { fontFamily: "Museo Sans", fontWeight: 700 },
@@ -268,114 +264,367 @@ const getStyles = (fontSize = 11) =>
       textAlign: "justify",
     },
     notaTitle: { fontFamily: "Museo Sans", fontWeight: 700 },
+    pageNumber: {
+      position: "absolute",
+      fontSize: fontSize - 2,
+      fontFamily: "Museo Sans",
+      fontWeight: 300,
+      bottom: margins.bottom / 2,
+      left: margins.left,
+      right: margins.right,
+      textAlign: pageNumberPosition,
+      color: "#333",
+    },
   });
+
+// ✅ FUNCIÓN MEJORADA: Renderizar contenido de celdas manteniendo formato
+const renderSimpleCellContent = (
+  html: string,
+  baseStyle: Style,
+  fontSize: number
+): React.ReactElement[] => {
+  if (!html || !html.trim()) return [<Text key="empty"></Text>];
+
+  const cleanHtml = html
+    .replace(/&nbsp;/g, " ")
+    .replace(/<br\s*\/?>/gi, "\n");
+
+  // Procesar contenido con formato
+  const elements: React.ReactElement[] = [];
+  let key = 0;
+
+  // Dividir por párrafos
+  const paragraphs = cleanHtml.split(/<\/?p[^>]*>/gi).filter(p => p.trim());
+  
+  paragraphs.forEach((para, pIndex) => {
+    // Procesar inline styles (bold, italic, etc.)
+    const processInlineStyles = (text: string): React.ReactElement[] => {
+      const parts: React.ReactElement[] = [];
+      let currentIndex = 0;
+      const regex = /<(strong|em|u|span)([^>]*)>(.*?)<\/\1>|([^<]+)/gs;
+      let match;
+
+      while ((match = regex.exec(text)) !== null) {
+        const [fullMatch, tag, attributes, innerText, plainText] = match;
+
+        if (plainText) {
+          parts.push(
+            <Text key={`plain-${key++}`}>
+              {plainText}
+            </Text>
+          );
+        } else if (tag && innerText) {
+          let style: Style = {};
+          
+          switch (tag.toLowerCase()) {
+            case 'strong':
+              style.fontWeight = 700;
+              break;
+            case 'em':
+              style.fontStyle = 'italic';
+              break;
+            case 'u':
+              style.textDecoration = 'underline';
+              break;
+            case 'span':
+              const styleAttr = attributes.match(/style="([^"]*)"/);
+              if (styleAttr) {
+                style = parseStyleAttribute(styleAttr[1]);
+              }
+              break;
+          }
+
+          parts.push(
+            <Text key={`styled-${key++}`} style={style}>
+              {innerText}
+            </Text>
+          );
+        }
+      }
+
+      return parts;
+    };
+
+    elements.push(
+      <Text
+        key={`para-${pIndex}`}
+        style={{
+          ...baseStyle,
+          fontSize: fontSize,
+          marginBottom: pIndex < paragraphs.length - 1 ? 3 : 0,
+        }}
+        hyphenationCallback={hyphenationCallback}
+      >
+        {processInlineStyles(para)}
+      </Text>
+    );
+  });
+
+  return elements.length > 0 ? elements : [<Text key="fallback">{cleanHtml.replace(/<[^>]*>/g, "")}</Text>];
+};
+
+// ✅ Función parseHtmlTable MEJORADA con mejor manejo de anchos
+const parseHtmlTable = (
+  tableHtml: string,
+  baseTextStyle: Style,
+  fontSize: number
+) => {
+  const rows = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gs) || [];
+
+  let headerRow: string | null = null;
+  const bodyRows: string[] = [];
+
+  rows.forEach((row) => {
+    const hasThTag = /<th[^>]*>/i.test(row);
+    if (hasThTag && !headerRow) {
+      headerRow = row;
+    } else {
+      bodyRows.push(row);
+    }
+  });
+
+  const parseCells = (rowHtml: string) => {
+    const cells = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gs) || [];
+    return cells.map((cellHtml) => {
+      const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
+      const attributes = cellTagMatch ? cellTagMatch[2] : "";
+      const styleAttr = attributes.match(/style="([^"]*)"/);
+      const cellInlineStyle = parseStyleAttribute(
+        styleAttr ? styleAttr[1] : null
+      );
+      const innerHtml = cellHtml
+        .replace(/<t[dh][^>]*>/, "")
+        .replace(/<\/t[dh]>$/, "")
+        .trim();
+      return { innerHtml, style: cellInlineStyle };
+    });
+  };
+
+  // ✅ Calcular número de columnas para distribuir ancho
+  const firstRowCells = parseCells(headerRow || bodyRows[0] || "");
+  const columnCount = firstRowCells.length;
+  
+  // ✅ Ancho automático por columna (100% / número de columnas)
+  const columnWidth = `${100 / columnCount}%`;
+
+  // ✅ Estilo base para celdas
+  const baseCellStyle: Style = {
+    ...baseTextStyle,
+    padding: 4,
+    borderWidth: 0.5,
+    borderColor: "#bfbfbf",
+    textAlign: "left",
+    fontSize: fontSize - 1, // ✅ Reducir ligeramente el tamaño de fuente en tablas
+    // ✅ NO usar flexWrap aquí, la librería lo maneja internamente
+  };
+
+  return (
+    <Table
+      tdStyle={{
+        ...baseCellStyle,
+        width: columnWidth, // ✅ Ancho fijo por columna
+      }}
+    >
+      {/* Fila de Encabezado */}
+      {headerRow && (
+        <TH>
+          {parseCells(headerRow).map((cell, idx) => {
+            const cellWidth = cell.style.width || columnWidth;
+            return (
+              <TD 
+                key={`hcell-${idx}`} 
+                style={{ 
+                  ...cell.style, 
+                  fontWeight: 700,
+                  width: cellWidth,
+                  padding: 4,
+                }}
+              >
+                {renderSimpleCellContent(
+                  cell.innerHtml,
+                  { ...baseTextStyle, fontWeight: 700, textAlign: cell.style.textAlign || "left" },
+                  fontSize - 1
+                )}
+              </TD>
+            );
+          })}
+        </TH>
+      )}
+      {/* Filas del Cuerpo */}
+      {bodyRows.map((rowContent, rowIndex) => {
+        const cells = parseCells(rowContent);
+        return (
+          <TR key={`row-${rowIndex}`}>
+            {cells.map((cell, cellIndex) => {
+              const cellWidth = cell.style.width || columnWidth;
+              return (
+                <TD 
+                  key={`cell-${cellIndex}`} 
+                  style={{
+                    ...cell.style,
+                    width: cellWidth,
+                    padding: 4,
+                  }}
+                >
+                  {renderSimpleCellContent(
+                    cell.innerHtml,
+                    { ...baseTextStyle, textAlign: cell.style.textAlign || "left" },
+                    fontSize - 1
+                  )}
+                </TD>
+              );
+            })}
+          </TR>
+        );
+      })}
+    </Table>
+  );
+};
 
 const renderContentBlocks = (
   html: string,
-  baseTextStyle: Style
-): (JSX.Element | null)[] | null => {
+  baseTextStyle: Style,
+  fontSize: number = 11
+): (React.ReactElement | null)[] | null => {
   if (!html || !html.trim()) return null;
+
   const cleanHtml = html.replace(
     /<p><strong>(Acta|Acuerdo) número [^<]*<\/strong><\/p>/,
     ""
   );
 
-  const blockRegex = /<(p|ul|ol|table)[^>]*>[\s\S]*?<\/\1>/gs;
-  const blocks: string[] = cleanHtml.match(blockRegex) || [];
+  const blockRegex = /<(p|ul|ol|table)[^>]*>([\s\S]*?)<\/\1>/gs;
+
+  const blocks: string[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = blockRegex.exec(cleanHtml)) !== null) {
+    const orphanText = cleanHtml.substring(lastIndex, match.index).trim();
+    if (orphanText) {
+      blocks.push(`<p>${orphanText}</p>`);
+    }
+    blocks.push(match[0]);
+    lastIndex = match.index + match[0].length;
+  }
+
+  const remainingOrphanText = cleanHtml.substring(lastIndex).trim();
+  if (remainingOrphanText) {
+    blocks.push(`<p>${remainingOrphanText}</p>`);
+  }
 
   if (blocks.length === 0 && cleanHtml.trim()) {
     blocks.push(`<p>${cleanHtml}</p>`);
   }
 
   return blocks.map((block, blockIndex) => {
+    // --- RENDERIZADO DE TABLA ---
     if (block.trim().startsWith("<table")) {
-      const rows = block.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gs) || [];
+      const cellTextStyle: Style = { 
+        ...baseTextStyle, 
+        textAlign: "left",
+        fontSize: fontSize - 1, // ✅ Reducir tamaño en tablas
+      };
+
       return (
-        <View key={`table-${blockIndex}`} style={getStyles().table}>
-          {rows.map((rowContent, rowIndex) => (
-            <View key={`row-${rowIndex}`} style={getStyles().tableRow}>
-              {(rowContent.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gs) || []).map(
-                (cellHtml, cellIndex) => {
-                  const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
-                  const isHeader = cellTagMatch
-                    ? cellTagMatch[1] === "th"
-                    : false;
-                  const attributes = cellTagMatch ? cellTagMatch[2] : "";
-                  const styleAttr = attributes.match(/style="([^"]*)"/);
-                  const cellInlineStyle = parseStyleAttribute(
-                    styleAttr ? styleAttr[1] : null
-                  );
-
-                  const innerHtml = cellHtml
-                    .replace(/<t[dh][^>]*>/, "")
-                    .replace(/<\/t[dh]>$/, "");
-
-                  return (
-                    <View
-                      key={`cell-${cellIndex}`}
-                      style={{ ...getStyles().tableCell, ...cellInlineStyle }}
-                    >
-                      {renderHtmlNodes(innerHtml, {
-                        ...getStyles().tableCellText,
-                        fontWeight: isHeader ? 700 : 500,
-                      })}
-                    </View>
-                  );
-                }
-              )}
-            </View>
-          ))}
+        <View 
+          key={`table-${blockIndex}`} 
+          style={{ 
+            marginVertical: 8,
+            width: "100%",
+          }}
+          wrap={false} // ✅ Evitar que la tabla se parta entre páginas
+        >
+          {parseHtmlTable(block, cellTextStyle, fontSize)}
         </View>
       );
     }
 
-    if (block.trim().startsWith("<ol") || block.trim().startsWith("<ul")) {
-      const isOrdered = block.trim().startsWith("<ol");
-      const listItems = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
-      return (
-        <View key={`list-${blockIndex}`} style={getStyles().listContainer}>
-          {listItems.map((item, itemIndex) => (
-            <View key={`item-${itemIndex}`} style={getStyles().listItem}>
-              <Text style={getStyles().listItemBullet}>
-                {isOrdered ? `${itemIndex + 1}.` : "•"}
-              </Text>
-              <View style={getStyles().listItemContent}>
-                {renderContentBlocks(
-                  item.replace(/<\/?li[^>]*>/g, ""),
-                  baseTextStyle
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
-      );
-    }
-
+    // --- RENDERIZADO DE PÁRRAFO ---
     if (block.trim().startsWith("<p")) {
-      const innerHtml = block.replace(/<\/?p[^>]*>/g, "").trim();
-      if (innerHtml === "" || innerHtml === "<br>" || innerHtml === "&nbsp;") {
-        return (
-          <View key={`p-${blockIndex}`} style={getStyles().emptyParagraph} />
-        );
+      const tagMatch = block.match(/<p([^>]*)>/);
+      const attributes = tagMatch ? tagMatch[1] : "";
+      const styleAttr = attributes.match(/style="([^"]*)"/);
+      const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
+
+      const innerHtml = block
+        .replace(/<p[^>]*>/, "")
+        .replace(/<\/p>$/, "")
+        .trim();
+
+      if (!innerHtml || innerHtml === "<br>") {
+        return <View key={`empty-${blockIndex}`} style={{ height: 8 }} />;
       }
-      const styleAttr = block.match(/style="([^"]*)"/);
-      const pStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
+
       return (
         <Text
           key={`p-${blockIndex}`}
-          style={{ ...baseTextStyle, ...pStyle }}
+          style={{
+            ...baseTextStyle,
+            ...inlineStyle,
+            marginBottom: 5,
+          }}
           hyphenationCallback={hyphenationCallback}
         >
-          {renderHtmlNodes(innerHtml, {})}
+          {renderHtmlNodes(innerHtml, baseTextStyle)}
         </Text>
       );
     }
+
+    // --- RENDERIZADO DE LISTAS (ul/ol) ---
+    if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
+      const isOrdered = block.trim().startsWith("<ol");
+      const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
+
+      return (
+        <View key={`list-${blockIndex}`} style={{ marginBottom: 8 }}>
+          {items.map((item, itemIndex) => {
+            const innerHtml = item
+              .replace(/<li[^>]*>/, "")
+              .replace(/<\/li>$/, "")
+              .trim();
+            const bullet = isOrdered ? `${itemIndex + 1}.` : "•";
+
+            return (
+              <View
+                key={`item-${itemIndex}`}
+                style={{
+                  flexDirection: "row",
+                  marginBottom: 3,
+                  paddingLeft: 15,
+                }}
+              >
+                <Text
+                  style={{
+                    ...baseTextStyle,
+                    width: 20,
+                    fontSize: fontSize - 1,
+                  }}
+                >
+                  {bullet}
+                </Text>
+                <Text
+                  style={{
+                    ...baseTextStyle,
+                    flex: 1,
+                  }}
+                  hyphenationCallback={hyphenationCallback}
+                >
+                  {renderHtmlNodes(innerHtml, baseTextStyle)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      );
+    }
+
     return null;
-  });
+  }).filter((element): element is React.ReactElement | null => element !== undefined);
 };
 
-export const BookPdfDocument = ({ book }: { book: Book | null }) => {
-  if (!book) {
+export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
+  if (!tome) {
     return (
       <Document>
         <Page size="A4" style={getStyles().page}>
@@ -385,15 +634,23 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
     );
   }
 
-  const settings = book.pdfSettings || {
+  const settings = tome.pdfSettings || {
     pageSize: "A4",
     orientation: "portrait",
     margins: { top: 50, bottom: 50, left: 60, right: 60 },
     lineHeight: 1.5,
     fontSize: 11,
+    enablePageNumbering: false,
+    pageNumberingOffset: 0,
+    pageNumberingPosition: "center",
+    pageNumberingFormat: "simple",
   };
 
-  const styles = getStyles(settings.fontSize);
+  const styles = getStyles(
+    settings.fontSize,
+    settings.pageNumberingPosition,
+    settings.margins
+  );
 
   const dynamicPageStyle: Style = {
     paddingTop: settings.margins.top,
@@ -406,22 +663,85 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
     fontWeight: 500,
   };
 
+  // ✅ 'dynamicTextStyle' es el 'baseTextStyle' para todo el contenido
   const dynamicTextStyle: Style = {
     fontSize: settings.fontSize,
-    textAlign: "justify",
+    textAlign: "justify", // ✅ El estilo 'justify' se origina aquí
     lineHeight: settings.lineHeight,
   };
 
-  const authDateString = book.authorizationDate || book.createdAt;
+  // ... (lógica de fechas y firmas sin cambios)
+  const authDateString = tome.authorizationDate || tome.createdAt;
   const authorizationDate = new Date(authDateString);
-  const yearInWords = capitalize(
+  const authYearInWords = capitalize(
     numberToWords(authorizationDate.getFullYear())
   );
-  const dayInWords = numberToWords(authorizationDate.getDate());
-  const monthName = format(authorizationDate, "MMMM", { locale: es });
+  const authDayInWords = numberToWords(authorizationDate.getDate());
+  const authMonthName = format(authorizationDate, "MMMM", { locale: es });
+
+  let closingDayInWords = "[Día]";
+  let closingMonthName = "[Mes]";
+  let closingYearInWords = "[Año]";
+  if (tome.closingDate) {
+    const closingDate = new Date(tome.closingDate);
+    closingDayInWords = numberToWords(closingDate.getDate());
+    closingMonthName = format(closingDate, "MMMM", { locale: es });
+    closingYearInWords = capitalize(numberToWords(closingDate.getFullYear()));
+  }
+
+  const actCount = tome.acts?.length || 0;
+  const actCountInWords = numberToWords(actCount);
+
+  const alcaldesa = allCouncilMembers.find((m) =>
+    m.name.includes("Zoila Milagro Navas")
+  );
+  const secretaria = allCouncilMembers.find((m) => m.role === "SECRETARY");
+  const signatories = allCouncilMembers.filter(
+    (m) => m.role === "OWNER" || m.role === "SYNDIC"
+  );
+
+  // ... (PageNumberRenderer sin cambios)
+  const PageNumberRenderer = () => {
+    if (!settings.enablePageNumbering) {
+      return null;
+    }
+
+    return (
+      <Text
+        style={styles.pageNumber}
+        fixed
+        render={({ pageNumber, totalPages }) => {
+          const offset = settings.pageNumberingOffset || 0;
+
+          if (pageNumber <= offset) {
+            return "";
+          }
+
+          const adjustedPageNumber = pageNumber - offset;
+          const adjustedTotalPages = totalPages - offset;
+
+          switch (settings.pageNumberingFormat) {
+            case "dash":
+              return `- ${adjustedPageNumber} -`;
+            case "page":
+              return `Página ${adjustedPageNumber}`;
+            case "pageTotal":
+              return `Página ${adjustedPageNumber} de ${adjustedTotalPages}`;
+            case "simple":
+            default:
+              return `${adjustedPageNumber}`;
+          }
+        }}
+      />
+    );
+  };
 
   return (
-    <Document title={`Libro de Actas - ${book.name}`}>
+    <Document title={`Libro de Actas - ${tome.name}`}>
+      {/* ========================================
+        PÁGINA 1: PORTADA
+        ========================================
+      */}
       <Page
         size={settings.pageSize}
         orientation={settings.orientation}
@@ -438,18 +758,20 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
             >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
-              y Acuerdos Municipales, de las Sesiones que celebre durante el año{" "}
-              <Text style={{ fontWeight: 700 }}>{yearInWords}</Text> numeradas
-              correlativamente.
+              y Acuerdos Municipales,{" "}
+              <Text style={{ fontWeight: 700 }}>{tome.name}</Text>, de las
+              Sesiones que celebre durante el año{" "}
+              <Text style={{ fontWeight: 700 }}>{authYearInWords}</Text>{" "}
+              numeradas correlativamente.
             </Text>
             <Text
               style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
             >
               Alcaldía Municipal de Antiguo Cuscatlán, a los{" "}
               <Text style={{ fontWeight: 700 }}>
-                {dayInWords} días del mes de {monthName}
+                {authDayInWords} días del mes de {authMonthName}
               </Text>{" "}
-              de <Text style={{ fontWeight: 700 }}>{yearInWords}</Text>.
+              de <Text style={{ fontWeight: 700 }}>{authYearInWords}</Text>.
             </Text>
           </View>
           <View>
@@ -473,14 +795,20 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
             </View>
           </View>
         </View>
+        <PageNumberRenderer />
       </Page>
+
+      {/* ========================================
+        PÁGINA 2: ÍNDICE
+        ========================================
+      */}
       <Page
         size={settings.pageSize}
         orientation={settings.orientation}
         style={dynamicPageStyle}
       >
         <Text style={styles.indexTitle}>Índice</Text>
-        {!book.acts || book.acts.length === 0 ? (
+        {!tome.acts || tome.acts.length === 0 ? (
           <View
             style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
           >
@@ -488,17 +816,19 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
           </View>
         ) : (
           <View>
-            {book.acts.map((act, actIndex) => (
+            {tome.acts.map((act, actIndex) => (
               <React.Fragment key={act.id}>
                 <View style={styles.indexItem}>
                   <Text style={styles.indexItemText}>{act.name}</Text>
                   <View style={styles.indexItemDots} />
+                  {/* TODO: Esta lógica de página +3 es estática, necesita ser dinámica */}
                   <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
                 </View>
                 {act.agreements.map((agreement) => (
                   <View key={agreement.id} style={styles.indexAgreementItem}>
                     <Text style={styles.indexItemText}>{agreement.name}</Text>
                     <View style={styles.indexItemDots} />
+                    {/* TODO: Esta lógica de página +3 es estática, necesita ser dinámica */}
                     <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
                   </View>
                 ))}
@@ -506,15 +836,21 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
             ))}
           </View>
         )}
+        <PageNumberRenderer />
       </Page>
-      {book.acts && book.acts.length > 0 && (
+
+      {/* ========================================
+        PÁGINAS DE ACTAS
+        ========================================
+      */}
+      {tome.acts && tome.acts.length > 0 && (
         <Page
           size={settings.pageSize}
           orientation={settings.orientation}
           style={dynamicPageStyle}
           wrap
         >
-          {book.acts.map((act: Act) => {
+          {tome.acts.map((act: Act) => {
             const hasBodyContent =
               act.bodyContent &&
               act.bodyContent.replace(/<[^>]*>/g, "").trim() !== "";
@@ -531,21 +867,30 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
               >
                 {hasBodyContent && (
                   <View>
-                    {renderContentBlocks(act.bodyContent, dynamicTextStyle)}
+                    {/* ✅ Pasamos 'dynamicTextStyle' (que tiene el fontSize) */}
+                    {renderContentBlocks(
+                      act.bodyContent,
+                      dynamicTextStyle,
+                      settings.fontSize
+                    )}
                   </View>
                 )}
                 {hasAgreements && (
                   <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
+                        {/* ✅ Pasamos 'dynamicTextStyle' (que tiene el fontSize) */}
                         {renderContentBlocks(
                           agreement.content,
-                          dynamicTextStyle
+                          dynamicTextStyle,
+                          settings.fontSize
                         )}
                       </View>
                     ))}
                   </View>
                 )}
+
+                {/* ... (Sección de firmas sin cambios) ... */}
                 <View style={styles.signaturesSection}>
                   <Text>
                     Y no habiendo más que hacer constar se termina la presente
@@ -600,6 +945,8 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
                     <Text>Secretaria Municipal</Text>
                   </View>
                 </View>
+
+                {/* ... (Nota aclaratoria sin cambios) ... */}
                 {hasClarifyingNote && (
                   <View style={styles.notaContainer}>
                     <Text hyphenationCallback={hyphenationCallback}>
@@ -611,6 +958,117 @@ export const BookPdfDocument = ({ book }: { book: Book | null }) => {
               </View>
             );
           })}
+          <PageNumberRenderer />
+        </Page>
+      )}
+
+      {/* ========================================
+        PÁGINA FINAL DE CIERRE
+        ========================================
+      */}
+      {tome.closingDate && (
+        <Page
+          size={settings.pageSize}
+          orientation={settings.orientation}
+          style={dynamicPageStyle}
+        >
+          <View style={styles.coverContainer}>
+            {/* ... (Contenido de página de cierre sin cambios) ... */}
+            <Text
+              style={{
+                ...styles.coverTitle,
+                marginBottom: 20,
+                textAlign: "center",
+              }}
+            >
+              El Concejo Municipal
+            </Text>
+            <Text
+              style={{
+                ...styles.coverText,
+                lineHeight: settings.lineHeight,
+                textAlign: "justify",
+                marginBottom: 40,
+              }}
+              hyphenationCallback={hyphenationCallback}
+            >
+              Cierra el presente Libro de Actas Municipales{" "}
+              <Text style={{ fontWeight: 700 }}>{tome.name}</Text> que llevó
+              durante el corriente año, con{" "}
+              <Text style={{ fontWeight: 700 }}>{actCountInWords} Actas</Text>{" "}
+              asentadas.
+            </Text>
+
+            <Text
+              style={{
+                ...styles.coverDate,
+                lineHeight: settings.lineHeight,
+                textAlign: "left",
+              }}
+            >
+              Alcaldía Municipal Antiguo Cuscatlán, a los{" "}
+              <Text style={{ fontWeight: 700 }}>
+                {closingDayInWords} días del mes de {closingMonthName}
+              </Text>{" "}
+              de <Text style={{ fontWeight: 700 }}>{closingYearInWords}</Text>.
+            </Text>
+            <View
+              style={{
+                ...styles.signaturesSection,
+                marginTop: 40,
+                textAlign: "left",
+              }}
+            >
+              {alcaldesa && (
+                <View style={{ marginBottom: 25 }}>
+                  <Text style={styles.mainSignatureName}>{alcaldesa.name}</Text>
+                  <Text style={styles.mainSignatureRole}>
+                    Alcaldesa Municipal
+                  </Text>
+                </View>
+              )}
+              <View style={styles.signatureColumnsContainer}>
+                <View style={styles.signatureColumn}>
+                  {signatories
+                    .filter((_, i) => i % 2 === 0)
+                    .map(
+                      (p) =>
+                        p && (
+                          <Text key={p.id} style={styles.signatureName}>
+                            {p.name}
+                          </Text>
+                        )
+                    )}
+                </View>
+                <View style={styles.signatureColumn}>
+                  {signatories
+                    .filter((_, i) => i % 2 !== 0)
+                    .map(
+                      (p) =>
+                        p && (
+                          <Text key={p.id} style={styles.signatureName}>
+                            {p.name}
+                          </Text>
+                        )
+                    )}
+                </View>
+              </View>
+              {secretaria && (
+                <View
+                  style={{
+                    ...styles.secretariaSignature,
+                    textAlign: "left",
+                    marginHorizontal: 0,
+                  }}
+                >
+                  <View style={styles.secretariaSignatureLine} />
+                  <Text>{secretaria.name}</Text>
+                  <Text>Secretaria Municipal</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <PageNumberRenderer />
         </Page>
       )}
     </Document>

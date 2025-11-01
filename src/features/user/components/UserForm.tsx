@@ -132,7 +132,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-lg p-0 flex flex-col h-full">
-        <SheetHeader className="p-6 border-b">
+        <SheetHeader className="p-6 ">
           <SheetTitle>
             {isEditMode ? "Editar Usuario" : "Crear Nuevo Usuario"}
           </SheetTitle>
