@@ -8,11 +8,11 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import { Table, TR, TH, TD } from "@ag-media/react-pdf-table";
+import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
 import type { Style, HyphenationCallback } from "@react-pdf/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { numberToWords, capitalize } from "@/lib/textUtils";
+import { numberToWords, capitalize, numberToRoman } from "@/lib/textUtils";
 import { type Tome, type Act } from "@/types";
 import createHyphenator from "hyphen";
 import patternsEs from "hyphen/patterns/es";
@@ -61,6 +61,7 @@ Font.register({
     },
   ],
 });
+
 const parseStyleAttribute = (styleString: string | null): Style => {
   if (!styleString) return {};
   const style: Style = {};
@@ -74,7 +75,29 @@ const parseStyleAttribute = (styleString: string | null): Style => {
           style.fontSize = parseFloat(val);
           break;
         case "text-align":
-          style.textAlign = val as "left" | "right" | "center" | "justify";
+          // ✅ Asegurar que se capture correctamente
+          if (
+            val === "left" ||
+            val === "right" ||
+            val === "center" ||
+            val === "justify"
+          ) {
+            style.textAlign = val;
+          }
+          break;
+        case "font-weight":
+          if (val === "bold" || val === "700") {
+            style.fontWeight = 700;
+          }
+          break;
+        case "font-style":
+          if (val === "italic") {
+            style.fontStyle = "italic";
+          }
+          break;
+        case "text-decoration-line":
+          if (val === "underline") style.textDecoration = "underline";
+          if (val === "line-through") style.textDecoration = "line-through";
           break;
         case "color":
           style.color = val;
@@ -90,15 +113,17 @@ const parseStyleAttribute = (styleString: string | null): Style => {
   });
   return style;
 };
+
 const renderHtmlNodes = (
   html: string,
   baseStyle: Style
 ): React.ReactElement[] => {
   if (!html) return [];
 
-  const cleanHtml = html.replace(/&nbsp;/g, " ");
+  const cleanHtml = html.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
-  const regex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
+  const regex =
+    /<(strong|em|u|span)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
   const nodes = [];
   let key = 0;
@@ -111,6 +136,7 @@ const renderHtmlNodes = (
         <Text
           key={key++}
           style={baseStyle}
+          // ✅ La hipenación se aplica aquí, en el nodo de texto final
           hyphenationCallback={hyphenationCallback}
         >
           {plainText}
@@ -142,27 +168,11 @@ const renderHtmlNodes = (
         case "span":
           style = { ...style, ...inlineStyle };
           break;
-        case "p":
-          style = { ...style, ...inlineStyle };
-          nodes.push(
-            <Text
-              key={key++}
-              style={style}
-              hyphenationCallback={hyphenationCallback}
-            >
-              {renderHtmlNodes(innerHtml, {})}
-            </Text>
-          );
-          continue;
       }
 
       nodes.push(
-        <Text
-          key={key++}
-          style={style}
-          hyphenationCallback={hyphenationCallback}
-        >
-          {renderHtmlNodes(innerHtml, {})}
+        <Text key={key++} style={style}>
+          {renderHtmlNodes(innerHtml, style)}
         </Text>
       );
     }
@@ -170,7 +180,6 @@ const renderHtmlNodes = (
   return nodes;
 };
 
-// ... (getStyles sin cambios)
 const getStyles = (
   fontSize = 11,
   pageNumberPosition: "left" | "center" | "right" = "center",
@@ -229,7 +238,6 @@ const getStyles = (
     listItem: { flexDirection: "row", marginBottom: 3 },
     listItemBullet: { width: 15, fontSize: fontSize - 1 },
     listItemContent: { flex: 1 },
-    // Estilos de tabla manuales (ya no se usan para layout)
     table: {},
     tableRow: {},
     tableCell: {},
@@ -277,93 +285,28 @@ const getStyles = (
     },
   });
 
-// ✅ FUNCIÓN MEJORADA: Renderizar contenido de celdas manteniendo formato
-const renderSimpleCellContent = (
+// ✅ Función mejorada para renderizar contenido de celdas con mejor wrapping
+const renderCellContent = (
   html: string,
-  baseStyle: Style,
-  fontSize: number
-): React.ReactElement[] => {
-  if (!html || !html.trim()) return [<Text key="empty"></Text>];
+  baseTextStyle: Style
+): React.ReactElement | React.ReactElement[] => {
+  if (!html || html.trim() === "" || html === "&nbsp;") {
+    return <Text style={baseTextStyle}>&nbsp;</Text>;
+  }
 
-  const cleanHtml = html
-    .replace(/&nbsp;/g, " ")
-    .replace(/<br\s*\/?>/gi, "\n");
+  const fontSize =
+    typeof baseTextStyle.fontSize === "number" ? baseTextStyle.fontSize : 11;
 
-  // Procesar contenido con formato
-  const elements: React.ReactElement[] = [];
-  let key = 0;
+  // Renderizar directamente los bloques de contenido
+  const content = renderContentBlocks(html, baseTextStyle, fontSize);
 
-  // Dividir por párrafos
-  const paragraphs = cleanHtml.split(/<\/?p[^>]*>/gi).filter(p => p.trim());
-  
-  paragraphs.forEach((para, pIndex) => {
-    // Procesar inline styles (bold, italic, etc.)
-    const processInlineStyles = (text: string): React.ReactElement[] => {
-      const parts: React.ReactElement[] = [];
-      let currentIndex = 0;
-      const regex = /<(strong|em|u|span)([^>]*)>(.*?)<\/\1>|([^<]+)/gs;
-      let match;
+  if (Array.isArray(content) && content.length > 0) {
+    return <>{content}</>;
+  }
 
-      while ((match = regex.exec(text)) !== null) {
-        const [fullMatch, tag, attributes, innerText, plainText] = match;
-
-        if (plainText) {
-          parts.push(
-            <Text key={`plain-${key++}`}>
-              {plainText}
-            </Text>
-          );
-        } else if (tag && innerText) {
-          let style: Style = {};
-          
-          switch (tag.toLowerCase()) {
-            case 'strong':
-              style.fontWeight = 700;
-              break;
-            case 'em':
-              style.fontStyle = 'italic';
-              break;
-            case 'u':
-              style.textDecoration = 'underline';
-              break;
-            case 'span':
-              const styleAttr = attributes.match(/style="([^"]*)"/);
-              if (styleAttr) {
-                style = parseStyleAttribute(styleAttr[1]);
-              }
-              break;
-          }
-
-          parts.push(
-            <Text key={`styled-${key++}`} style={style}>
-              {innerText}
-            </Text>
-          );
-        }
-      }
-
-      return parts;
-    };
-
-    elements.push(
-      <Text
-        key={`para-${pIndex}`}
-        style={{
-          ...baseStyle,
-          fontSize: fontSize,
-          marginBottom: pIndex < paragraphs.length - 1 ? 3 : 0,
-        }}
-        hyphenationCallback={hyphenationCallback}
-      >
-        {processInlineStyles(para)}
-      </Text>
-    );
-  });
-
-  return elements.length > 0 ? elements : [<Text key="fallback">{cleanHtml.replace(/<[^>]*>/g, "")}</Text>];
+  return <Text style={baseTextStyle}>&nbsp;</Text>;
 };
 
-// ✅ Función parseHtmlTable MEJORADA con mejor manejo de anchos
 const parseHtmlTable = (
   tableHtml: string,
   baseTextStyle: Style,
@@ -388,96 +331,121 @@ const parseHtmlTable = (
     return cells.map((cellHtml) => {
       const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
       const attributes = cellTagMatch ? cellTagMatch[2] : "";
+
+      // ✅ Extraer colspan y rowspan
+      const colspanMatch = attributes.match(/colspan="(\d+)"/i);
+      const rowspanMatch = attributes.match(/rowspan="(\d+)"/i);
+      const colspan = colspanMatch ? parseInt(colspanMatch[1], 10) : 1;
+      const rowspan = rowspanMatch ? parseInt(rowspanMatch[1], 10) : 1;
+
       const styleAttr = attributes.match(/style="([^"]*)"/);
       const cellInlineStyle = parseStyleAttribute(
         styleAttr ? styleAttr[1] : null
       );
+
       const innerHtml = cellHtml
         .replace(/<t[dh][^>]*>/, "")
         .replace(/<\/t[dh]>$/, "")
         .trim();
-      return { innerHtml, style: cellInlineStyle };
+
+      return {
+        innerHtml,
+        style: cellInlineStyle,
+        colspan,
+        rowspan,
+      };
     });
   };
 
-  // ✅ Calcular número de columnas para distribuir ancho
-  const firstRowCells = parseCells(headerRow || bodyRows[0] || "");
-  const columnCount = firstRowCells.length;
-  
-  // ✅ Ancho automático por columna (100% / número de columnas)
-  const columnWidth = `${100 / columnCount}%`;
+  // ✅ Calcular el número total de columnas (considerando colspan)
+  const calculateTotalColumns = (rowHtml: string): number => {
+    const cells = parseCells(rowHtml);
+    return cells.reduce((total, cell) => total + cell.colspan, 0);
+  };
 
-  // ✅ Estilo base para celdas
+  // ✅ Obtener el número máximo de columnas de todas las filas
+  let maxColumns = 0;
+  if (headerRow) {
+    maxColumns = Math.max(maxColumns, calculateTotalColumns(headerRow));
+  }
+  bodyRows.forEach((row) => {
+    maxColumns = Math.max(maxColumns, calculateTotalColumns(row));
+  });
+
+  // Si no pudimos calcular columnas, usar un valor por defecto
+  if (maxColumns === 0) {
+    maxColumns = parseCells(headerRow || bodyRows[0] || "").length;
+  }
+
+  console.log("Total de columnas detectadas:", maxColumns); // ✅ Debug
+
   const baseCellStyle: Style = {
-    ...baseTextStyle,
-    padding: 4,
-    borderWidth: 0.5,
-    borderColor: "#bfbfbf",
+    fontSize: fontSize - 1,
     textAlign: "left",
-    fontSize: fontSize - 1, // ✅ Reducir ligeramente el tamaño de fuente en tablas
-    // ✅ NO usar flexWrap aquí, la librería lo maneja internamente
   };
 
   return (
-    <Table
-      tdStyle={{
-        ...baseCellStyle,
-        width: columnWidth, // ✅ Ancho fijo por columna
-      }}
-    >
+    <PdfTable totalColumns={maxColumns}>
       {/* Fila de Encabezado */}
       {headerRow && (
-        <TH>
-          {parseCells(headerRow).map((cell, idx) => {
-            const cellWidth = cell.style.width || columnWidth;
-            return (
-              <TD 
-                key={`hcell-${idx}`} 
-                style={{ 
-                  ...cell.style, 
-                  fontWeight: 700,
-                  width: cellWidth,
-                  padding: 4,
+        <PdfTableRow isHeader>
+          {parseCells(headerRow).map((cell, idx, arr) => (
+            <PdfTableCell
+              key={`hcell-${idx}`}
+              isHeader
+              colSpan={cell.colspan}
+              rowSpan={cell.rowspan}
+              style={{
+                ...cell.style,
+                ...(idx === arr.length - 1 && { borderRightWidth: 0 }),
+              }}
+            >
+              {renderCellContent(cell.innerHtml, {
+                ...baseTextStyle,
+                ...baseCellStyle,
+                textAlign: cell.style.textAlign || "left",
+                fontWeight: 700,
+              })}
+            </PdfTableCell>
+          ))}
+        </PdfTableRow>
+      )}
+
+      {/* Filas del Cuerpo */}
+      {bodyRows.map((rowContent, rowIndex, rowsArr) => {
+        const cells = parseCells(rowContent);
+        const isLastRow = rowIndex === rowsArr.length - 1;
+
+        return (
+          <PdfTableRow
+            key={`row-${rowIndex}`}
+            style={{
+              ...(isLastRow && { borderBottomWidth: 0 }),
+            }}
+          >
+            {cells.map((cell, cellIndex, cellsArr) => (
+              <PdfTableCell
+                key={`cell-${cellIndex}`}
+                colSpan={cell.colspan}
+                rowSpan={cell.rowspan}
+                style={{
+                  ...cell.style,
+                  ...(cellIndex === cellsArr.length - 1 && {
+                    borderRightWidth: 0,
+                  }),
                 }}
               >
-                {renderSimpleCellContent(
-                  cell.innerHtml,
-                  { ...baseTextStyle, fontWeight: 700, textAlign: cell.style.textAlign || "left" },
-                  fontSize - 1
-                )}
-              </TD>
-            );
-          })}
-        </TH>
-      )}
-      {/* Filas del Cuerpo */}
-      {bodyRows.map((rowContent, rowIndex) => {
-        const cells = parseCells(rowContent);
-        return (
-          <TR key={`row-${rowIndex}`}>
-            {cells.map((cell, cellIndex) => {
-              const cellWidth = cell.style.width || columnWidth;
-              return (
-                <TD 
-                  key={`cell-${cellIndex}`} 
-                  style={{
-                    ...cell.style,
-                    width: cellWidth,
-                    padding: 4,
-                  }}
-                >
-                  {renderSimpleCellContent(
-                    cell.innerHtml,
-                    { ...baseTextStyle, textAlign: cell.style.textAlign || "left" },
-                    fontSize - 1
-                  )}
-                </TD>
-              );
-            })}
-          </TR>
+                {renderCellContent(cell.innerHtml, {
+                  ...baseTextStyle,
+                  ...baseCellStyle,
+                  textAlign: cell.style.textAlign || "left",
+                })}
+              </PdfTableCell>
+            ))}
+          </PdfTableRow>
         );
       })}
-    </Table>
+    </PdfTable>
   );
 };
 
@@ -494,7 +462,6 @@ const renderContentBlocks = (
   );
 
   const blockRegex = /<(p|ul|ol|table)[^>]*>([\s\S]*?)<\/\1>/gs;
-
   const blocks: string[] = [];
   let lastIndex = 0;
   let match;
@@ -502,7 +469,9 @@ const renderContentBlocks = (
   while ((match = blockRegex.exec(cleanHtml)) !== null) {
     const orphanText = cleanHtml.substring(lastIndex, match.index).trim();
     if (orphanText) {
-      blocks.push(`<p>${orphanText}</p>`);
+      if (orphanText.replace(/<br\s*\/?>/g, "").length > 0) {
+        blocks.push(`<p>${orphanText}</p>`);
+      }
     }
     blocks.push(match[0]);
     lastIndex = match.index + match[0].length;
@@ -510,119 +479,152 @@ const renderContentBlocks = (
 
   const remainingOrphanText = cleanHtml.substring(lastIndex).trim();
   if (remainingOrphanText) {
-    blocks.push(`<p>${remainingOrphanText}</p>`);
+    if (remainingOrphanText.replace(/<br\s*\/?>/g, "").length > 0) {
+      blocks.push(`<p>${remainingOrphanText}</p>`);
+    }
   }
 
   if (blocks.length === 0 && cleanHtml.trim()) {
     blocks.push(`<p>${cleanHtml}</p>`);
   }
 
-  return blocks.map((block, blockIndex) => {
-    // --- RENDERIZADO DE TABLA ---
-    if (block.trim().startsWith("<table")) {
-      const cellTextStyle: Style = { 
-        ...baseTextStyle, 
-        textAlign: "left",
-        fontSize: fontSize - 1, // ✅ Reducir tamaño en tablas
-      };
+  return blocks
+    .map((block, blockIndex) => {
+      // --- RENDERIZADO DE TABLA ---
+      if (block.trim().startsWith("<table")) {
+        const cellTextStyle: Style = {
+          ...baseTextStyle,
+          textAlign: "left",
+          fontSize: fontSize - 1,
+        };
 
-      return (
-        <View 
-          key={`table-${blockIndex}`} 
-          style={{ 
-            marginVertical: 8,
-            width: "100%",
-          }}
-          wrap={false} // ✅ Evitar que la tabla se parta entre páginas
-        >
-          {parseHtmlTable(block, cellTextStyle, fontSize)}
-        </View>
-      );
-    }
-
-    // --- RENDERIZADO DE PÁRRAFO ---
-    if (block.trim().startsWith("<p")) {
-      const tagMatch = block.match(/<p([^>]*)>/);
-      const attributes = tagMatch ? tagMatch[1] : "";
-      const styleAttr = attributes.match(/style="([^"]*)"/);
-      const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
-
-      const innerHtml = block
-        .replace(/<p[^>]*>/, "")
-        .replace(/<\/p>$/, "")
-        .trim();
-
-      if (!innerHtml || innerHtml === "<br>") {
-        return <View key={`empty-${blockIndex}`} style={{ height: 8 }} />;
+        return (
+          <View
+            key={`table-${blockIndex}`}
+            style={{
+              marginVertical: 8,
+              width: "100%",
+            }}
+            // ✅ Permitir que la tabla se extienda entre páginas
+            wrap={true}
+          >
+            {parseHtmlTable(block, cellTextStyle, fontSize)}
+          </View>
+        );
       }
 
-      return (
-        <Text
-          key={`p-${blockIndex}`}
-          style={{
-            ...baseTextStyle,
-            ...inlineStyle,
-            marginBottom: 5,
-          }}
-          hyphenationCallback={hyphenationCallback}
-        >
-          {renderHtmlNodes(innerHtml, baseTextStyle)}
-        </Text>
-      );
-    }
+      // --- RENDERIZADO DE PÁRRAFO ---
+      if (block.trim().startsWith("<p")) {
+        const tagMatch = block.match(/<p([^>]*)>/);
+        const attributes = tagMatch ? tagMatch[1] : "";
+        const styleAttr = attributes.match(/style="([^"]*)"/);
+        const inlineStyle = parseStyleAttribute(
+          styleAttr ? styleAttr[1] : null
+        );
 
-    // --- RENDERIZADO DE LISTAS (ul/ol) ---
-    if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
-      const isOrdered = block.trim().startsWith("<ol");
-      const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
+        const innerHtml = block
+          .replace(/<p[^>]*>/, "")
+          .replace(/<\/p>$/, "")
+          .trim();
 
-      return (
-        <View key={`list-${blockIndex}`} style={{ marginBottom: 8 }}>
-          {items.map((item, itemIndex) => {
-            const innerHtml = item
-              .replace(/<li[^>]*>/, "")
-              .replace(/<\/li>$/, "")
-              .trim();
-            const bullet = isOrdered ? `${itemIndex + 1}.` : "•";
+        if (!innerHtml || innerHtml === "<br>") {
+          return <View key={`empty-${blockIndex}`} style={{ height: 8 }} />;
+        }
 
-            return (
-              <View
-                key={`item-${itemIndex}`}
-                style={{
-                  flexDirection: "row",
-                  marginBottom: 3,
-                  paddingLeft: 15,
-                }}
-              >
-                <Text
+        return (
+          <Text
+            key={`p-${blockIndex}`}
+            style={{
+              ...baseTextStyle,
+              ...inlineStyle, // ✅ Esto incluye textAlign si está presente
+              marginBottom: 5,
+            }}
+          >
+            {renderHtmlNodes(innerHtml, {
+              ...baseTextStyle,
+              ...inlineStyle,
+            })}
+          </Text>
+        );
+      }
+
+      // --- RENDERIZADO DE LISTAS ---
+      if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
+        const isOrdered = block.trim().startsWith("<ol");
+        const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
+
+        const isRoman = /style="[^"]*list-style-type:\s*upper-roman/i.test(
+          block
+        );
+
+        return (
+          <View
+            key={`list-${blockIndex}`}
+            style={{ marginBottom: 8, paddingLeft: 10 }}
+          >
+            {items.map((item, itemIndex) => {
+              const innerHtmlMatch = item
+                .replace(/<li[^>]*>/, "")
+                .replace(/<\/li>$/, "")
+                .trim();
+
+              const pMatch = innerHtmlMatch.match(/^<p[^>]*>([\s\S]*?)<\/p>$/);
+              const innerHtml = pMatch ? pMatch[1] : innerHtmlMatch;
+
+              let bullet = "•";
+              if (isOrdered) {
+                bullet = isRoman
+                  ? `${numberToRoman(itemIndex + 1)}.`
+                  : `${itemIndex + 1}.`;
+              }
+
+              return (
+                <View
+                  key={`item-${itemIndex}`}
                   style={{
-                    ...baseTextStyle,
-                    width: 20,
-                    fontSize: fontSize - 1,
+                    flexDirection: "row",
+                    marginBottom: 5,
                   }}
+                  wrap={true}
                 >
-                  {bullet}
-                </Text>
-                <Text
-                  style={{
-                    ...baseTextStyle,
-                    flex: 1,
-                  }}
-                  hyphenationCallback={hyphenationCallback}
-                >
-                  {renderHtmlNodes(innerHtml, baseTextStyle)}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      );
-    }
+                  <Text
+                    style={{
+                      ...baseTextStyle,
+                      width: 20,
+                      textAlign: "right",
+                      paddingRight: 5,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {bullet}
+                  </Text>
 
-    return null;
-  }).filter((element): element is React.ReactElement | null => element !== undefined);
+                  <Text
+                    style={{
+                      ...baseTextStyle,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    {renderHtmlNodes(innerHtml, baseTextStyle)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        );
+      }
+
+      return null;
+    })
+    .filter(
+      (element): element is React.ReactElement | null => element !== undefined
+    );
 };
 
+// =================================================================
+// RESTO DEL ARCHIVO (Sin cambios)
+// =================================================================
 export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
   if (!tome) {
     return (
@@ -663,14 +665,12 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
     fontWeight: 500,
   };
 
-  // ✅ 'dynamicTextStyle' es el 'baseTextStyle' para todo el contenido
   const dynamicTextStyle: Style = {
     fontSize: settings.fontSize,
-    textAlign: "justify", // ✅ El estilo 'justify' se origina aquí
+    textAlign: "justify",
     lineHeight: settings.lineHeight,
   };
 
-  // ... (lógica de fechas y firmas sin cambios)
   const authDateString = tome.authorizationDate || tome.createdAt;
   const authorizationDate = new Date(authDateString);
   const authYearInWords = capitalize(
@@ -700,7 +700,6 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
     (m) => m.role === "OWNER" || m.role === "SYNDIC"
   );
 
-  // ... (PageNumberRenderer sin cambios)
   const PageNumberRenderer = () => {
     if (!settings.enablePageNumbering) {
       return null;
@@ -867,7 +866,6 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
               >
                 {hasBodyContent && (
                   <View>
-                    {/* ✅ Pasamos 'dynamicTextStyle' (que tiene el fontSize) */}
                     {renderContentBlocks(
                       act.bodyContent,
                       dynamicTextStyle,
@@ -879,7 +877,6 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                   <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
-                        {/* ✅ Pasamos 'dynamicTextStyle' (que tiene el fontSize) */}
                         {renderContentBlocks(
                           agreement.content,
                           dynamicTextStyle,
