@@ -7,6 +7,9 @@ import {
   Printer,
   Edit,
   Trash,
+  ArchiveRestore,
+  Archive,
+  CheckCircle2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,8 +23,19 @@ import { Link } from "react-router";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Tome } from "@/types";
+interface GetColumnsProps {
+  onFinalize: (tome: Tome) => void;
+  onArchive: (tome: Tome) => void;
+  onRestore: (tome: Tome) => void;
+  onDelete: (tome: Tome) => void;
+}
 
-export const columns: ColumnDef<Tome>[] = [
+export const getColumns = ({
+  onFinalize,
+  onArchive,
+  onRestore,
+  onDelete,
+}: GetColumnsProps): ColumnDef<Tome>[] => [
   {
     accessorKey: "name",
     header: "Nombre del Tomo",
@@ -143,6 +157,10 @@ export const columns: ColumnDef<Tome>[] = [
     id: "actions",
     cell: ({ row }) => {
       const tome = row.original;
+      const isBorrador = tome.status === "BORRADOR";
+      const isFinalizado = tome.status === "FINALIZADO";
+      const isArchivado = tome.status === "ARCHIVADO";
+
       return (
         <div className="text-center">
           <DropdownMenu>
@@ -154,8 +172,12 @@ export const columns: ColumnDef<Tome>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              {/* Acción de Editar solo si es Borrador */}
               <Link to={`/books/${tome.id}`}>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
+                  disabled={!isBorrador}
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   <span>Editar</span>
                 </DropdownMenuItem>
@@ -169,17 +191,42 @@ export const columns: ColumnDef<Tome>[] = [
                 <span>Exportar a PDF</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() =>
-                  confirm(
-                    `¿Estás seguro de que quieres eliminar el tomo: ${tome.name}?`
-                  )
-                }
-              >
-                <Trash className="mr-2 h-4 w-4 text-destructive" />
-                <span>Eliminar</span>
-              </DropdownMenuItem>
+              {isBorrador && (
+                <DropdownMenuItem onClick={() => onFinalize(tome)}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  <span>Finalizar Tomo</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* 2. Botón de Archivar (Solo si es Finalizado) */}
+              {isFinalizado && (
+                <DropdownMenuItem onClick={() => onArchive(tome)}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  <span>Archivar Tomo</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* 3. Botón de Restaurar (Solo si es Archivado) */}
+              {isArchivado && (
+                <DropdownMenuItem onClick={() => onRestore(tome)}>
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  <span>Restaurar a Borrador</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* 4. Botón de Eliminar (Solo si NO es Finalizado) */}
+              {!isFinalizado && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => onDelete(tome)}
+                  >
+                    <Trash className="mr-2 h-4 w-4 text-destructive" />
+                    <span>Eliminar</span>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

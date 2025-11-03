@@ -4,40 +4,48 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/components/ui/card";
+} from "@/components/ui/card"; // ✅ CardFooter eliminado
 import ActivityItem from "./ActivityItem";
 import { type ActivityLog } from "@/types";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { ArrowRight } from "lucide-react"; // ✅ Icono importado
 
 interface ActivityCardProps {
   logs: ActivityLog[];
-  title?: string;
-  description?: string;
 }
 
 export function ActivityCard({ logs }: ActivityCardProps) {
+  // Solo mostramos las 4 actividades más recientes
+  const recentLogs = logs.slice(0, 4);
+
   return (
     <Card className="shadow-none">
-      <CardHeader className="flex justify-between items-center">
+      {/* ✅ 1. Cabecera IDÉNTICA a la de Libros Recientes */}
+      <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Actividad Reciente</CardTitle>
           <CardDescription>
-            Últimas acciones realizadas en el sistema.
+            Últimas acciones en el sistema.
           </CardDescription>
         </div>
-        <Link to="/activities">
-          <Button variant="link">
-            <ExternalLink className="size-4" /> Ver más
-          </Button>
-        </Link>
+        <Button asChild variant="link" className="text-muted-foreground">
+          <Link to="/audit">
+            Ver todo <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
       </CardHeader>
+      
+      {/* ✅ 2. Contenido de la timeline */}
       <CardContent>
-        {logs && logs.length > 0 ? (
-          <div className="space-y-1">
-            {logs.map((log) => (
-              <ActivityItem key={log.id} log={log} />
+        {recentLogs.length > 0 ? (
+          <div className="relative flex flex-col gap-4">
+            {recentLogs.map((log, index) => (
+              <ActivityItem
+                key={log.id}
+                log={log}
+                isLastItem={index === recentLogs.length - 1}
+              />
             ))}
           </div>
         ) : (
@@ -46,6 +54,8 @@ export function ActivityCard({ logs }: ActivityCardProps) {
           </p>
         )}
       </CardContent>
+      
+      {/* ✅ 3. CardFooter ELIMINADO */}
     </Card>
   );
 }

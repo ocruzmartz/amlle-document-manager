@@ -1,6 +1,6 @@
 import type { Act } from "./act";
 
-export type BookStatus = "BORRADOR" | "PENDIENTE" | "FINALIZADO" | "ARCHIVADO";
+export type BookStatus = "BORRADOR" | "FINALIZADO" | "ARCHIVADO";
 
 export type Tome = {
   id: string;

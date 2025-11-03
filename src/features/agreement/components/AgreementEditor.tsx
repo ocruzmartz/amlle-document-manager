@@ -12,7 +12,13 @@ interface AgreementEditorProps {
   onUpdate: (updatedAgreement: Agreement) => void;
   onBack: () => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
+  isReadOnly?: boolean;
 }
+
+// Función helper para limpiar párrafos vacíos
+const removeEmptyParagraphsAtStart = (html: string): string => {
+  return html.replace(/^(<p><\/p>|<p>\s*<\/p>)+/, "");
+};
 
 export const AgreementEditor = ({
   agreement,
@@ -20,8 +26,11 @@ export const AgreementEditor = ({
   onUpdate,
   onBack,
   setHasUnsavedChanges,
+  isReadOnly = false,
 }: AgreementEditorProps) => {
-  const [localContent, setLocalContent] = useState(agreement.content);
+  const [localContent, setLocalContent] = useState(() =>
+    removeEmptyParagraphsAtStart(agreement.content)
+  );
 
   const currentCombinedData = useMemo(
     () => ({
@@ -42,7 +51,7 @@ export const AgreementEditor = ({
   });
 
   useEffect(() => {
-    setLocalContent(agreement.content);
+    setLocalContent(removeEmptyParagraphsAtStart(agreement.content));
   }, [agreement.content]);
 
   const handleContentChange = useCallback((newContent: string) => {
@@ -50,31 +59,51 @@ export const AgreementEditor = ({
   }, []);
 
   const handleImportedContent = (importedHtml: string) => {
-    const newContent = `${localContent}${importedHtml}`; 
-    handleContentChange(newContent);
+    // Limpiar el contenido importado
+    const cleanedImport = removeEmptyParagraphsAtStart(importedHtml);
+
+    // Si hay contenido existente y no está vacío, concatenar con limpieza
+    if (
+      localContent &&
+      localContent !== "<p></p>" &&
+      localContent.trim() !== ""
+    ) {
+      const newContent = `${localContent}${cleanedImport}`;
+      handleContentChange(newContent);
+    } else {
+      // Si no hay contenido existente, solo usar el importado
+      handleContentChange(cleanedImport);
+    }
   };
 
   const agreementNumberInWords = capitalize(numberToWords(agreementNumber));
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       <div className="shrink-0 p-4 border-b">
         <h3 className="text-xl font-bold">
           Acuerdo número {agreementNumberInWords}
         </h3>
       </div>
       <div className="m-4">
-        <FileImporter onImport={handleImportedContent} />
+        <FileImporter onImport={handleImportedContent} disabled={isReadOnly} />
       </div>
-      <div className="flex-1 overflow-y-auto overflow-hidden">
-        <RichTextEditor content={localContent} onChange={handleContentChange} />
+      <div className="flex-1 min-h-0">
+        <RichTextEditor
+          content={localContent}
+          onChange={handleContentChange}
+          isReadOnly={isReadOnly}
+        />
       </div>
       <div className="shrink-0 p-4 border-t bg-white">
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="outline" onClick={onBack} disabled={isReadOnly}>
             Volver
           </Button>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+          <Button
+            onClick={handleSave}
+            disabled={!isDirty || isSaving || isReadOnly}
+          >
             {isSaving ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>

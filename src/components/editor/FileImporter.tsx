@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 interface FileImporterProps {
   onImport: (htmlContent: string) => void;
   acceptedFormats?: string;
+  disabled?: boolean;
 }
 
 // ✅ Función mejorada para convertir Excel preservando celdas combinadas Y anchos de columna
@@ -161,6 +162,7 @@ const normalizeHtml = (html: string): string => {
 export const FileImporter = ({
   onImport,
   acceptedFormats = ".docx, .xlsx, .xls",
+  disabled = false,
 }: FileImporterProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,7 +217,12 @@ export const FileImporter = ({
   return (
     <div className="float-right">
       <label htmlFor="file-importer" className="cursor-pointer">
-        <Button asChild variant="outline" className="w-auto shadow-none">
+        <Button
+          asChild
+          variant="outline"
+          className="w-auto shadow-none"
+          disabled={disabled}
+        >
           <div>
             <UploadCloud className="mr-2 h-4 w-4" />
             {isLoading ? "Procesando..." : "Importar archivo"}

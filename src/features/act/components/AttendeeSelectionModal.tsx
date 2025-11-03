@@ -165,7 +165,6 @@ export const AttendeeSelectionModal = ({
         <div className="flex-1 overflow-hidden overflow-y-auto">
           <ScrollArea className="h-full pr-4 ">
             <div className="space-y-6 py-4 ">
-              {/* Grid de Autoridades y Resumen */}
               <div className="flex justify-between">
                 {/* Síndico */}
                 <div className="flex gap-2">

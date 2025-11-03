@@ -13,8 +13,11 @@ import {
   Table,
   ChevronDown,
   Trash2,
-  Columns,
-  Rows,
+  Plus,
+  Minus,
+  Combine,
+  SplitSquareHorizontal,
+  Hash,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Separator } from "@/components/ui/separator";
@@ -30,7 +33,6 @@ interface ToolBarProps {
   editor: Editor | null;
 }
 
-// ✅ Tamaños de fuente como en Word
 const FONT_SIZES = [
   { label: "8", value: "8px" },
   { label: "9", value: "9px" },
@@ -60,11 +62,9 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
       setIsTableActive(editor.isActive("table"));
     };
 
-    // ✅ Actualizar cuando cambie la selección
     editor.on("selectionUpdate", updateTableState);
     editor.on("transaction", updateTableState);
 
-    // Estado inicial
     updateTableState();
 
     return () => {
@@ -77,247 +77,284 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
     return null;
   }
 
-  // ✅ Obtener el tamaño actual de fuente
   const getCurrentFontSize = () => {
     const fontSize = editor.getAttributes("textStyle").fontSize;
-    if (!fontSize) return "11"; // Default
+    if (!fontSize) return "11";
     return fontSize.replace("px", "");
   };
 
   return (
-    <div className="border-b bg-muted/50 p-2 flex flex-wrap gap-1 items-center sticky top-0 z-10">
-      {/* Selector de tamaño de fuente */}
+    <div className="border-b bg-background p-1.5 flex items-center gap-0.5 sticky top-0 z-10 ">
+      {/* Formato de texto - Más compacto */}
+      <div className="flex items-center gap-0.5">
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive("bold")}
+          onPressedChange={() => editor.chain().focus().toggleBold().run()}
+        >
+          <Bold className="h-3.5 w-3.5" />
+        </Toggle>
+
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive("italic")}
+          onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+        >
+          <Italic className="h-3.5 w-3.5" />
+        </Toggle>
+
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive("underline")}
+          onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+        >
+          <Underline className="h-3.5 w-3.5" />
+        </Toggle>
+      </div>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Selector de tamaño - Más compacto */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="w-20 justify-between">
-            <span>{getCurrentFontSize()}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
+          <Button variant="ghost" size="sm" className="h-8 w-16 px-2 text-xs">
+            {getCurrentFontSize()}
+            <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="max-h-[300px] overflow-y-auto"
+          className="max-h-[300px] overflow-y-auto w-20"
         >
           {FONT_SIZES.map((size) => (
             <DropdownMenuItem
               key={size.value}
-              onClick={() =>
-                editor.chain().focus().setFontSize(size.value).run()
-              }
+              onClick={() => {
+                if (size.label === "11") {
+                  editor.chain().focus().unsetFontSize().run();
+                } else {
+                  editor.chain().focus().setFontSize(size.value).run();
+                }
+              }}
               className={getCurrentFontSize() === size.label ? "bg-accent" : ""}
             >
-              <span style={{ fontSize: size.value }}>{size.label}</span>
+              {size.label}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Separator orientation="vertical" className="h-8" />
-
-      {/* Formato de texto */}
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("bold")}
-        onPressedChange={() => editor.chain().focus().toggleBold().run()}
-      >
-        <Bold className="h-4 w-4" />
-      </Toggle>
-
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("italic")}
-        onPressedChange={() => editor.chain().focus().toggleItalic().run()}
-      >
-        <Italic className="h-4 w-4" />
-      </Toggle>
-
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("underline")}
-        onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
-      >
-        <Underline className="h-4 w-4" />
-      </Toggle>
-
-      <Separator orientation="vertical" className="h-8" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* Alineación */}
-      <Toggle
-        size="sm"
-        pressed={editor.isActive({ textAlign: "left" })}
-        onPressedChange={() =>
-          editor.chain().focus().setTextAlign("left").run()
-        }
-      >
-        <AlignLeft className="h-4 w-4" />
-      </Toggle>
+      <div className="flex items-center gap-0.5">
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive({ textAlign: "left" })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("left").run()
+          }
+        >
+          <AlignLeft className="h-3.5 w-3.5" />
+        </Toggle>
 
-      <Toggle
-        size="sm"
-        pressed={editor.isActive({ textAlign: "center" })}
-        onPressedChange={() =>
-          editor.chain().focus().setTextAlign("center").run()
-        }
-      >
-        <AlignCenter className="h-4 w-4" />
-      </Toggle>
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive({ textAlign: "center" })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("center").run()
+          }
+        >
+          <AlignCenter className="h-3.5 w-3.5" />
+        </Toggle>
 
-      <Toggle
-        size="sm"
-        pressed={editor.isActive({ textAlign: "right" })}
-        onPressedChange={() =>
-          editor.chain().focus().setTextAlign("right").run()
-        }
-      >
-        <AlignRight className="h-4 w-4" />
-      </Toggle>
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive({ textAlign: "right" })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("right").run()
+          }
+        >
+          <AlignRight className="h-3.5 w-3.5" />
+        </Toggle>
 
-      <Toggle
-        size="sm"
-        pressed={editor.isActive({ textAlign: "justify" })}
-        onPressedChange={() =>
-          editor.chain().focus().setTextAlign("justify").run()
-        }
-      >
-        <AlignJustify className="h-4 w-4" />
-      </Toggle>
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive({ textAlign: "justify" })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign("justify").run()
+          }
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
+        </Toggle>
+      </div>
 
-      <Separator orientation="vertical" className="h-8" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* Listas */}
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("bulletList")}
-        onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-      >
-        <List className="h-4 w-4" />
-      </Toggle>
+      <div className="flex items-center gap-0.5">
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive("bulletList")}
+          onPressedChange={() =>
+            editor.chain().focus().toggleBulletList().run()
+          }
+        >
+          <List className="h-3.5 w-3.5" />
+        </Toggle>
 
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("orderedList")}
-        onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
-      >
-        <ListOrdered className="h-4 w-4" />
-      </Toggle>
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0"
+          pressed={editor.isActive("orderedList")}
+          onPressedChange={() =>
+            editor.chain().focus().toggleOrderedList().run()
+          }
+        >
+          <ListOrdered className="h-3.5 w-3.5" />
+        </Toggle>
 
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("romanOrderedList")}
-        onPressedChange={() =>
-          editor.chain().focus().toggleRomanOrderedList().run()
-        }
-      >
-        <span className="text-xs font-semibold">I.</span>
-      </Toggle>
+        <Toggle
+          size="sm"
+          className="h-8 w-8 p-0 text-[10px] font-semibold"
+          pressed={editor.isActive("romanOrderedList")}
+          onPressedChange={() =>
+            editor.chain().focus().toggleRomanOrderedList().run()
+          }
+        >
+          <Hash className="h-3.5 w-3.5" />
+        </Toggle>
+      </div>
 
-      <Separator orientation="vertical" className="h-8" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* ✅ Controles de Tabla */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() =>
-          editor
-            .chain()
-            .focus()
-            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-            .run()
-        }
-        disabled={isTableActive}
-      >
-        <Table className="h-4 w-4 mr-1" />
-        <span className="text-xs">Insertar</span>
-      </Button>
+      {/* Tabla - Menú desplegable */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 gap-1"
+            disabled={isTableActive}
+          >
+            <Table className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuItem
+            onClick={() =>
+              editor
+                .chain()
+                .focus()
+                .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                .run()
+            }
+          >
+            Insertar tabla 3x3
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor
+                .chain()
+                .focus()
+                .insertTable({ rows: 2, cols: 2, withHeaderRow: false })
+                .run()
+            }
+          >
+            Insertar tabla 2x2
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
+      {/* Controles de tabla cuando está activa */}
       {isTableActive && (
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().addColumnBefore().run()}
-          >
-            <Columns className="h-4 w-4 mr-1" />
-            <span className="text-xs">+ Col Izq</span>
-          </Button>
+          <Separator orientation="vertical" className="h-6 mx-1" />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-          >
-            <Columns className="h-4 w-4 mr-1" />
-            <span className="text-xs">+ Col Der</span>
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              title="Añadir columna izquierda"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            <span className="text-xs">- Col</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              title="Eliminar columna"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().addRowBefore().run()}
-          >
-            <Rows className="h-4 w-4 mr-1" />
-            <span className="text-xs">+ Fila Arriba</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              title="Añadir fila"
+            >
+              <Plus className="h-3.5 w-3.5 rotate-90" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-          >
-            <Rows className="h-4 w-4 mr-1" />
-            <span className="text-xs">+ Fila Abajo</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              title="Eliminar fila"
+            >
+              <Minus className="h-3.5 w-3.5 rotate-90" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().deleteRow().run()}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            <span className="text-xs">- Fila</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().mergeCells().run()}
+              disabled={!editor.can().mergeCells()}
+              title="Combinar celdas"
+            >
+              <Combine className="h-3.5 w-3.5" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().mergeCells().run()}
-            disabled={!editor.can().mergeCells()}
-            title="Selecciona varias celdas para combinarlas"
-          >
-            <span className="text-xs">Combinar</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => editor.chain().focus().splitCell().run()}
+              disabled={!editor.can().splitCell()}
+              title="Dividir celda"
+            >
+              <SplitSquareHorizontal className="h-3.5 w-3.5" />
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => editor.chain().focus().splitCell().run()}
-            disabled={!editor.can().splitCell()}
-            title="Divide una celda previamente combinada"
-          >
-            <span className="text-xs">Dividir</span>
-          </Button>
-
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => editor.chain().focus().deleteTable().run()}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            <span className="text-xs">Eliminar Tabla</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              title="Eliminar tabla"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </>
       )}
-
-      <div className="flex-1" />
     </div>
   );
 };

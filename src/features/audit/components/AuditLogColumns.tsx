@@ -19,6 +19,8 @@ const actionVariantMap: Partial<
   DELETED: "destructive",
   EXPORTED: "secondary",
   FINALIZED: "default",
+  ARCHIVED: "secondary",
+  RESTORED: "outline",
 };
 
 // Mapeo de acciones a texto legible
@@ -28,6 +30,8 @@ const actionTextMap: Partial<Record<ActivityLog["action"], string>> = {
   DELETED: "Eliminado",
   EXPORTED: "Exportado",
   FINALIZED: "Finalizado",
+  ARCHIVED: "Archivado",
+  RESTORED: "Restaurado",
 };
 
 export const columns: ColumnDef<FullActivityLog>[] = [

@@ -9,6 +9,7 @@ import {
   PlusCircle,
   Trash,
   PenSquare,
+  ArchiveIcon, // ✅ Importar ícono
 } from "lucide-react";
 import {
   Select,
@@ -28,7 +29,6 @@ import {
   updateBook,
 } from "../api/book";
 import { type Tome, type Act, type Book } from "@/types";
-// ... (resto de imports sin cambios)
 import { type WorkspaceView } from "../types";
 import {
   Sheet,
@@ -55,7 +55,7 @@ import { capitalize, numberToWords } from "@/lib/textUtils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-// ... (helpers reorderArray y recalculateNumbers sin cambios)
+// ... (helpers reorderArray y recalculateNumbers NO CAMBIAN)
 const reorderArray = <T extends { id: string }>(
   list: T[],
   itemId: string,
@@ -101,7 +101,7 @@ const recalculateNumbers = (tomeState: Tome): Tome => {
 };
 
 export const BookWorkspacePage = () => {
-  // ... (toda la lógica de estado y handlers sin cambios)
+  // ... (toda la lógica de estado y handlers NO CAMBIA)
   const navigate = useNavigate();
   const { bookId: tomeId } = useParams<{ bookId: string }>();
   const location = useLocation();
@@ -169,12 +169,10 @@ export const BookWorkspacePage = () => {
   }, [tomeId, navigate]);
 
   const handleRenameBookSubmit = () => {
+    // ... (sin cambios)
     if (!parentBook || !newBookName) return;
-
     updateBook(parentBook.id, { name: newBookName });
-
     setParentBook((prev) => (prev ? { ...prev, name: newBookName } : null));
-
     setParentBook((prev) =>
       prev
         ? {
@@ -184,24 +182,21 @@ export const BookWorkspacePage = () => {
           }
         : null
     );
-
     setIsRenameBookDialogOpen(false);
   };
 
   const handleTomeUpdate = (updatedTomeData: Partial<Tome>) => {
+    // ... (sin cambios)
     setTome((prevTome) => {
       if (!prevTome) return null;
-
       let newTome = {
         ...prevTome,
         ...updatedTomeData,
         lastModified: new Date().toISOString(),
       };
-
       if (updatedTomeData.acts) {
         newTome = recalculateNumbers(newTome);
       }
-
       if (tomeId) {
         updateTome(tomeId, newTome);
       }
@@ -211,9 +206,9 @@ export const BookWorkspacePage = () => {
   };
 
   const handleActUpdate = (updatedAct: Act) => {
+    // ... (sin cambios)
     setTome((prevTome) => {
       if (!prevTome || !prevTome.acts) return prevTome;
-
       const updatedActs = prevTome.acts.map((act) =>
         act.id === updatedAct.id ? updatedAct : act
       );
@@ -223,6 +218,7 @@ export const BookWorkspacePage = () => {
   };
 
   const handleCreateAct = () => {
+    // ... (sin cambios)
     if (!tomeId) return;
     const newAct = createAct(tomeId);
     if (newAct) {
@@ -241,6 +237,7 @@ export const BookWorkspacePage = () => {
   };
 
   const handleBackClick = () => {
+    // ... (sin cambios)
     if (hasUnsavedChanges) {
       setShowExitDialog(true);
     } else {
@@ -249,33 +246,34 @@ export const BookWorkspacePage = () => {
   };
 
   const handleConfirmExit = () => {
+    // ... (sin cambios)
     setShowExitDialog(false);
     navigate("/books");
   };
 
   const handleSaveAndExit = () => {
+    // ... (sin cambios)
     setHasUnsavedChanges(false);
     setShowExitDialog(false);
     navigate("/books");
   };
 
   const handleReorderAct = (actId: string, direction: "up" | "down") => {
+    // ... (sin cambios)
     setTome((prevTome) => {
       if (!prevTome || !prevTome.acts) return prevTome;
-
       const reorderedActs = reorderArray(prevTome.acts, actId, direction);
       const newState = recalculateNumbers({ ...prevTome, acts: reorderedActs });
-
       if (tomeId) {
         updateTome(tomeId, newState);
       }
-
       return newState;
     });
     setHasUnsavedChanges(true);
   };
 
   const handleCreateTome = () => {
+    // ... (sin cambios)
     if (!parentBook) return;
     const newTomeNumber = (parentBook.tomos?.length || 0) + 1;
     const newTome = createTome(parentBook.id, {
@@ -286,28 +284,24 @@ export const BookWorkspacePage = () => {
   };
 
   const handleConfirmDeleteTome = () => {
+    // ... (sin cambios)
     if (!tomeToDelete || !parentBook || !parentBook.tomos) return;
-
-    // 1. Llamar a la API para eliminar
     deleteTome(tomeToDelete.id);
-
-    // 2. Actualizar estado local
     const newTomesList = parentBook.tomos.filter(
       (t) => t.id !== tomeToDelete.id
     );
     setParentBook({ ...parentBook, tomos: newTomesList });
-
-    // 3. Decidir a dónde navegar
     if (tomeToDelete.id === tomeId) {
       if (newTomesList.length > 0) {
         navigate(`/books/${newTomesList[0].id}`);
       } else {
-        navigate("/books"); // No quedan tomos, ir a la lista
+        navigate("/books");
       }
     }
-
-    setTomeToDelete(null); // Cerrar el diálogo
+    setTomeToDelete(null);
   };
+
+  // --- FIN LÓGICA EXISTENTE ---
 
   if (isLoading || !tome || !parentBook) {
     return (
@@ -317,135 +311,157 @@ export const BookWorkspacePage = () => {
     );
   }
 
-  return (
-    <div className="flex flex-col h-screen">
-      {/* Header */}
-      <div className="shrink-0 p-3 border-b bg-background flex justify-between items-center">
-        {/* ✅ ACTUALIZADO: Cabecera con Nombre de Libro y Selector de Tomos */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBackClick}
-            className="shrink-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+  // ✅ --- INICIO DE CAMBIOS: Lógica de Bloqueo ---
 
-          {/* Nombre del Libro Padre (estático) */}
-          <h2
-            className="text-lg font-semibold truncate"
-            title={parentBook.name}
-          >
-            {parentBook.name}
-          </h2>
+  // 1. Definir el estado de bloqueo
+  const isReadOnly = tome.status === "FINALIZADO";
+  const isArchived = tome.status === "ARCHIVADO";
 
-          {/* Botón para Renombrar Libro Padre */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setIsRenameBookDialogOpen(true)}
-            title="Renombrar libro padre"
-          >
-            <PenSquare className="h-4 w-4" />
-          </Button>
-
-          {/* Separador Visual */}
-          <div className="h-6 w-px bg-border mx-2"></div>
-
-          {/* Selector de Tomos */}
-          <Select
-            value={tome.id}
-            onValueChange={(newTomeId) => navigate(`/books/${newTomeId}`)}
-          >
-            <SelectTrigger className="w-auto min-w-[120px] h-9 shadow-none">
-              <SelectValue placeholder="Seleccionar Tomo..." />
-            </SelectTrigger>
-            <SelectContent>
-              {/* ✅ ACTUALIZADO: Lista de Tomos con botón de eliminar */}
-              {parentBook.tomos
-                ?.sort((a, b) => a.tomeNumber - b.tomeNumber)
-                .map((t) => (
-                  <div key={t.id} className="flex items-center pr-2">
-                    <SelectItem value={t.id} className="flex-1">
-                      {t.name}
-                    </SelectItem>
-                    {/* Botón para eliminar Tomo */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive hover:text-destructive"
-                      // Deshabilitado si es el último tomo
-                      disabled={
-                        parentBook.tomos && parentBook.tomos.length <= 1
-                      }
-                      title={
-                        parentBook.tomos && parentBook.tomos.length <= 1
-                          ? "No se puede eliminar el último tomo"
-                          : "Eliminar tomo"
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation(); // Evitar que el select se cierre
-                        setTomeToDelete(t);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              <SelectSeparator />
-              {/* Botón para añadir nuevo tomo */}
-              <Button
-                variant="ghost"
-                className="w-full justify-start h-8 px-2"
-                onClick={handleCreateTome}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Tomo
-              </Button>
-            </SelectContent>
-          </Select>
-
-          {hasUnsavedChanges && (
-            <span
-              className="text-orange-500 text-2xl"
-              title="Cambios sin guardar"
+  // 2. Renderizar el Header (con botones deshabilitados)
+  const renderHeader = () => (
+    <div className="shrink-0 p-3 border-b bg-background flex justify-between items-center">
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBackClick}
+          className="shrink-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h2
+          className="text-lg font-semibold truncate"
+          title={parentBook.name}
+        >
+          {parentBook.name}
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => setIsRenameBookDialogOpen(true)}
+          title="Renombrar libro padre"
+          disabled={isReadOnly || isArchived} // Deshabilitado
+        >
+          <PenSquare className="h-4 w-4" />
+        </Button>
+        <div className="h-6 w-px bg-border mx-2"></div>
+        <Select
+          value={tome.id}
+          onValueChange={(newTomeId) => navigate(`/books/${newTomeId}`)}
+        >
+          <SelectTrigger className="w-auto min-w-[120px] h-9 shadow-none">
+            <SelectValue placeholder="Seleccionar Tomo..." />
+          </SelectTrigger>
+          <SelectContent>
+            {parentBook.tomos
+              ?.sort((a, b) => a.tomeNumber - b.tomeNumber)
+              .map((t) => (
+                <div key={t.id} className="flex items-center pr-2">
+                  <SelectItem value={t.id} className="flex-1">
+                    {t.name}
+                  </SelectItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    disabled={
+                      (parentBook.tomos && parentBook.tomos.length <= 1) ||
+                      isReadOnly || // Deshabilitado
+                      isArchived
+                    }
+                    title="Eliminar tomo"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTomeToDelete(t);
+                    }}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            <SelectSeparator />
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-8 px-2"
+              onClick={handleCreateTome}
+              disabled={isReadOnly || isArchived} // Deshabilitado
             >
-              •
-            </span>
-          )}
-        </div>
-
-        {/* ... (Resto del JSX de la cabecera sin cambios) ... */}
-        <Sheet>
-          <SheetTrigger asChild className="gap-0!">
-            <Button variant="outline" className="shadow-none">
-              <PanelRightOpen className="mr-2 h-4 w-4" />
-              Vista Previa (PDF)
+              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Tomo
             </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
-            <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
-              <SheetTitle>Vista Previa del Tomo (PDF)</SheetTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTomeUpdate({})}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Recargar
-              </Button>
-            </SheetHeader>
-
-            <div className="flex-1 overflow-hidden">
-              <BookPdfPreview key={previewKey} tome={tome} />
-            </div>
-          </SheetContent>
-        </Sheet>
+          </SelectContent>
+        </Select>
+        {hasUnsavedChanges && !isReadOnly && (
+          <span
+            className="text-orange-500 text-2xl"
+            title="Cambios sin guardar"
+          >
+            •
+          </span>
+        )}
+        {isReadOnly && (
+          <span
+            className="text-purple-600 font-semibold text-xs ml-2"
+            title="Finalizado"
+          >
+            (FINALIZADO - SOLO LECTURA)
+          </span>
+        )}
       </div>
 
-      {/* ... (Resto del JSX del componente sin cambios) ... */}
-      <div className="flex flex-1 min-h-0">
+      {/* Botón de Vista Previa (siempre visible) */}
+      <Sheet>
+        <SheetTrigger asChild className="gap-0!">
+          <Button variant="outline" className="shadow-none">
+            <PanelRightOpen className="mr-2 h-4 w-4" />
+            Vista Previa (PDF)
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
+          <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
+            <SheetTitle>Vista Previa del Tomo (PDF)</SheetTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleTomeUpdate({})}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Recargar
+            </Button>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
+            <BookPdfPreview key={previewKey} tome={tome} />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+
+  // 3. Renderizar el contenido principal
+  const renderMainContent = () => {
+    // --- BLOQUEO PARA ARCHIVADO ---
+    if (isArchived) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <ArchiveIcon className="h-16 w-16 text-muted-foreground/50" />
+          <h2 className="mt-4 text-2xl font-semibold">Tomo Archivado</h2>
+          <p className="mt-2 text-muted-foreground">
+            Este tomo está archivado y no puede ser editado.
+            <br />
+            Para hacer cambios, primero debe restaurarlo a "Borrador" desde
+            la lista de libros.
+          </p>
+          <Button variant="outline" className="mt-6" onClick={handleBackClick}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Volver a la lista
+          </Button>
+        </div>
+      );
+    }
+
+    // --- RENDERIZADO NORMAL (con prop isReadOnly) ---
+    return (
+      <>
         <div className="w-[300px] border-r shrink-0 overflow-y-auto bg-white">
           <BookSidebarNav
             acts={tome.acts || []}
@@ -453,7 +469,6 @@ export const BookWorkspacePage = () => {
             onViewChange={setCurrentView}
           />
         </div>
-
         <div className="flex-1 flex min-w-0">
           <BookEditor
             tome={tome}
@@ -464,10 +479,23 @@ export const BookWorkspacePage = () => {
             onCreateActa={handleCreateAct}
             setHasUnsavedChanges={setHasUnsavedChanges}
             onReorderAct={handleReorderAct}
+            isReadOnly={isReadOnly}
           />
         </div>
+      </>
+    );
+  };
+
+  // --- Estructura principal ---
+  return (
+    <div className="flex flex-col h-screen">
+      {renderHeader()}
+
+      <div className="flex flex-1 min-h-0">
+        {renderMainContent()}
       </div>
 
+      {/* ... (Todos los Modales/Dialogs: renameBook, deleteTome, exitDialog) ... */}
       <AlertDialog
         open={isRenameBookDialogOpen}
         onOpenChange={setIsRenameBookDialogOpen}
@@ -476,8 +504,7 @@ export const BookWorkspacePage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Renombrar Libro Padre</AlertDialogTitle>
             <AlertDialogDescription>
-              Vas a cambiar el nombre del libro contenedor (ej. "Libro de Actas
-              2025"). Este cambio afectará a todos sus tomos.
+              Vas a cambiar el nombre del libro contenedor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-2">
@@ -500,7 +527,6 @@ export const BookWorkspacePage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ✅ AÑADIDO: Diálogo para Eliminar Tomo */}
       <AlertDialog
         open={!!tomeToDelete}
         onOpenChange={() => setTomeToDelete(null)}
@@ -510,9 +536,7 @@ export const BookWorkspacePage = () => {
             <AlertDialogTitle>¿Eliminar Tomo?</AlertDialogTitle>
             <AlertDialogDescription>
               ¿Estás seguro de que quieres eliminar
-              <strong> {tomeToDelete?.name}</strong>? Todas las actas y acuerdos
-              dentro de este tomo se perderán permanentemente. Esta acción no se
-              puede deshacer.
+              <strong> {tomeToDelete?.name}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -542,8 +566,7 @@ export const BookWorkspacePage = () => {
               ¿Deseas salir de <span>{tome.name}</span>?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Tienes cambios sin guardar. Si sales ahora, estos cambios se
-              perderán.
+              Tienes cambios sin guardar.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -295,9 +295,9 @@ body {
 
 /* ===== PÁRRAFOS ===== */
 .ProseMirror p {
-  margin: 0; /* ✅ ELIMINAMOS EL MARGEN INFERIOR */
+  margin: 0 !important;
+  padding: 0 !important;
   line-height: 1.5;
-  text-align: justify;
 }
 
 /* ✅ Párrafos vacíos también tienen espaciado */
@@ -305,14 +305,17 @@ body {
   min-height: 8pt;
 }
 
-.tiptap-editor .ProseMirror p {
-  margin: 0;
-  line-height: 1.5;
+.ProseMirror p {
+  margin-top: 0 !important; /* Sin espacio superior */
+  margin-bottom: 8pt !important; /* Espacio después (como Word) */
+  padding: 0 !important;
+  line-height: 1.5; /* Respetar interlineado */
   text-align: justify;
 }
 
-.tiptap-editor .ProseMirror p:empty {
-  min-height: 8pt;
+/* El último párrafo no necesita margen inferior */
+.ProseMirror p:last-child {
+  margin-bottom: 0 !important;
 }
 
 .ProseMirror blockquote {

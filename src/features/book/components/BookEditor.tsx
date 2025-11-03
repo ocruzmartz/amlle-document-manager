@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { numberToWords } from "@/lib/textUtils";
 import { BookPdfSettingsForm } from "./BookPdfSettingsForm";
 
+// ... (helper reorderArray NO CAMBIA)
 const reorderArray = <T extends { id: string }>(
   list: T[],
   itemId: string,
@@ -18,14 +19,11 @@ const reorderArray = <T extends { id: string }>(
 ): T[] => {
   const index = list.findIndex((item) => item.id === itemId);
   if (index === -1) return list;
-
   const newIndex = direction === "up" ? index - 1 : index + 1;
   if (newIndex < 0 || newIndex >= list.length) return list;
-
   const result = Array.from(list);
   const [removed] = result.splice(index, 1);
   result.splice(newIndex, 0, removed);
-
   return result;
 };
 
@@ -38,6 +36,7 @@ interface BookEditorProps {
   onUpdateAct: (updatedAct: Act) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   onReorderAct: (actId: string, direction: "up" | "down") => void;
+  isReadOnly: boolean; // ✅ AÑADIR PROP
 }
 
 export const BookEditor = ({
@@ -48,17 +47,19 @@ export const BookEditor = ({
   onCreateActa,
   setHasUnsavedChanges,
   onReorderAct,
+  isReadOnly, // ✅ RECIBIR PROP
 }: BookEditorProps) => {
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
 
+  // --- MANEJADORES DE ACCIONES (Deshabilitar si es read-only) ---
   const handleAddAgreement = (actId: string) => {
+    if (isReadOnly) return; // ✅ Bloquear
+    // ... (resto de la función)
     const act = tome.acts?.find((a) => a.id === actId);
     if (!act) return;
-
     const now = new Date().toISOString();
     const currentUser = "Usuario Actual";
     const agreementNumber = (act.agreements || []).length + 1;
-
     const newAgreement: Agreement = {
       id: crypto.randomUUID(),
       name: `Acuerdo número ${numberToWords(agreementNumber)}`,
@@ -72,9 +73,7 @@ export const BookEditor = ({
       lastModified: now,
       modifiedBy: currentUser,
     };
-
     const updatedAgreements = [...(act.agreements || []), newAgreement];
-
     const updatedActs =
       tome.acts?.map((a) =>
         a.id === actId
@@ -86,7 +85,6 @@ export const BookEditor = ({
           : a
       ) || [];
     onUpdateTome({ acts: updatedActs });
-
     setCurrentView({
       ...currentView,
       detail: {
@@ -98,17 +96,16 @@ export const BookEditor = ({
   };
 
   const handleUpdateAgreement = (updatedAgreement: Agreement) => {
+    if (isReadOnly) return; // ✅ Bloquear
+    // ... (resto de la función)
     if (!currentView.activeActId) return;
-
     const now = new Date().toISOString();
     const currentUser = "Usuario Actual";
-
     const agreementWithTracking: Agreement = {
       ...updatedAgreement,
       lastModified: now,
       modifiedBy: currentUser,
     };
-
     const updatedActs = tome.acts?.map((act) => {
       if (act.id === currentView.activeActId) {
         const updatedAgreements = act.agreements.map((agr) =>
@@ -125,6 +122,8 @@ export const BookEditor = ({
     agreementId: string,
     direction: "up" | "down"
   ) => {
+    if (isReadOnly) return; // ✅ Bloquear
+    // ... (resto de la función)
     if (!currentView.activeActId) return;
     const updatedActs = tome.acts?.map((act) => {
       if (act.id === currentView.activeActId) {
@@ -137,7 +136,6 @@ export const BookEditor = ({
       }
       return act;
     });
-
     setCurrentView({ ...currentView, activeAgreementId: agreementId });
     onUpdateTome({ acts: updatedActs });
     setHasUnsavedChanges(true);
@@ -147,6 +145,7 @@ export const BookEditor = ({
     currentView.main.type === "act-edit" &&
     currentView.detail.type === "agreement-editor";
 
+  // --- RENDERIZADO DE COLUMNAS (Pasando isReadOnly) ---
   const renderMainColumn = () => {
     switch (currentView.main.type) {
       case "cover":
@@ -154,12 +153,14 @@ export const BookEditor = ({
           <BookCoverForm
             tome={tome}
             onDone={(data) => {
+              if (isReadOnly) return; // ✅ Bloquear
               const updatePayload: Partial<Tome> = {
                 name: data.name,
-
                 tomeNumber: data.tome,
                 authorizationDate: data.authorizationDate.toISOString(),
-                closingDate: data.closingDate ? data.closingDate.toISOString() : undefined,
+                closingDate: data.closingDate
+                  ? data.closingDate.toISOString()
+                  : undefined,
               };
               onUpdateTome(updatePayload);
               setCurrentView({
@@ -170,6 +171,7 @@ export const BookEditor = ({
                 activeAgreementId: null,
               });
             }}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
 
@@ -182,6 +184,7 @@ export const BookEditor = ({
             key={act.id}
             act={act}
             onUpdateAct={(updatedActa) => {
+              if (isReadOnly) return; // ✅ Bloquear
               const updatedActs =
                 tome.acts?.map((a) =>
                   a.id === updatedActa.id ? updatedActa : a
@@ -201,6 +204,7 @@ export const BookEditor = ({
             }}
             isAgreementsPanelVisible={isDetailPanelVisible}
             setHasUnsavedChanges={setHasUnsavedChanges}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
       }
@@ -210,8 +214,8 @@ export const BookEditor = ({
           <BookPdfSettingsForm
             tome={tome}
             onUpdateSettings={(settings) => {
+              if (isReadOnly) return; // ✅ Bloquear
               onUpdateTome({ pdfSettings: settings });
-
               setCurrentView({
                 main: { type: "act-list" },
                 detail: { type: "none" },
@@ -219,6 +223,7 @@ export const BookEditor = ({
                 activeAgreementId: null,
               });
             }}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
 
@@ -227,7 +232,10 @@ export const BookEditor = ({
         return (
           <ActList
             acts={tome.acts || []}
-            onCreateAct={onCreateActa}
+            onCreateAct={() => {
+              if (isReadOnly) return; // ✅ Bloquear
+              onCreateActa();
+            }}
             onEditAct={(actId) =>
               setCurrentView({
                 main: { type: "act-edit", actId },
@@ -237,6 +245,7 @@ export const BookEditor = ({
               })
             }
             onReorderAct={(actId, direction) => {
+              if (isReadOnly) return; // ✅ Bloquear
               setCurrentView({
                 ...currentView,
                 activeActId: actId,
@@ -245,17 +254,19 @@ export const BookEditor = ({
               onReorderAct(actId, direction);
             }}
             activeActId={currentView.activeActId}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
     }
   };
 
   const renderDetailColumn = () => {
+    // ... (sin cambios)
     const act = tome.acts?.find((a) => a.id === currentView.activeActId);
     if (!act) return null;
-
     switch (currentView.detail.type) {
       case "agreement-editor": {
+        // ... (sin cambios)
         const { agreementId } = currentView.detail;
         const agreement = act.agreements.find((agr) => agr.id === agreementId);
         const agreementIndex = act.agreements.findIndex(
@@ -297,6 +308,7 @@ export const BookEditor = ({
               })
             }
             setHasUnsavedChanges={setHasUnsavedChanges}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
       }
@@ -317,23 +329,21 @@ export const BookEditor = ({
               })
             }
             onReorderAgreement={(agreementId, direction) => {
-              setCurrentView({
-                ...currentView,
-                activeAgreementId: agreementId,
-              });
               handleReorderAgreement(agreementId, direction);
             }}
             activeAgreementId={currentView.activeAgreementId}
+            isReadOnly={isReadOnly} // ✅ Pasar prop
           />
         );
     }
   };
 
+  // ... (JSX de renderizado final NO CAMBIA)
   return (
     <div className="flex flex-1 min-h-0">
       <div
         className={cn(
-          "flex-1 min-w-0 border-r overflow-y-auto",
+          "flex-1 min-w-0 border-r",
           isAgreementFocusMode && "hidden"
         )}
       >
@@ -343,7 +353,7 @@ export const BookEditor = ({
       {currentView.activeActId && isDetailPanelVisible && (
         <div
           className={cn(
-            "w-[500px] shrink-0 bg-white overflow-y-auto",
+            "w-[500px] shrink-0 bg-white",
             isAgreementFocusMode && "w-full flex-1"
           )}
         >

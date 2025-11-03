@@ -672,7 +672,7 @@ const renderContentBlocks = (
               ...baseTextStyle,
               ...inlineStyle,
               letterSpacing: 0,
-              marginBottom: 5,
+              marginBottom: 8,
             }}
           >
             {renderHtmlNodes(innerHtml, {
@@ -1015,7 +1015,7 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                   </View>
                 )}
                 {hasAgreements && (
-                  <View style={{ marginTop: hasBodyContent ? 16 : 8 }} wrap>
+                  <View style={{ marginTop: 0 }} wrap>
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
                         {renderContentBlocks(

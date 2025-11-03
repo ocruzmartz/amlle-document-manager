@@ -1,17 +1,19 @@
-import { useEffect } from "react"; // ✅ Agregar import de useEffect
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { TextStyle } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
-import { ToolBar } from "./ToolBar"; // ✅ Cambiar a named import con llaves
+import { ToolBar } from "./ToolBar";
 import { FontSize } from "./extensions/FontSize";
 import { RomanOrderedList } from "./extensions/RomanOrderedList";
 
 const cleanPastedHtml = (html: string): string => {
+  // ... (función sin cambios)
   let cleanedHtml = html.replace(/class="[^"]*"/g, "");
   cleanedHtml = cleanedHtml.replace(
     /style="((?!(text-align|border|width|background-color))[^"]*)"/g,
@@ -20,7 +22,6 @@ const cleanPastedHtml = (html: string): string => {
   cleanedHtml = cleanedHtml.replace(/<o:p>&nbsp;<\/o:p>/g, "");
   cleanedHtml = cleanedHtml.replace(/<o:p><\/o:p>/g, "");
   cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");
-  cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, "");
 
   return cleanedHtml;
 };
@@ -28,23 +29,28 @@ const cleanPastedHtml = (html: string): string => {
 interface RichTextEditorProps {
   content: string;
   onChange: (newContent: string) => void;
-  placeholder?: string; // ✅ Agregar placeholder como prop opcional
+  placeholder?: string;
+  isReadOnly?: boolean; // ✅ AÑADIR PROP
 }
 
-export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
+export const RichTextEditor = ({
+  content,
+  onChange,
+  isReadOnly = false, // ✅ RECIBIR PROP
+}: RichTextEditorProps) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        orderedList: false, // Deshabilitamos la lista ordenada por defecto
+        orderedList: {},
       }),
+      TextStyle,
       Underline,
       TextAlign.configure({
         types: ["heading", "paragraph"],
-        // ✅ Cambiar de 'justify' a 'left' como predeterminado
         defaultAlignment: "left",
       }),
       Table.configure({
-        resizable: true, // ✅ Permitir redimensionar columnas
+        resizable: true,
         HTMLAttributes: {
           class: "tiptap-table",
         },
@@ -68,28 +74,42 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       RomanOrderedList,
     ],
     content,
+    
+    // ✅ --- INICIO DE CAMBIOS ---
+    editable: !isReadOnly, // El editor se bloquea si isReadOnly es true
+    // ✅ --- FIN DE CAMBIOS ---
+
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] px-4 py-2 [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:outline-none [&_.ProseMirror-focused]:outline-none [&_.ProseMirror]:hyphens-none [&_.ProseMirror]:word-spacing-normal [&_.ProseMirror]:text-align-justify",
+          "prose mx-auto focus:outline-none min-h-[500px] px-4 py-2 [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:outline-none [&_.ProseMirror-focused]:outline-none [&_.ProseMirror]:hyphens-none [&_.ProseMirror]:word-spacing-normal [&_.ProseMirror]:text-align-justify",
+        style: "font-size: 11px;",
       },
       transformPastedHTML(html) {
-        return cleanPastedHtml(html);
+        let cleaned = cleanPastedHtml(html);
+        cleaned = cleaned.replace(/^(<p><\/p>|<p>\s*<\/p>)+/, "");
+        return cleaned;
       },
     },
-    // ✅ Eliminar el onUpdate duplicado, solo dejar uno
     onUpdate({ editor }) {
-      onChange(editor.getHTML());
+      if (!isReadOnly) { // Solo notificar cambios si no está bloqueado
+        onChange(editor.getHTML());
+      }
     },
     immediatelyRender: false,
   });
 
-  // ✅ Sincronizar el editor cuando el contenido cambia desde fuera (importación)
+  // ✅ Actualizar estado de "editable" si la prop cambia
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.setEditable(!isReadOnly);
+    }
+  }, [isReadOnly, editor]);
+
+  // Sincronizar contenido (sin cambios)
   useEffect(() => {
     if (editor && !editor.isDestroyed) {
       const editorContent = editor.getHTML();
-      // Comparamos el contenido actual del editor con el que viene de las props.
-      // Si son diferentes, actualizamos el editor para reflejar el cambio externo (como la importación).
       if (content !== editorContent) {
         editor.commands.setContent(content, { emitUpdate: false });
       }
@@ -101,10 +121,11 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <ToolBar editor={editor} />
-      <div className="tiptap-editor overflow-hidden w-full">
-        <EditorContent editor={editor} className="w-full" />
+    <div className="border rounded-lg overflow-hidden flex flex-col h-full">
+      {/* ✅ Ocultar barra de herramientas si es read-only */}
+      {!isReadOnly && <ToolBar editor={editor} />}
+      <div className="tiptap-editor overflow-y-auto flex-1 w-full">
+        <EditorContent editor={editor} className="w-full h-full" />
       </div>
     </div>
   );

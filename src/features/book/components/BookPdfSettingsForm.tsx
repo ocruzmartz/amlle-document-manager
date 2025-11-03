@@ -26,18 +26,19 @@ import {
   type PdfSettingsFormValues,
 } from "../schemas/pdfSettingsSchema";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface BookPdfSettingsFormProps {
   tome: Tome;
   onUpdateSettings: (settings: Tome["pdfSettings"]) => void;
+  isReadOnly?: boolean;
 }
 
 export const BookPdfSettingsForm = ({
   tome,
   onUpdateSettings,
+  isReadOnly = false,
 }: BookPdfSettingsFormProps) => {
   const form = useForm<PdfSettingsFormValues>({
     resolver: zodResolver(
@@ -61,7 +62,6 @@ export const BookPdfSettingsForm = ({
   });
 
   const currentFormData = form.watch();
-
   const enableNumbering = form.watch("enablePageNumbering");
 
   const initialHookData = useMemo(
@@ -137,8 +137,10 @@ export const BookPdfSettingsForm = ({
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between pb-4 border-b p-4 ">
+    // ✅ 1. Contenedor raíz con layout flex-col
+    <div className="h-full flex flex-col">
+      {/* ✅ 2. Cabecera (no se desplaza) */}
+      <div className="flex items-center justify-between pb-4 border-b p-4 shrink-0">
         <div>
           <h3 className="text-2xl font-bold">Configuración de PDF</h3>
           <p className="text-muted-foreground text-sm mt-1">
@@ -146,15 +148,23 @@ export const BookPdfSettingsForm = ({
           </p>
         </div>
       </div>
-      <div className="p-4">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid grid-cols-1 gap-6">
-              <div>
-                <FormLabel className="text-base font-semibold">
-                  Márgenes
-                </FormLabel>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 border p-4 rounded-lg">
+
+      {/* ✅ 3. El <Form> ahora es el contenedor principal y el área de scroll */}
+      <Form {...form}>
+        <fieldset disabled={isReadOnly} className="p-4 space-y-6">
+        <form
+          id="pdf-settings-form" // ID para el botón del footer
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex-1 overflow-y-auto" // Ocupa espacio restante y se desplaza
+        >
+          {/* Espaciado interno */}
+          <div className="p-4 space-y-6">
+            {/* --- GRUPO 1: Página (Minimalista) --- */}
+            <div className="border rounded-lg">
+              <h4 className="font-semibold p-4 border-b">Formato de Página</h4>
+              <div className="p-4 space-y-6">
+                <FormLabel className="text-base">Márgenes (mm)</FormLabel>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <FormField
                     control={form.control}
                     name="marginTop"
@@ -228,54 +238,65 @@ export const BookPdfSettingsForm = ({
                     )}
                   />
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  <FormField
+                    control={form.control}
+                    name="pageSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tamaño de Página</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="A4">A4</SelectItem>
+                            <SelectItem value="LETTER">
+                              Carta (Letter)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="orientation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Orientación</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="portrait">Vertical</SelectItem>
+                            <SelectItem value="landscape">
+                              Horizontal
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-              <FormField
-                control={form.control}
-                name="pageSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tamaño de Página</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="A4">A4</SelectItem>
-                        <SelectItem value="LETTER">Carta (Letter)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="orientation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Orientación</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="portrait">Vertical</SelectItem>
-                        <SelectItem value="landscape">Horizontal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <div>
+            </div>
+
+            {/* --- GRUPO 2: Tipografía (Minimalista) --- */}
+            <div className="border rounded-lg">
+              <h4 className="font-semibold p-4 border-b">Tipografía</h4>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="fontSize"
@@ -298,58 +319,61 @@ export const BookPdfSettingsForm = ({
                           <SelectItem value="14">14 pt</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        Tamaño base para el texto del PDF.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <p className="text-gray-500 text-xs mt-2">
-                  Este valor cambia el contenido generado directamente en el
-                  PDF. Para cambiar el tamaño de la letra del contenido a
-                  insertar, se hace desde el editor.
-                </p>
+                <FormField
+                  control={form.control}
+                  name="lineHeight"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Interlineado</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        defaultValue={String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1.0">Sencillo (1.0)</SelectItem>
+                          <SelectItem value="1.5">1.5 líneas (1.5)</SelectItem>
+                          <SelectItem value="2.0">Doble (2.0)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Espacio vertical entre líneas.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <FormField
-                control={form.control}
-                name="lineHeight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Interlineado</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(Number(value))}
-                      defaultValue={String(field.value)}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="1.0">Sencillo (1.0)</SelectItem>
-                        <SelectItem value="1.5">1.5 líneas (1.5)</SelectItem>
-                        <SelectItem value="2.0">Doble (2.0)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            </div>
 
-              <div className="space-y-6">
-                <Separator />
-                <h4 className="text-base font-semibold">
-                  Numeración de Página
-                </h4>
+            {/* --- GRUPO 3: Numeración (Minimalista) --- */}
+            <div className="border rounded-lg">
+              <h4 className="font-semibold p-4 border-b">
+                Numeración de Página
+              </h4>
+              <div className="p-4 space-y-6">
                 <FormField
                   control={form.control}
                   name="enablePageNumbering"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg p-0">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">
                           Activar numeración de página
                         </FormLabel>
                         <FormDescription>
-                          Añade números de página al pie del documento PDF.
+                          Añade números al pie del documento PDF.
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -363,8 +387,7 @@ export const BookPdfSettingsForm = ({
                 />
 
                 {enableNumbering && (
-                  <div className="space-y-6 pl-4 border-l-2 ml-4">
-                    {/* ... (Campo 'pageNumberingOffset' sin cambios) ... */}
+                  <div className="space-y-6 pt-6 border-t">
                     <FormField
                       control={form.control}
                       name="pageNumberingOffset"
@@ -382,65 +405,49 @@ export const BookPdfSettingsForm = ({
                             />
                           </FormControl>
                           <FormDescription>
-                            Ej: Escriba '2' para omitir la Portada y el Índice.
-                            La página 3 mostrará el número "1".
+                            Ej: '2' para omitir Portada e Índice.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {/* ✅ CORREGIDO: Campo 'pageNumberingPosition' */}
                     <FormField
                       control={form.control}
                       name="pageNumberingPosition"
                       render={({ field }) => (
                         <FormItem className="space-y-3">
                           <FormLabel>Posición del número</FormLabel>
-                          {/* El <FormControl> envuelve al <RadioGroup> */}
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
                               defaultValue={field.value}
                               className="flex flex-row gap-4"
                             >
-                              {/* Esta es la estructura plana correcta */}
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                  value="left"
-                                  id={`pos-left-${field.name}`}
-                                />
-                                <Label
-                                  htmlFor={`pos-left-${field.name}`}
-                                  className="font-normal cursor-pointer"
-                                >
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="left" />
+                                </FormControl>
+                                <Label className="font-normal cursor-pointer">
                                   Izquierda
                                 </Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                  value="center"
-                                  id={`pos-center-${field.name}`}
-                                />
-                                <Label
-                                  htmlFor={`pos-center-${field.name}`}
-                                  className="font-normal cursor-pointer"
-                                >
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="center" />
+                                </FormControl>
+                                <Label className="font-normal cursor-pointer">
                                   Centro
                                 </Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                  value="right"
-                                  id={`pos-right-${field.name}`}
-                                />
-                                <Label
-                                  htmlFor={`pos-right-${field.name}`}
-                                  className="font-normal cursor-pointer"
-                                >
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="right" />
+                                </FormControl>
+                                <Label className="font-normal cursor-pointer">
                                   Derecha
                                 </Label>
-                              </div>
+                              </FormItem>
                             </RadioGroup>
                           </FormControl>
                           <FormMessage />
@@ -485,17 +492,23 @@ export const BookPdfSettingsForm = ({
                   </div>
                 )}
               </div>
-              <Separator />
-              <div className="shrink-0 p-4  bg-white sticky bottom-0 z-10">
-                <div className="flex justify-end gap-4">
-                  <Button type="submit" disabled={!isDirty || isSaving}>
-                    {isSaving ? "Guardando..." : "Guardar"}
-                  </Button>
-                </div>
-              </div>
             </div>
-          </form>
-        </Form>
+          </div>
+        </form>
+        </fieldset>
+      </Form>
+
+      {/* ✅ 4. Pie de página (no se desplaza y es sticky) */}
+      <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
+        <div className="flex justify-end gap-4">
+          <Button
+            type="submit"
+            form="pdf-settings-form" // Se vincula al ID del formulario
+            disabled={!isDirty || isSaving || isReadOnly}
+          >
+            {isSaving ? "Guardando..." : "Guardar"}
+          </Button>
+        </div>
       </div>
     </div>
   );

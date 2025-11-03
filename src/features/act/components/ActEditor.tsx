@@ -18,7 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateActHeaderHtml } from "../lib/actHelpers";
-import { useSaveAction } from "@/hooks/useSaveAction"; 
+import { useSaveAction } from "@/hooks/useSaveAction";
 
 interface ActEditorProps {
   act: Act;
@@ -27,6 +27,7 @@ interface ActEditorProps {
   onBackToList: () => void;
   isAgreementsPanelVisible?: boolean;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
+  isReadOnly?: boolean;
 }
 
 export const ActEditor = ({
@@ -36,6 +37,7 @@ export const ActEditor = ({
   onBackToList,
   isAgreementsPanelVisible = true,
   setHasUnsavedChanges,
+  isReadOnly = false,
 }: ActEditorProps) => {
   const [localActData, setLocalActData] = useState<Partial<Act>>(act);
   const [editorContent, setEditorContent] = useState<string>(act.bodyContent);
@@ -181,34 +183,37 @@ export const ActEditor = ({
               )}
             </div>
           </div>
-
-          {/* Collapsibles */}
-          <Collapsible defaultOpen className="border rounded-lg">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
-              <h3 className="text-lg font-semibold">Datos de la Sesión</h3>
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-4 border-t">
-              <ActSessionForm
-                act={localActData as Act}
-                onActChange={handlePropertyChange}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-          <Collapsible defaultOpen className="border rounded-lg">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
-              <h3 className="text-lg font-semibold">Asistencia del Concejo</h3>
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-4 border-t">
-              <ActAttendeesForm
-                attendees={localActData.attendees}
-                onAttendeesChange={(attendees) =>
-                  handlePropertyChange("attendees", attendees)
-                }
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          <fieldset disabled={isReadOnly} className="space-y-6">
+            {/* Collapsibles */}
+            <Collapsible defaultOpen className="border rounded-lg">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                <h3 className="text-lg font-semibold">Datos de la Sesión</h3>
+                <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="p-4 border-t">
+                <ActSessionForm
+                  act={localActData as Act}
+                  onActChange={handlePropertyChange}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible defaultOpen className="border rounded-lg">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                <h3 className="text-lg font-semibold">
+                  Asistencia del Concejo
+                </h3>
+                <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="p-4 border-t">
+                <ActAttendeesForm
+                  attendees={localActData.attendees}
+                  onAttendeesChange={(attendees) =>
+                    handlePropertyChange("attendees", attendees)
+                  }
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </fieldset>
           <Collapsible defaultOpen className="border rounded-lg">
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
               <h3 className="text-lg font-semibold">Cuerpo del Acta</h3>
@@ -226,6 +231,7 @@ export const ActEditor = ({
                     key={act.id}
                     content={editorContent}
                     onChange={handleBodyContentChange}
+                    isReadOnly={isReadOnly}
                   />
                 </div>
               )}
@@ -239,11 +245,12 @@ export const ActEditor = ({
               <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="min-h-[400px] overflow-hidden">
+              <div className="h-[70vh] overflow-visible">
                 <RichTextEditor
                   key={`${act.id}-note`}
                   content={clarifyingNoteContent}
                   onChange={handleClarifyingNoteChange}
+                  isReadOnly={isReadOnly}
                 />
               </div>
             </CollapsibleContent>
@@ -257,7 +264,7 @@ export const ActEditor = ({
           <Button type="button" variant="outline" onClick={onBackToList}>
             Volver
           </Button>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+          <Button onClick={handleSave} disabled={!isDirty || isSaving || isReadOnly}>
             {isSaving ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>

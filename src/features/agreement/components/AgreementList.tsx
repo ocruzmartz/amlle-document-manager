@@ -24,6 +24,7 @@ interface AgreementListProps {
   onEditAgreement: (agreementId: string) => void;
   onReorderAgreement: (agreementId: string, direction: "up" | "down") => void;
   activeAgreementId: string | null;
+  isReadOnly?: boolean;
 }
 
 export const AgreementList = ({
@@ -32,6 +33,7 @@ export const AgreementList = ({
   onEditAgreement,
   onReorderAgreement,
   activeAgreementId,
+  isReadOnly = false,
 }: AgreementListProps) => {
   const [searchQuery, setSearchQuery] = useState(""); // ✅ Estado para el buscador
 
@@ -52,7 +54,7 @@ export const AgreementList = ({
           <div>
             <h3 className="text-xl font-bold">Acuerdos del Acta</h3>
           </div>
-          <Button onClick={onAddAgreement} size="sm">
+          <Button onClick={onAddAgreement} size="sm" disabled={isReadOnly}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Añadir Acuerdo
           </Button>
@@ -132,7 +134,7 @@ export const AgreementList = ({
                               onClick={() =>
                                 onReorderAgreement(agreement.id, "up")
                               }
-                              disabled={index === 0}
+                              disabled={index === 0 || isReadOnly}
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0"
@@ -143,7 +145,7 @@ export const AgreementList = ({
                               onClick={() =>
                                 onReorderAgreement(agreement.id, "down")
                               }
-                              disabled={index === filteredAgreements.length - 1}
+                              disabled={index === filteredAgreements.length - 1 || isReadOnly}
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0"
