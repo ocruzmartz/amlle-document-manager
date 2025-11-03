@@ -221,6 +221,16 @@ body {
   flex: 1 1 auto;
 }
 
+.ProseMirror[style*="text-align: justify"],
+.ProseMirror p[style*="text-align: justify"] {
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  -ms-hyphens: none !important;
+  word-spacing: normal;
+  text-align: justify;
+  text-align-last: left;
+}
+
 /* ===== TABLAS ===== */
 .ProseMirror table {
   border-collapse: collapse;

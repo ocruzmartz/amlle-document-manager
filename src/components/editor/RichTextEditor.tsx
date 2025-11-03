@@ -1,22 +1,15 @@
-// filepath: src/components/editor/RichTextEditor.tsx
+import { useEffect } from "react"; // ✅ Agregar import de useEffect
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import Highlight from "@tiptap/extension-highlight";
-import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import { useEditor, EditorContent } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
-import { Color } from "@tiptap/extension-color";
-import { FontSize, TextStyle } from "@tiptap/extension-text-style";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import { ToolBar } from "./ToolBar"; // ✅ Cambiar a named import con llaves
+import { FontSize } from "./extensions/FontSize";
 import { RomanOrderedList } from "./extensions/RomanOrderedList";
-import { Toolbar } from "./ToolBar";
-import { useEffect } from "react";
 
 const cleanPastedHtml = (html: string): string => {
   let cleanedHtml = html.replace(/class="[^"]*"/g, "");
@@ -35,96 +28,63 @@ const cleanPastedHtml = (html: string): string => {
 interface RichTextEditorProps {
   content: string;
   onChange: (newContent: string) => void;
+  placeholder?: string; // ✅ Agregar placeholder como prop opcional
 }
 
 export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3, 4, 5, 6],
-        },
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: false,
-          HTMLAttributes: {
-            class: "bullet-list",
-          },
-        },
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: false,
-          HTMLAttributes: {
-            class: "ordered-list",
-          },
-        },
-        listItem: {
-          HTMLAttributes: {
-            class: "list-item",
-          },
-        },
-        paragraph: {
-          HTMLAttributes: {
-            style: "text-align: justify",
-          },
-        },
+        orderedList: false, // Deshabilitamos la lista ordenada por defecto
       }),
-      RomanOrderedList,
       Underline,
       TextAlign.configure({
         types: ["heading", "paragraph"],
-        alignments: ["left", "center", "right", "justify"],
-        defaultAlignment: "justify",
-      }),
-      Highlight.configure({
-        multicolor: true,
-      }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-blue-600 underline hover:text-blue-800",
-        },
-        protocols: ["http", "https", "mailto"],
-      }),
-      Image.configure({
-        HTMLAttributes: {
-          class: "max-w-full h-auto rounded-lg",
-        },
-        allowBase64: true,
+        // ✅ Cambiar de 'justify' a 'left' como predeterminado
+        defaultAlignment: "left",
       }),
       Table.configure({
-        resizable: true,
+        resizable: true, // ✅ Permitir redimensionar columnas
+        HTMLAttributes: {
+          class: "tiptap-table",
+        },
       }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      TaskList,
-      TaskItem.configure({
-        nested: true,
+      TableRow.configure({
+        HTMLAttributes: {
+          class: "tiptap-table-row",
+        },
       }),
-      Color.configure({
-        types: ["textStyle"],
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: "tiptap-table-header",
+        },
       }),
-      TextStyle,
+      TableCell.configure({
+        HTMLAttributes: {
+          class: "tiptap-table-cell",
+        },
+      }),
       FontSize,
+      RomanOrderedList,
     ],
-    content: content,
+    content,
     editorProps: {
       attributes: {
-        class: "prose prose-lg focus:outline-none w-full",
+        class:
+          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] px-4 py-2 [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:outline-none [&_.ProseMirror-focused]:outline-none [&_.ProseMirror]:hyphens-none [&_.ProseMirror]:word-spacing-normal [&_.ProseMirror]:text-align-justify",
       },
       transformPastedHTML(html) {
         return cleanPastedHtml(html);
       },
     },
-
+    // ✅ Eliminar el onUpdate duplicado, solo dejar uno
     onUpdate({ editor }) {
       onChange(editor.getHTML());
     },
     immediatelyRender: false,
   });
 
-  // ✅ 2. Añadir el hook useEffect para sincronizar el editor
+  // ✅ Sincronizar el editor cuando el contenido cambia desde fuera (importación)
   useEffect(() => {
     if (editor && !editor.isDestroyed) {
       const editorContent = editor.getHTML();
@@ -141,8 +101,8 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="flex flex-col border-t w-full overflow-hidden">
-      <Toolbar editor={editor} />
+    <div className="border rounded-lg overflow-hidden">
+      <ToolBar editor={editor} />
       <div className="tiptap-editor overflow-hidden w-full">
         <EditorContent editor={editor} className="w-full" />
       </div>

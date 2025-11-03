@@ -1,138 +1,112 @@
-import { View, Text, StyleSheet } from "@react-pdf/renderer";
-import type { Style } from "@react-pdf/types";
 import React from "react";
-
-interface PdfTableProps {
-  children: React.ReactNode;
-  style?: Style;
-  totalColumns?: number; // ✅ Nuevo: total de columnas de la tabla
-}
-
-interface PdfRowProps {
-  children: React.ReactNode;
-  isHeader?: boolean;
-  style?: Style;
-  totalColumns?: number; // ✅ Nuevo: pasar el total a las filas
-}
-
-interface PdfCellProps {
-  children: React.ReactNode;
-  isHeader?: boolean;
-  style?: Style;
-  colSpan?: number;
-  rowSpan?: number;
-  totalColumns?: number; // ✅ Nuevo: para calcular el ancho correcto
-}
-
-// ✅ Función helper para combinar estilos
-const combineStyles = (...styles: (Style | undefined)[]): Style => {
-  return styles
-    .filter((style): style is Style => style !== undefined)
-    .reduce((acc, style) => {
-      return { ...acc, ...style };
-    }, {} as Style);
-};
+import { View, StyleSheet } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
 
 const styles = StyleSheet.create({
   table: {
+    display: "flex",
     width: "100%",
-    marginBottom: 10,
-    borderWidth: 0.5,
-    borderColor: "#bfbfbf",
+    borderLeftWidth: 1,
+    borderLeftColor: "#ddd",
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
   },
   row: {
     flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#bfbfbf",
-    flexWrap: "nowrap",
-  },
-  headerRow: {
-    flexDirection: "row",
-    backgroundColor: "#f8f9fa",
-    borderBottomWidth: 1,
-    borderBottomColor: "#bfbfbf",
-    flexWrap: "nowrap",
   },
   cell: {
-    padding: 6,
-    borderRightWidth: 0.5,
-    borderRightColor: "#bfbfbf",
+    padding: 8,
+    borderRightWidth: 1,
+    borderRightColor: "#ddd",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
     display: "flex",
     flexDirection: "column",
     justifyContent: "flex-start",
+    overflow: "hidden",
   },
   headerCell: {
-    padding: 6,
-    borderRightWidth: 0.5,
-    borderRightColor: "#bfbfbf",
     fontWeight: 700,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-start",
+    backgroundColor: "#f8f9fa",
   },
 });
 
-export const PdfTable: React.FC<PdfTableProps> = ({
-  children,
-  style,
-  totalColumns = 1,
-}) => {
+interface PdfTableProps {
+  children: React.ReactNode;
+  totalColumns: number;
+}
+
+export const PdfTable = ({ children, totalColumns }: PdfTableProps) => {
   return (
-    <View style={combineStyles(styles.table, style)}>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<PdfRowProps>, {
-            totalColumns,
-          });
-        }
-        return child;
-      })}
+    <View style={styles.table}>
+      {React.Children.map(children, (child) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child as React.ReactElement<PdfTableRowProps>, {
+              totalColumns,
+            })
+          : child
+      )}
     </View>
   );
 };
 
-export const PdfTableRow: React.FC<PdfRowProps> = ({
+interface PdfTableRowProps {
+  children: React.ReactNode;
+  isHeader?: boolean;
+  totalColumns?: number;
+  style?: Style;
+}
+
+export const PdfTableRow = ({
   children,
-  isHeader,
-  style,
+  isHeader = false,
   totalColumns = 1,
-}) => {
+  style: customStyle = {},
+}: PdfTableRowProps) => {
   return (
-    <View
-      style={combineStyles(isHeader ? styles.headerRow : styles.row, style)}
-      wrap={true}
-    >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<PdfCellProps>, {
-            totalColumns,
-          });
-        }
-        return child;
-      })}
+    <View style={[styles.row, customStyle]}>
+      {React.Children.map(children, (child) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child as React.ReactElement<PdfTableCellProps>, {
+              totalColumns,
+              isHeader,
+            })
+          : child
+      )}
     </View>
   );
 };
 
-export const PdfTableCell: React.FC<PdfCellProps> = ({
+interface PdfTableCellProps {
+  children: React.ReactNode;
+  colSpan?: number;
+  rowSpan?: number;
+  isHeader?: boolean;
+  style?: Style;
+  totalColumns?: number;
+  width?: string;
+}
+
+export const PdfTableCell = ({
   children,
-  isHeader,
-  style,
   colSpan = 1,
+  isHeader = false,
+  style: customStyle = {},
   totalColumns = 1,
-}) => {
-  // ✅ Calcular el ancho como porcentaje basado en colspan y total de columnas
-  const widthPercentage = `${(colSpan / totalColumns) * 100}%`;
+  width,
+}: PdfTableCellProps) => {
+  const cellWidth = width || `${(colSpan / totalColumns) * 100}%`;
 
-  return (
-    <View
-      style={combineStyles(isHeader ? styles.headerCell : styles.cell, style, {
-        width: widthPercentage, // ✅ Ancho fijo basado en porcentaje
-        flexShrink: 0, // ✅ No permitir que se encoja
-        flexGrow: 0, // ✅ No permitir que crezca
-      })}
-    >
-      {typeof children === "string" ? <Text>{children}</Text> : children}
-    </View>
-  );
+  const cellStyle: Style = {
+    ...styles.cell,
+    width: cellWidth,
+    ...customStyle,
+  };
+
+  if (isHeader) {
+    cellStyle.fontWeight = 700;
+    cellStyle.backgroundColor = "#f8f9fa";
+  }
+
+  return <View style={cellStyle}>{children}</View>;
 };

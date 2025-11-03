@@ -18,6 +18,7 @@ import createHyphenator from "hyphen";
 import patternsEs from "hyphen/patterns/es";
 import { allCouncilMembers } from "../data/mock";
 
+// ✅ ELIMINAR el hyphenationCallback - Esta es la causa principal de los guiones
 const hyphenator = createHyphenator(patternsEs);
 const hyphenationCallback: HyphenationCallback = (word) => {
   if (word.length < 8) {
@@ -26,6 +27,9 @@ const hyphenationCallback: HyphenationCallback = (word) => {
   const result = hyphenator(word);
   return Array.isArray(result) ? result : [word];
 };
+
+// ❌ COMENTAR o ELIMINAR las líneas anteriores y no usar hyphenationCallback
+
 Font.register({
   family: "Museo Sans",
   fonts: [
@@ -71,11 +75,13 @@ const parseStyleAttribute = (styleString: string | null): Style => {
       const prop = property.trim();
       const val = value.trim();
       switch (prop) {
-        case "font-size":
-          style.fontSize = parseFloat(val);
+        case "font-size": {
+          // ✅ Agregar llaves para crear un bloque de scope
+          const parsedSize = parseFloat(val);
+          style.fontSize = Math.round(parsedSize);
           break;
+        }
         case "text-align":
-          // ✅ Asegurar que se capture correctamente
           if (
             val === "left" ||
             val === "right" ||
@@ -108,6 +114,11 @@ const parseStyleAttribute = (styleString: string | null): Style => {
         case "width":
           style.width = val;
           break;
+        case "letter-spacing":
+          // No aplicar letter-spacing, causa problemas visuales
+          break;
+        default:
+          break;
       }
     }
   });
@@ -135,9 +146,12 @@ const renderHtmlNodes = (
       nodes.push(
         <Text
           key={key++}
-          style={baseStyle}
-          // ✅ La hipenación se aplica aquí, en el nodo de texto final
-          hyphenationCallback={hyphenationCallback}
+          style={{
+            ...baseStyle,
+            letterSpacing: 0, // ✅ Forzar a 0 en todos los nodos de texto
+          }}
+          // ❌ ELIMINAR esta línea:
+          // hyphenationCallback={hyphenationCallback}
         >
           {plainText}
         </Text>
@@ -151,7 +165,7 @@ const renderHtmlNodes = (
     }
 
     if (tagName) {
-      let style: Style = { ...baseStyle };
+      let style: Style = { ...baseStyle, letterSpacing: 0 }; // ✅ Forzar a 0
       const styleAttr = attributes.match(/style="([^"]*)"/);
       const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
 
@@ -166,7 +180,9 @@ const renderHtmlNodes = (
           style = { ...style, textDecoration: "underline" };
           break;
         case "span":
-          style = { ...style, ...inlineStyle };
+          style = { ...style, ...inlineStyle, letterSpacing: 0 }; // ✅ Forzar después de merge
+          break;
+        default:
           break;
       }
 
@@ -283,6 +299,10 @@ const getStyles = (
       textAlign: pageNumberPosition,
       color: "#333",
     },
+    justifiedText: {
+      textAlign: "justify",
+      wordBreak: "keep-all", // ✅ Agregar esto
+    },
   });
 
 // ✅ Función mejorada para renderizar contenido de celdas con mejor wrapping
@@ -295,7 +315,9 @@ const renderCellContent = (
   }
 
   const fontSize =
-    typeof baseTextStyle.fontSize === "number" ? baseTextStyle.fontSize : 11;
+    typeof baseTextStyle.fontSize === "number"
+      ? Math.round(baseTextStyle.fontSize) // ✅ Redondear fontSize
+      : 11;
 
   // Renderizar directamente los bloques de contenido
   const content = renderContentBlocks(html, baseTextStyle, fontSize);
@@ -312,6 +334,32 @@ const parseHtmlTable = (
   baseTextStyle: Style,
   fontSize: number
 ) => {
+  console.log("🔍 HTML de tabla recibido:", tableHtml); // DEBUG
+
+  // ✅ 1. Extraer anchos de <colgroup> si existen
+  const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
+  const columnWidths: (number | null)[] = [];
+
+  if (colgroupMatch) {
+    const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
+    console.log("📊 Encontradas", cols.length, "columnas en colgroup"); // DEBUG
+    cols.forEach((col, index) => {
+      // Buscar width en style
+      const styleMatch = col.match(/style="[^"]*width:\s*(\d+(?:\.\d+)?)\s*%/i);
+      if (styleMatch) {
+        const width = parseFloat(styleMatch[1]);
+        columnWidths.push(width);
+        console.log(`  Col ${index}: ${width}%`); // DEBUG
+      } else {
+        // Buscar atributo width directo
+        const widthMatch = col.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
+        const width = widthMatch ? parseFloat(widthMatch[1]) : null;
+        columnWidths.push(width);
+        console.log(`  Col ${index}: ${width || "sin ancho"}%`); // DEBUG
+      }
+    });
+  }
+
   const rows = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gs) || [];
 
   let headerRow: string | null = null;
@@ -328,11 +376,10 @@ const parseHtmlTable = (
 
   const parseCells = (rowHtml: string) => {
     const cells = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gs) || [];
-    return cells.map((cellHtml) => {
+    return cells.map((cellHtml, cellIndex) => {
       const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
       const attributes = cellTagMatch ? cellTagMatch[2] : "";
 
-      // ✅ Extraer colspan y rowspan
       const colspanMatch = attributes.match(/colspan="(\d+)"/i);
       const rowspanMatch = attributes.match(/rowspan="(\d+)"/i);
       const colspan = colspanMatch ? parseInt(colspanMatch[1], 10) : 1;
@@ -342,6 +389,31 @@ const parseHtmlTable = (
       const cellInlineStyle = parseStyleAttribute(
         styleAttr ? styleAttr[1] : null
       );
+
+      // ✅ 2. Extraer width de la celda individual
+      let cellWidth: number | null = null;
+
+      // Buscar en atributo width directo
+      const widthAttrMatch = attributes.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
+      if (widthAttrMatch) {
+        cellWidth = parseFloat(widthAttrMatch[1]);
+      }
+
+      // O en el style parseado (esto ya busca "width: X%" o "width:X%")
+      if (cellInlineStyle.width && typeof cellInlineStyle.width === "string") {
+        const widthValue = cellInlineStyle.width;
+        // Puede ser "25%", "25.5%", "100px", etc.
+        const percentMatch = widthValue.match(/(\d+(?:\.\d+)?)\s*%/);
+        if (percentMatch) {
+          cellWidth = parseFloat(percentMatch[1]);
+        }
+      }
+
+      console.log(
+        `    Celda ${cellIndex}: width=${
+          cellWidth || "auto"
+        }%, colspan=${colspan}`
+      ); // DEBUG
 
       const innerHtml = cellHtml
         .replace(/<t[dh][^>]*>/, "")
@@ -353,17 +425,16 @@ const parseHtmlTable = (
         style: cellInlineStyle,
         colspan,
         rowspan,
+        cellWidth,
       };
     });
   };
 
-  // ✅ Calcular el número total de columnas (considerando colspan)
   const calculateTotalColumns = (rowHtml: string): number => {
     const cells = parseCells(rowHtml);
     return cells.reduce((total, cell) => total + cell.colspan, 0);
   };
 
-  // ✅ Obtener el número máximo de columnas de todas las filas
   let maxColumns = 0;
   if (headerRow) {
     maxColumns = Math.max(maxColumns, calculateTotalColumns(headerRow));
@@ -372,16 +443,62 @@ const parseHtmlTable = (
     maxColumns = Math.max(maxColumns, calculateTotalColumns(row));
   });
 
-  // Si no pudimos calcular columnas, usar un valor por defecto
   if (maxColumns === 0) {
     maxColumns = parseCells(headerRow || bodyRows[0] || "").length;
   }
 
-  console.log("Total de columnas detectadas:", maxColumns); // ✅ Debug
+  console.log(`📏 Total de columnas: ${maxColumns}`); // DEBUG
+
+  const adjustedFontSize =
+    maxColumns > 8 ? Math.max(fontSize - 2, 8) : fontSize - 1;
 
   const baseCellStyle: Style = {
-    fontSize: fontSize - 1,
+    fontSize: Math.round(adjustedFontSize),
     textAlign: "left",
+    letterSpacing: 0,
+  };
+
+  // ✅ 3. Función helper mejorada para calcular ancho de celda
+  const calculateCellWidth = (
+    cellIndex: number,
+    colspan: number,
+    cells: Array<{ colspan: number; cellWidth: number | null }>
+  ): string => {
+    const currentCell = cells[cellIndex];
+
+    // Prioridad 1: Si la celda tiene ancho propio explícito, usarlo
+    if (currentCell.cellWidth !== null && currentCell.cellWidth !== undefined) {
+      console.log(`    ✅ Usando ancho de celda: ${currentCell.cellWidth}%`);
+      return `${currentCell.cellWidth}%`;
+    }
+
+    // Prioridad 2: Si hay colgroup definido, sumar anchos
+    if (columnWidths.length > 0) {
+      const startCol = cells
+        .slice(0, cellIndex)
+        .reduce((sum, c) => sum + c.colspan, 0);
+      let totalWidth = 0;
+      let hasAllWidths = true;
+
+      for (let i = startCol; i < startCol + colspan; i++) {
+        const width = columnWidths[i];
+        if (width === null || width === undefined) {
+          hasAllWidths = false;
+          break;
+        }
+        totalWidth += width;
+      }
+
+      if (hasAllWidths && totalWidth > 0) {
+        console.log(`    ✅ Usando ancho de colgroup: ${totalWidth}%`);
+        return `${totalWidth}%`;
+      }
+    }
+
+    // Prioridad 3: Fallback a distribución equitativa
+    const fallbackWidth = (colspan / maxColumns) * 100;
+    console.log(`    ⚠️ Fallback equitativo: ${fallbackWidth.toFixed(2)}%`);
+    return `${fallbackWidth}%`;
   };
 
   return (
@@ -389,59 +506,75 @@ const parseHtmlTable = (
       {/* Fila de Encabezado */}
       {headerRow && (
         <PdfTableRow isHeader>
-          {parseCells(headerRow).map((cell, idx, arr) => (
-            <PdfTableCell
-              key={`hcell-${idx}`}
-              isHeader
-              colSpan={cell.colspan}
-              rowSpan={cell.rowspan}
-              style={{
-                ...cell.style,
-                ...(idx === arr.length - 1 && { borderRightWidth: 0 }),
-              }}
-            >
-              {renderCellContent(cell.innerHtml, {
-                ...baseTextStyle,
-                ...baseCellStyle,
-                textAlign: cell.style.textAlign || "left",
-                fontWeight: 700,
-              })}
-            </PdfTableCell>
-          ))}
-        </PdfTableRow>
-      )}
+          {parseCells(headerRow).map((cell, idx, arr) => {
+            let cellTextAlign = cell.style.textAlign || "left";
+            if (cellTextAlign === "justify") {
+              cellTextAlign = "left";
+            }
 
-      {/* Filas del Cuerpo */}
-      {bodyRows.map((rowContent, rowIndex, rowsArr) => {
-        const cells = parseCells(rowContent);
-        const isLastRow = rowIndex === rowsArr.length - 1;
+            const cellWidth = calculateCellWidth(idx, cell.colspan, arr);
 
-        return (
-          <PdfTableRow
-            key={`row-${rowIndex}`}
-            style={{
-              ...(isLastRow && { borderBottomWidth: 0 }),
-            }}
-          >
-            {cells.map((cell, cellIndex, cellsArr) => (
+            return (
               <PdfTableCell
-                key={`cell-${cellIndex}`}
+                key={`hcell-${idx}`}
+                isHeader
                 colSpan={cell.colspan}
                 rowSpan={cell.rowspan}
+                width={cellWidth}
                 style={{
                   ...cell.style,
-                  ...(cellIndex === cellsArr.length - 1 && {
-                    borderRightWidth: 0,
-                  }),
                 }}
               >
                 {renderCellContent(cell.innerHtml, {
                   ...baseTextStyle,
                   ...baseCellStyle,
-                  textAlign: cell.style.textAlign || "left",
+                  textAlign: cellTextAlign as "left" | "right" | "center",
+                  fontWeight: 700,
+                  letterSpacing: 0,
                 })}
               </PdfTableCell>
-            ))}
+            );
+          })}
+        </PdfTableRow>
+      )}
+
+      {/* Filas del Cuerpo */}
+      {bodyRows.map((rowContent, rowIndex) => {
+        const cells = parseCells(rowContent);
+
+        return (
+          <PdfTableRow key={`row-${rowIndex}`}>
+            {cells.map((cell, cellIndex, cellsArr) => {
+              let cellTextAlign = cell.style.textAlign || "left";
+              if (cellTextAlign === "justify") {
+                cellTextAlign = "left";
+              }
+
+              const cellWidth = calculateCellWidth(
+                cellIndex,
+                cell.colspan,
+                cellsArr
+              );
+
+              return (
+                <PdfTableCell
+                  key={`cell-${cellIndex}`}
+                  colSpan={cell.colspan}
+                  rowSpan={cell.rowspan}
+                  width={cellWidth}
+                  style={{
+                    ...cell.style,
+                  }}
+                >
+                  {renderCellContent(cell.innerHtml, {
+                    ...baseTextStyle,
+                    ...baseCellStyle,
+                    textAlign: cellTextAlign as "left" | "right" | "center",
+                    letterSpacing: 0,
+                  })}
+                </PdfTableCell>
+              );
+            })}
           </PdfTableRow>
         );
       })}
@@ -492,10 +625,12 @@ const renderContentBlocks = (
     .map((block, blockIndex) => {
       // --- RENDERIZADO DE TABLA ---
       if (block.trim().startsWith("<table")) {
+        // ✅ Para tablas, SIEMPRE usar textAlign: "left", nunca justify
         const cellTextStyle: Style = {
           ...baseTextStyle,
-          textAlign: "left",
+          textAlign: "left", // ✅ Forzar left para evitar problemas de justificación
           fontSize: fontSize - 1,
+          letterSpacing: 0,
         };
 
         return (
@@ -505,7 +640,6 @@ const renderContentBlocks = (
               marginVertical: 8,
               width: "100%",
             }}
-            // ✅ Permitir que la tabla se extienda entre páginas
             wrap={true}
           >
             {parseHtmlTable(block, cellTextStyle, fontSize)}
@@ -513,7 +647,7 @@ const renderContentBlocks = (
         );
       }
 
-      // --- RENDERIZADO DE PÁRRAFO ---
+      // --- RENDERIZADO DE PÁRRAFO (sin cambios, aquí SÍ respetamos justify) ---
       if (block.trim().startsWith("<p")) {
         const tagMatch = block.match(/<p([^>]*)>/);
         const attributes = tagMatch ? tagMatch[1] : "";
@@ -536,19 +670,21 @@ const renderContentBlocks = (
             key={`p-${blockIndex}`}
             style={{
               ...baseTextStyle,
-              ...inlineStyle, // ✅ Esto incluye textAlign si está presente
+              ...inlineStyle,
+              letterSpacing: 0,
               marginBottom: 5,
             }}
           >
             {renderHtmlNodes(innerHtml, {
               ...baseTextStyle,
               ...inlineStyle,
+              letterSpacing: 0,
             })}
           </Text>
         );
       }
 
-      // --- RENDERIZADO DE LISTAS ---
+      // --- RENDERIZADO DE LISTAS (sin cambios) ---
       if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
         const isOrdered = block.trim().startsWith("<ol");
         const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
@@ -594,6 +730,7 @@ const renderContentBlocks = (
                       textAlign: "right",
                       paddingRight: 5,
                       flexShrink: 0,
+                      letterSpacing: 0,
                     }}
                   >
                     {bullet}
@@ -604,9 +741,13 @@ const renderContentBlocks = (
                       ...baseTextStyle,
                       flex: 1,
                       minWidth: 0,
+                      letterSpacing: 0,
                     }}
                   >
-                    {renderHtmlNodes(innerHtml, baseTextStyle)}
+                    {renderHtmlNodes(innerHtml, {
+                      ...baseTextStyle,
+                      letterSpacing: 0,
+                    })}
                   </Text>
                 </View>
               );
@@ -753,7 +894,7 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
             </Text>
             <Text
               style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
-              hyphenationCallback={hyphenationCallback}
+              // ❌ ELIMINAR: hyphenationCallback={hyphenationCallback}
             >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
@@ -987,7 +1128,7 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                 textAlign: "justify",
                 marginBottom: 40,
               }}
-              hyphenationCallback={hyphenationCallback}
+              // ❌ ELIMINAR: hyphenationCallback={hyphenationCallback}
             >
               Cierra el presente Libro de Actas Municipales{" "}
               <Text style={{ fontWeight: 700 }}>{tome.name}</Text> que llevó
