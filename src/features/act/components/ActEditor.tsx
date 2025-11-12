@@ -20,6 +20,8 @@ import {
 import { generateActHeaderHtml } from "../lib/actHelpers";
 import { useSaveAction } from "@/hooks/useSaveAction";
 
+type SaveHandler = () => Promise<boolean>;
+
 interface ActEditorProps {
   act: Act;
   onUpdateAct: (updatedAct: Act) => void;
@@ -28,6 +30,7 @@ interface ActEditorProps {
   isAgreementsPanelVisible?: boolean;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   isReadOnly?: boolean;
+  onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
 
 export const ActEditor = ({
@@ -38,6 +41,7 @@ export const ActEditor = ({
   isAgreementsPanelVisible = true,
   setHasUnsavedChanges,
   isReadOnly = false,
+  onRegisterSaveHandler,
 }: ActEditorProps) => {
   const [localActData, setLocalActData] = useState<Partial<Act>>(act);
   const [editorContent, setEditorContent] = useState<string>(act.bodyContent);
@@ -58,15 +62,28 @@ export const ActEditor = ({
     [act, localActData, editorContent, clarifyingNoteContent]
   );
 
+  const onSaveCallback = useCallback(
+    async (dataToSave: Act) => {
+      onUpdateAct(dataToSave);
+    },
+    [onUpdateAct]
+  );
+
   const { handleSave, isDirty, isSaving } = useSaveAction<Act>({
     initialData: act,
     currentData: currentCombinedData,
-    onSave: onUpdateAct,
+    onSave: onSaveCallback,
     setHasUnsavedChanges: setHasUnsavedChanges,
     loadingMessage: "Guardando acta...",
     successMessage: "Acta guardada exitosamente.",
     errorMessage: "Error al guardar el acta.",
   });
+
+  useEffect(() => {
+    if (handleSave) {
+      onRegisterSaveHandler(handleSave);
+    }
+  }, [handleSave, onRegisterSaveHandler]);
 
   useEffect(() => {
     setLocalActData(act);
@@ -119,7 +136,7 @@ export const ActEditor = ({
     return editorHeaderInContent !== currentGeneratedHeader;
   };
   const canGenerateInitial =
-    localActData.sessionDate &&
+    localActData.meetingDate &&
     localActData.attendees?.syndic &&
     localActData.attendees?.secretary;
 
@@ -264,7 +281,10 @@ export const ActEditor = ({
           <Button type="button" variant="outline" onClick={onBackToList}>
             Volver
           </Button>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving || isReadOnly}>
+          <Button
+            onClick={handleSave}
+            disabled={!isDirty || isSaving || isReadOnly}
+          >
             {isSaving ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>

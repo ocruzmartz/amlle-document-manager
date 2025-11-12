@@ -1,35 +1,45 @@
-// filepath: src/features/act/components/ActAttendeesForm.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { type Act, type CouncilMember } from "@/types";
+import { participantsService } from "../api/participantsService";
 import { Button } from "@/components/ui/button";
 import { AttendeeSelectionModal } from "./AttendeeSelectionModal";
 import { Badge } from "@/components/ui/badge";
-import { allCouncilMembers } from "@/features/book/data/mock";
-import { UserCheck, UserX } from "lucide-react";
+import { UserCheck, UserX, Loader2 } from "lucide-react";
+import { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY } from "../lib/officials";
 
 interface ActAttendeesFormProps {
   attendees: Act["attendees"];
   onAttendeesChange: (newAttendees: Act["attendees"]) => void;
 }
 
-const getMemberName = (
-  member: CouncilMember | null | undefined
-): React.ReactNode => {
-  return (
-    member?.name || (
-      <span className="text-muted-foreground italic">No asistió</span>
-    )
-  );
-};
-
 export const ActAttendeesForm = ({
   attendees,
   onAttendeesChange,
 }: ActAttendeesFormProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [propietariosList, setPropietariosList] = useState<CouncilMember[]>([]);
+  const [isLoadingPropietarios, setIsLoadingPropietarios] = useState(true);
 
+  useEffect(() => {
+    // (Usando función flecha)
+    const loadPropietarios = async () => {
+      try {
+        const data = await participantsService.getPropietarios();
+        setPropietariosList(data);
+      } catch (error) {
+        console.error(
+          "Error cargando lista de propietarios en ActAttendeesForm:",
+          error
+        );
+      } finally {
+        setIsLoadingPropietarios(false);
+      }
+    };
+    loadPropietarios();
+  }, []);
+
+  const totalOwners = propietariosList.length;
   const presentOwnerCount = attendees?.owners?.length ?? 0;
-  const totalOwners = allCouncilMembers.filter((m) => m.role === "OWNER").length;
 
   return (
     <div className="space-y-6">
@@ -57,16 +67,19 @@ export const ActAttendeesForm = ({
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Síndico Municipal</span>
-            <span className="text-sm font-medium">
-              {getMemberName(attendees?.syndic)}
+            <span className="text-xs text-muted-foreground">
+              Síndico Municipal
             </span>
+            <span className="text-sm font-medium">{OFFICIAL_SYNDIC.name}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Secretaria Municipal</span>
-            <span className="text-sm font-medium">
-              {getMemberName(attendees?.secretary)}
+            <span className="text-xs text-muted-foreground">
+              Secretaria Municipal
             </span>
+            <span className="text-sm font-medium">
+              {OFFICIAL_SECRETARY.name}
+            </span>
+            {/* Muestra un badge de asistencia basado en el 'attendees' del getActById */}
           </div>
         </div>
       </div>
@@ -79,12 +92,21 @@ export const ActAttendeesForm = ({
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Concejales Propietarios ({presentOwnerCount} presentes)
         </h4>
-        {presentOwnerCount > 0 ? (
+
+        {/* ✅ Mostrar Carga */}
+        {isLoadingPropietarios ? (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-sm italic text-muted-foreground">
+              Cargando datos del concejo...
+            </span>
+          </div>
+        ) : presentOwnerCount > 0 ? (
           <div className="space-y-2">
             {attendees?.owners?.map((owner) => {
               const isSubstitute = !!owner.substituteForId;
               const originalOwner = isSubstitute
-                ? allCouncilMembers.find(
+                ? propietariosList.find(
                     (o: CouncilMember) => o.id === owner.substituteForId
                   )
                 : null;
@@ -99,6 +121,7 @@ export const ActAttendeesForm = ({
                   {isSubstitute && originalOwner && (
                     <Badge variant="outline" className="text-xs">
                       Sustituye a{" "}
+                      {/* Usar el nombre del Propietario original cargado */}
                       {originalOwner.name.split(" ").slice(0, 2).join(" ")}
                     </Badge>
                   )}
@@ -109,7 +132,9 @@ export const ActAttendeesForm = ({
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 text-muted-foreground">
             <UserX className="h-4 w-4" />
-            <span className="text-sm italic">No se han registrado concejales presentes  </span>
+            <span className="text-sm italic">
+              No se han registrado concejales presentes
+            </span>
           </div>
         )}
       </div>

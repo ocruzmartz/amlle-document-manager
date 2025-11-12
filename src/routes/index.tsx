@@ -6,20 +6,47 @@ import { actRoutes } from "@/features/act/routes";
 import { agreementRoutes } from "@/features/agreement/routes";
 import { auditRoutes } from "@/features/audit/routes";
 import { userRoutes } from "@/features/user/routes";
+import { authRoutes } from "@/features/auth/routes";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { RoleProtectedRoute } from "./RoleProtectedRoute";
+import { PublicRoute } from "./PublicRoute";
 
-const shellRoute: RouteObject = {
-  element: <DashboardLayout />,
+// Rutas protegidas - Solo usuarios autenticados
+const protectedShellRoute: RouteObject = {
+  element: <ProtectedRoute />,
   children: [
-    ...dashboardRoutes,
-    ...booksRoutes,
-    ...actRoutes,
-    ...agreementRoutes,
-    ...auditRoutes,
-    ...userRoutes,
+    {
+      element: <DashboardLayout />,
+      children: [
+        // Dashboard: Todos pueden ver
+        ...dashboardRoutes,
+
+        // Todas las funcionalidades: Solo Admin
+        {
+          element: <RoleProtectedRoute allowedRoles={["admin", "regular"]} />,
+          children: [
+            ...booksRoutes,
+            ...actRoutes,
+            ...agreementRoutes,
+            ...auditRoutes,
+            ...userRoutes,
+          ],
+        },
+      ],
+    },
+    // Workspace de libros: Solo Admin
+    {
+      element: <RoleProtectedRoute allowedRoles={["admin", "regular"]} />,
+      children: booksWorkspaceRoutes,
+    },
   ],
 };
 
 export const router = createBrowserRouter([
-  shellRoute,
-  ...booksWorkspaceRoutes,
+  protectedShellRoute,
+  // Rutas públicas - desenvueltas directamente
+  {
+    element: <PublicRoute />,
+    children: authRoutes,
+  },
 ]);

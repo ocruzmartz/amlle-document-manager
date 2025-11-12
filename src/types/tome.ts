@@ -1,18 +1,18 @@
 import type { Act } from "./act";
+import type { Book } from "./book";
+import type { User } from "./user";
 
 export type BookStatus = "BORRADOR" | "FINALIZADO" | "ARCHIVADO";
 
 export type Tome = {
   id: string;
-  bookId: string;
-  name: string;
-  bookName: string;
-  tomeNumber: number;
-  status: BookStatus;
-  agreementCount: number;
+  name: string | null;
+  number: number;
+  bookName?: string | null;
+  createdByName?: string | null;
   pageCount: number;
-  acts?: Act[];
-  actCount: number;
+  status: BookStatus;
+  book: Book;
   pdfSettings?: {
     pageSize: "A4" | "LETTER";
     orientation: "portrait" | "landscape";
@@ -23,18 +23,25 @@ export type Tome = {
       right: number;
     };
     lineHeight: number;
-    fontSize?: number;
+    fontSize: number;
     enablePageNumbering?: boolean;
     pageNumberingOffset?: number;
     pageNumberingPosition?: "left" | "center" | "right";
     pageNumberingFormat?: "simple" | "dash" | "page" | "pageTotal";
-  };
-  authorizationDate?: string;
-  closingDate?: string;
+  } | null;
+  authorizationDate: string | null;
+  closingDate: string | null;
+  createdBy: User;
   createdAt: string;
-  createdBy: string;
-  lastModified: string;
-  modifiedBy: string;
+  updatedAt: string;
+  modificationName?: string | null;
+  modificationDate?: string | null;
+  modificationIds?: string | null;
+
+  modifiedBy?: User | null;
+  acts?: Act[];
+  actCount?: number;
+  agreementCount?: number;
 };
 
 export type RecentTome = {

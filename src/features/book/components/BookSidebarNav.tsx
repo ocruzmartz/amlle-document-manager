@@ -1,4 +1,4 @@
-// filepath: src/features/books/components/BookStructureNav.tsx
+// src/features/book/components/BookSidebarNav.tsx
 import { type Act } from "@/types";
 import { type WorkspaceView } from "@/features/book/types";
 import {
@@ -28,6 +28,7 @@ export const BookSidebarNav = ({
       main: { type: "cover" },
       detail: { type: "none" },
       activeActId: null,
+      activeAgreementId: null, // ✅ CORRECCIÓN 1: Añadido
     });
   };
 
@@ -35,8 +36,9 @@ export const BookSidebarNav = ({
   const handleActClick = (actId: string) => {
     onViewChange({
       main: { type: "act-edit", actId: actId },
-      detail: { type: "agreement-list" }, // Al seleccionar un acta, la 3ra columna muestra sus acuerdos
+      detail: { type: "agreement-list" },
       activeActId: actId,
+      activeAgreementId: null, // ✅ CORRECCIÓN 2: Añadido (ningún acuerdo está activo)
     });
   };
 
@@ -46,6 +48,7 @@ export const BookSidebarNav = ({
       main: { type: "act-edit", actId: actId },
       detail: { type: "agreement-editor", agreementId: agreementId },
       activeActId: actId,
+      activeAgreementId: agreementId, // ✅ CORRECCIÓN 3: Añadido (el acuerdo SÍ está activo)
     });
   };
 
@@ -54,6 +57,7 @@ export const BookSidebarNav = ({
       main: { type: "pdf-settings" },
       detail: { type: "none" },
       activeActId: null,
+      activeAgreementId: null, // ✅ CORRECCIÓN 4: Añadido
     });
   };
 
@@ -79,11 +83,7 @@ export const BookSidebarNav = ({
           Actas
         </h4>
 
-        <Accordion
-          type="multiple"
-          className="w-full"
-          defaultValue={acts.map((act) => act.id)} // Mantener todas abiertas por defecto
-        >
+        <Accordion type="multiple" className="w-full" defaultValue={[]}>
           {acts.length === 0 && (
             <p className="mt-5 text-gray-400 text-center text-sm">
               Aun no hay actas en este libro.

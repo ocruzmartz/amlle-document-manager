@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type SubmitHandler, type Resolver } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -27,27 +27,36 @@ import {
   bookCoverSchema,
   type BookCoverFormValues,
 } from "../schemas/bookCoverSchema";
+// ✅ 1. Importar el helper para números romanos
+import { numberToRoman } from "@/lib/textUtils";
+
+type SaveHandler = () => Promise<boolean>;
 
 interface BookCoverFormProps {
   tome: Tome;
   onDone: (data: BookCoverFormValues) => void;
   isReadOnly?: boolean;
+  onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
 
 export const BookCoverForm = ({
   tome,
   onDone,
   isReadOnly = false,
+  onRegisterSaveHandler,
 }: BookCoverFormProps) => {
+  // ✅ 2. Lógica para generar el nombre por defecto si es 'null'
+  const defaultTomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
+
   const form = useForm<BookCoverFormValues>({
     resolver: zodResolver(
       bookCoverSchema
     ) as unknown as Resolver<BookCoverFormValues>,
     defaultValues: {
-      name: tome.name,
+      name: defaultTomeName, // ✅ 3. Usar el nombre por defecto
       authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
       closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.tomeNumber,
+      tome: tome.number, // ✅ 4. Corregir tome.tomeNumber a tome.number
     },
   });
 
@@ -55,13 +64,14 @@ export const BookCoverForm = ({
 
   const initialHookData = useMemo(
     () => ({
-      name: tome.name,
+      name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
       authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
       closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.tomeNumber,
+      tome: tome.number,
     }),
     [tome]
   );
+
   const currentHookData = useMemo(
     () => ({
       name: currentFormData.name,
@@ -72,26 +82,44 @@ export const BookCoverForm = ({
     [currentFormData]
   );
 
+  const onSaveCallback = useCallback(
+    async (dataToSave: BookCoverFormValues) => {
+      onDone(dataToSave);
+    },
+    [onDone]
+  ); // Depende de 'onDone' (ahora estable)
+
+  // ✅ 2. ENVOLVER 'onSuccess' EN useCallback
+  const onSuccessCallback = useCallback(
+    (savedData: BookCoverFormValues) => {
+      form.reset(savedData);
+    },
+    [form]
+  ); // Depende de 'form' (que es estable)
+
   const { handleSave, isDirty, isSaving } = useSaveAction<BookCoverFormValues>({
     initialData: initialHookData,
     currentData: currentHookData,
-    onSave: async (dataToSave) => {
-      onDone(dataToSave);
-    },
-    onSuccess: (savedData) => {
-      form.reset(savedData);
-    },
+
+    onSave: onSaveCallback,
+    onSuccess: onSuccessCallback,
     loadingMessage: "Guardando portada...",
     successMessage: "Portada guardada exitosamente.",
     errorMessage: "Error al guardar la portada.",
   });
 
   useEffect(() => {
+    if (handleSave) {
+      onRegisterSaveHandler(handleSave);
+    }
+  }, [handleSave, onRegisterSaveHandler]);
+
+  useEffect(() => {
     form.reset({
-      name: tome.name,
+      name: tome.name || `Tomo ${numberToRoman(tome.number)}`, // ✅ 3. Usar por defecto
       authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
       closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.tomeNumber,
+      tome: tome.number, // ✅ 4. Corregir
     });
   }, [tome, form]);
 
@@ -100,9 +128,8 @@ export const BookCoverForm = ({
   };
 
   return (
-    // ✅ 1. Contenedor raíz con layout flex-col
+    // ... (El JSX del formulario no cambia, solo la lógica de inicialización)
     <div className="h-full flex flex-col">
-      {/* ✅ 2. Cabecera (no se desplaza) */}
       <div className="flex items-center justify-between pb-4 border-b p-4 shrink-0">
         <div>
           <h3 className="text-2xl font-bold">Inicio del Tomo</h3>
@@ -112,17 +139,14 @@ export const BookCoverForm = ({
         </div>
       </div>
 
-      {/* ✅ 3. El <Form> ahora es el contenedor principal y el área de scroll */}
       <Form {...form}>
         <form
-          id="book-cover-form" // ID para el botón del footer
+          id="book-cover-form"
           onSubmit={form.handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto" // Ocupa espacio restante y se desplaza
+          className="flex-1 overflow-y-auto"
         >
           <fieldset disabled={isReadOnly} className="p-4 space-y-6">
-            {/* ✅ 4. Grupos de campos minimalistas */}
             <div className="p-4 space-y-6">
-              {/* --- GRUPO 1: Detalles del Tomo --- */}
               <div className="border rounded-lg">
                 <h4 className="font-semibold p-4 border-b">
                   Detalles del Tomo
@@ -133,8 +157,6 @@ export const BookCoverForm = ({
                     name="name"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        {" "}
-                        {/* Nombre ocupa todo el ancho */}
                         <FormLabel>Nombre del Tomo</FormLabel>
                         <FormControl>
                           <Input placeholder="Ej: Tomo 1 - 2025" {...field} />
@@ -171,7 +193,6 @@ export const BookCoverForm = ({
                 </div>
               </div>
 
-              {/* --- GRUPO 2: Fechas Clave --- */}
               <div className="border rounded-lg">
                 <h4 className="font-semibold p-4 border-b">Fechas Clave</h4>
                 <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -257,12 +278,11 @@ export const BookCoverForm = ({
         </form>
       </Form>
 
-      {/* ✅ 5. Pie de página fijo (no se desplaza) */}
       <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
         <div className="flex justify-end gap-4">
           <Button
             type="submit"
-            form="book-cover-form" // Vinculado al ID del formulario
+            form="book-cover-form"
             disabled={!isDirty || isSaving || isReadOnly}
           >
             {isSaving ? "Guardando..." : "Guardar Cambios"}

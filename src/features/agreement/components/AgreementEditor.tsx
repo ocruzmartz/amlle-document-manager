@@ -2,9 +2,15 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { type Agreement } from "@/types";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
-import { numberToWords, capitalize } from "@/lib/textUtils";
+import {
+  numberToWords,
+  capitalize,
+  removeEmptyParagraphsAtStart,
+} from "@/lib/textUtils";
 import { FileImporter } from "@/components/editor/FileImporter";
 import { useSaveAction } from "@/hooks/useSaveAction";
+
+type SaveHandler = () => Promise<boolean>;
 
 interface AgreementEditorProps {
   agreement: Agreement;
@@ -13,12 +19,8 @@ interface AgreementEditorProps {
   onBack: () => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   isReadOnly?: boolean;
+  onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
-
-// Función helper para limpiar párrafos vacíos
-const removeEmptyParagraphsAtStart = (html: string): string => {
-  return html.replace(/^(<p><\/p>|<p>\s*<\/p>)+/, "");
-};
 
 export const AgreementEditor = ({
   agreement,
@@ -27,6 +29,7 @@ export const AgreementEditor = ({
   onBack,
   setHasUnsavedChanges,
   isReadOnly = false,
+  onRegisterSaveHandler,
 }: AgreementEditorProps) => {
   const [localContent, setLocalContent] = useState(() =>
     removeEmptyParagraphsAtStart(agreement.content)
@@ -40,15 +43,28 @@ export const AgreementEditor = ({
     [agreement, localContent]
   );
 
+  const onSaveCallback = useCallback(
+    async (dataToSave: Agreement) => {
+      onUpdate(dataToSave);
+    },
+    [onUpdate]
+  ); 
+
   const { handleSave, isDirty, isSaving } = useSaveAction<Agreement>({
     initialData: agreement,
     currentData: currentCombinedData,
-    onSave: onUpdate,
+    onSave: onSaveCallback,
     setHasUnsavedChanges: setHasUnsavedChanges,
     loadingMessage: "Guardando acuerdo...",
     successMessage: "Acuerdo guardado exitosamente.",
     errorMessage: "Error al guardar el acuerdo.",
   });
+
+  useEffect(() => {
+    if (handleSave) {
+      onRegisterSaveHandler(handleSave);
+    }
+  }, [handleSave, onRegisterSaveHandler]);
 
   useEffect(() => {
     setLocalContent(removeEmptyParagraphsAtStart(agreement.content));
@@ -59,7 +75,6 @@ export const AgreementEditor = ({
   }, []);
 
   const handleImportedContent = (importedHtml: string) => {
-    // Limpiar el contenido importado
     const cleanedImport = removeEmptyParagraphsAtStart(importedHtml);
 
     // Si hay contenido existente y no está vacío, concatenar con limpieza
@@ -97,7 +112,12 @@ export const AgreementEditor = ({
       </div>
       <div className="shrink-0 p-4 border-t bg-white">
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={onBack} disabled={isReadOnly}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={isReadOnly}
+          >
             Volver
           </Button>
           <Button

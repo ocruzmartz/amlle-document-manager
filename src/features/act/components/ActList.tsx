@@ -1,6 +1,5 @@
-// filepath: src/features/act/components/ActList.tsx
 import { useState } from "react";
-import { type Act, type ActSessionType } from "@/types";
+import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,11 +11,11 @@ import {
   CalendarDays,
   FileText,
   Users,
-} from "lucide-react"; // ✅ Importar nuevos iconos
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge"; // ✅ Importar Badge
+import { Badge } from "@/components/ui/badge";
+import { formatUIDate } from "@/lib/textUtils";
+import { getTotalAttendees } from "../lib/actUtils";
 
 interface ActasListProps {
   acts: Act[];
@@ -27,29 +26,6 @@ interface ActasListProps {
   isReadOnly?: boolean;
 }
 
-// ✅ Helper para obtener texto de tipo de sesión
-const getSessionTypeText = (type: ActSessionType | undefined) => {
-  switch (type) {
-    case "Ordinary":
-      return "Ordinaria";
-    case "Extraordinary":
-      return "Extraordinaria";
-    case "Special":
-      return "Especial";
-    default:
-      return "Indefinida";
-  }
-};
-
-// ✅ Helper para contar asistentes
-const getTotalAttendees = (attendees: Act["attendees"]) => {
-  if (!attendees) return 0;
-  const ownerCount = attendees.owners?.length || 0;
-  const syndicCount = attendees.syndic ? 1 : 0;
-  const secretaryCount = attendees.secretary ? 1 : 0;
-  return ownerCount + syndicCount + secretaryCount;
-};
-
 export const ActList = ({
   acts,
   onCreateAct,
@@ -59,15 +35,12 @@ export const ActList = ({
   isReadOnly = false,
 }: ActasListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Filtrar actas según la búsqueda
   const filteredActs = acts.filter((act) =>
     act.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="h-full flex flex-col">
-      {/* Cabecera (sin cambios) */}
       <div className="shrink-0 p-4 border-b">
         <div className="flex items-center justify-between">
           <div>
@@ -89,14 +62,12 @@ export const ActList = ({
           />
         </div>
       </div>
-
-      {/* Lista de Actas (Rediseñada) */}
       <div className="flex-1 overflow-y-auto p-4">
         {filteredActs.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">
               {acts.length > 0
-                ? `No hay actas que coicidan con "${searchQuery}"`
+                ? `No hay actas que coincidan con "${searchQuery}"`
                 : "No hay actas disponibles."}
             </p>
             <Button onClick={onCreateAct} variant="outline">
@@ -108,7 +79,6 @@ export const ActList = ({
           <div className="grid gap-4">
             {filteredActs.map((act, index) => {
               const isActive = act.id === activeActId;
-              const sessionTypeText = getSessionTypeText(act.sessionType);
               const totalAttendees = getTotalAttendees(act.attendees);
 
               return (
@@ -121,14 +91,11 @@ export const ActList = ({
                       : "hover:bg-muted/50"
                   )}
                 >
-                  {/* --- Fila 1: Título y Acciones --- */}
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold truncate">{act.name}</h3>
                     </div>
-                    {/* Grupo de botones */}
                     <div className="flex items-center gap-2 shrink-0 ml-4">
-                      {/* Botones de reordenación */}
                       <div className="flex flex-col">
                         <Button
                           onClick={() => onReorderAct(act.id, "up")}
@@ -137,13 +104,14 @@ export const ActList = ({
                           size="sm"
                           className="h-6 w-6 p-0"
                           title="Mover arriba"
-                          
                         >
                           <ArrowUp className="h-4 w-4" />
                         </Button>
                         <Button
                           onClick={() => onReorderAct(act.id, "down")}
-                          disabled={index === filteredActs.length - 1 || isReadOnly}
+                          disabled={
+                            index === filteredActs.length - 1 || isReadOnly
+                          }
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
@@ -164,25 +132,21 @@ export const ActList = ({
                     </div>
                   </div>
 
-                  {/* --- Fila 2: Metadatos --- */}
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-3 mt-3 border-t">
                     <Badge variant="outline" className="capitalize">
-                      {sessionTypeText}
+                      {act.sessionType || "Indefinida"}
                     </Badge>
-
                     <div
                       className="flex items-center gap-1.5"
                       title="Fecha de la sesión"
                     >
                       <CalendarDays className="h-3.5 w-3.5" />
-                      <span>
-                        {format(
-                          new Date(act.sessionDate),
-                          "dd 'de' MMM, yyyy",
-                          {
-                            locale: es,
-                          }
+                      <span
+                        className={cn(
+                          !act.meetingDate && "text-muted-foreground italic"
                         )}
+                      >
+                        {formatUIDate(act.meetingDate)}
                       </span>
                     </div>
 

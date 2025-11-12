@@ -19,15 +19,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router";
-import { format } from "date-fns";
+import { Link, type useNavigate } from "react-router";
+import { format, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Tome } from "@/types";
+import { numberToRoman } from "@/lib/textUtils"; // ✅ Importar helper
+
 interface GetColumnsProps {
   onFinalize: (tome: Tome) => void;
   onArchive: (tome: Tome) => void;
   onRestore: (tome: Tome) => void;
   onDelete: (tome: Tome) => void;
+  navigate: ReturnType<typeof useNavigate>;
 }
 
 export const getColumns = ({
@@ -35,107 +38,153 @@ export const getColumns = ({
   onArchive,
   onRestore,
   onDelete,
+  navigate,
 }: GetColumnsProps): ColumnDef<Tome>[] => [
   {
+    // ✅ 1. Cambiar accessorKey a 'name'
     accessorKey: "name",
     header: "Nombre del Tomo",
     cell: ({ row }) => {
       const tome = row.original;
+
+      // ✅ 2. Ser defensivo con los nombres
+      const bookName = tome.bookName || "Libro sin asignar";
+      // Si el nombre es 'null' (como en tu JSON), genera uno
+      const tomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
+
       return (
         <Link
           to={`/books/${tome.id}`}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(`/books/${tome.id}`);
+          }}
           className="font-medium text-primary hover:underline"
         >
-          {tome.bookName}
-          <p className="text-xs text-muted-foreground">{tome.name}</p>
+          {bookName}
+          <p className="text-xs text-muted-foreground">{tomeName}</p>
         </Link>
       );
     },
+    // ✅ 3. Actualizar filtro para que busque en los nombres generados
+    filterFn: (row, id, value) => {
+      const tome = row.original;
+      const bookName = tome.book?.name || "";
+      const tomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
+
+      const combined = `${bookName} ${tomeName}`;
+      return combined.toLowerCase().includes(String(value).toLowerCase());
+    },
   },
   {
-    accessorKey: "tomeNumber",
+    accessorKey: "number",
     header: () => <div className="text-center">Tomo #</div>,
     cell: ({ row }) => {
-      const tomeNum = row.getValue("tomeNumber");
+      const tomeNum = row.getValue("number");
       return <div className="text-center">{String(tomeNum)}</div>;
     },
   },
   {
-    accessorKey: "actCount",
-    header: () => <div className="text-right"># Actas</div>,
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("actCount")}</div>
-    ),
+    accessorKey: "minutesIds",
+    header: () => <div className="text-center"># Actas</div>,
+    cell: ({ row }) => {
+      const ids = row.getValue("minutesIds") as string[] | undefined;
+      const count = ids ? ids.length : 0;
+      return <div className="text-center">{count}</div>;
+    },
   },
   {
     accessorKey: "agreementCount",
-    header: () => <div className="text-right"># Acuerdos</div>,
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("agreementCount")}</div>
-    ),
+    header: () => <div className="text-center"># Acuerdos</div>,
+    cell: ({ row }) => {
+      // ✅ 5. Standby: 'agreementCount' SÍ viene (es 0)
+      const count = row.getValue("agreementCount") as number | undefined;
+      // Mostrará 0 (ya que 0 no es 'falsy' para '||')
+      return <div className="text-center">{count ?? "—"}</div>;
+    },
   },
   {
     accessorKey: "pageCount",
-    header: () => <div className="text-right"># Páginas</div>,
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("pageCount")}</div>
-    ),
+    header: () => <div className="text-center"># Páginas</div>,
+    cell: ({ row }) => {
+      // ✅ 5. Standby: 'pageCount' SÍ viene (es 0)
+      const count = row.getValue("pageCount") as number | undefined;
+      return <div className="text-center">{count ?? "—"}</div>;
+    },
   },
   {
-    accessorKey: "createdBy",
+    accessorKey: "createdBy.nombre",
     header: "Creado por",
+    cell: ({ row }) => {
+      const createdBy = row.original.createdByName;
+      return <div>{createdBy || "—"}</div>;
+    },
   },
   {
     accessorKey: "createdAt",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Fecha de Creación
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Fecha de Creación
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
+      // ✅ 7. Validar fecha (SÍ viene)
+      const dateValue = row.getValue("createdAt") as string | undefined;
+      if (!dateValue || !isValid(new Date(dateValue))) return "—";
       return (
         <div className="font-medium">
-          {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+          {format(new Date(dateValue), "dd/MM/yyyy 'a las' HH:mm", {
+            locale: es,
+          })}
         </div>
       );
     },
   },
   {
-    accessorKey: "modifiedBy",
+    accessorKey: "modificiationName",
     header: "Modificado por",
+    cell: ({ row }) => {
+      const tome = row.original;
+      const modifiedBy =
+        tome.modificationName && tome.modificationName.length > 0
+          ? tome.modificationName[0]
+          : "—";
+      return <div>{modifiedBy}</div>;
+    },
   },
   {
-    accessorKey: "lastModified",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Última Modificación
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    accessorKey: "updatedAt",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Última Modificación
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("lastModified"));
-      const formattedDateTime = format(date, "dd/MM/yyyy 'a las' HH:mm", {
-        locale: es,
-      });
-      return <div className="font-medium">{formattedDateTime}</div>;
+      // ✅ 7. Validar fecha (SÍ viene)
+      const dateValue = row.getValue("updatedAt") as string | undefined;
+      if (!dateValue || !isValid(new Date(dateValue))) return "—";
+      return (
+        <div className="font-medium">
+          {format(new Date(dateValue), "dd/MM/yyyy 'a las' HH:mm", {
+            locale: es,
+          })}
+        </div>
+      );
     },
   },
   {
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
+      // ✅ 7. SÍ viene
       const status = row.getValue("status") as Tome["status"];
       return (
         <Badge
@@ -156,6 +205,7 @@ export const getColumns = ({
   {
     id: "actions",
     cell: ({ row }) => {
+      // ... (El menú de acciones funcionará sin cambios)
       const tome = row.original;
       const isBorrador = tome.status === "BORRADOR";
       const isFinalizado = tome.status === "FINALIZADO";
@@ -172,8 +222,13 @@ export const getColumns = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              {/* Acción de Editar solo si es Borrador */}
-              <Link to={`/books/${tome.id}`}>
+              <Link
+                to={`/books/${tome.id}`}
+                onClick={(e) => {
+                  if (!isBorrador) e.preventDefault();
+                  else navigate(`/books/${tome.id}`);
+                }}
+              >
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
                   disabled={!isBorrador}
@@ -197,24 +252,18 @@ export const getColumns = ({
                   <span>Finalizar Tomo</span>
                 </DropdownMenuItem>
               )}
-
-              {/* 2. Botón de Archivar (Solo si es Finalizado) */}
               {isFinalizado && (
                 <DropdownMenuItem onClick={() => onArchive(tome)}>
                   <Archive className="mr-2 h-4 w-4" />
                   <span>Archivar Tomo</span>
                 </DropdownMenuItem>
               )}
-
-              {/* 3. Botón de Restaurar (Solo si es Archivado) */}
               {isArchivado && (
                 <DropdownMenuItem onClick={() => onRestore(tome)}>
                   <ArchiveRestore className="mr-2 h-4 w-4" />
                   <span>Restaurar a Borrador</span>
                 </DropdownMenuItem>
               )}
-
-              {/* 4. Botón de Eliminar (Solo si NO es Finalizado) */}
               {!isFinalizado && (
                 <>
                   <DropdownMenuSeparator />

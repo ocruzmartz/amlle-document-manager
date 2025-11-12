@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { isEqual } from 'lodash'; // ✅ Importar desde la librería principal
+import { isEqual } from 'lodash';
 
 interface UseSaveActionProps<TData> {
-  initialData: TData; // Los datos originales al cargar
-  currentData: TData; // Los datos actuales en el estado local
-  onSave: (dataToSave: TData) => Promise<void> | void; // La función que guarda (puede ser async)
-  onSuccess?: (savedData: TData) => void; // Callback opcional post-guardado exitoso
-  setHasUnsavedChanges?: (hasChanges: boolean) => void; // Para el flag global
+  initialData: TData;
+  currentData: TData;
+  onSave: (dataToSave: TData) => Promise<void> | void;
+  onSuccess?: (savedData: TData) => void;
+  setHasUnsavedChanges?: (hasChanges: boolean) => void;
   loadingMessage?: string;
   successMessage?: string;
   errorMessage?: string;
@@ -25,11 +25,23 @@ export const useSaveAction = <TData>({
 }: UseSaveActionProps<TData>) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  // Usamos una ref para la data inicial para que no cambie en cada render
   const initialDataRef = useRef(initialData);
+  const currentDataRef = useRef(currentData);
+  const isSavingRef = useRef(isSaving);
+  const isDirtyRef = useRef(isDirty);
 
-  // Actualizar la ref inicial si el prop `initialData` cambia (ej. al cargar nueva acta)
-  // y recalcular isDirty inmediatamente
+  useEffect(() => {
+    currentDataRef.current = currentData;
+  }, [currentData]);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
+
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
+
   useEffect(() => {
     initialDataRef.current = initialData;
     const hasChanged = !isEqual(currentData, initialDataRef.current);
@@ -38,47 +50,51 @@ export const useSaveAction = <TData>({
       setHasUnsavedChanges(hasChanged);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData]); // Dependencia solo de initialData
+  }, [initialData]);
 
-  // Comprobar si hay cambios cuando currentData se actualiza
   useEffect(() => {
     const hasChanged = !isEqual(currentData, initialDataRef.current);
     setIsDirty(hasChanged);
     if (setHasUnsavedChanges) {
       setHasUnsavedChanges(hasChanged);
     }
-  }, [currentData, setHasUnsavedChanges]); // Dependencia correcta
+  }, [currentData, setHasUnsavedChanges]);
 
-  const handleSave = useCallback(async () => {
-    if (!isDirty || isSaving) return;
+  useEffect(() => {
+    return () => {
+      if (setHasUnsavedChanges) {
+        setHasUnsavedChanges(false);
+      }
+    };
+  }, [setHasUnsavedChanges]);
+
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!isDirtyRef.current || isSavingRef.current) return false;
 
     setIsSaving(true);
     const toastId = toast.loading(loadingMessage);
 
     try {
-      // Llamamos a la función onSave que nos pasaron
-      await onSave(currentData);
+      await onSave(currentDataRef.current);
 
-      // Actualizamos la ref inicial AHORA, después del guardado exitoso
-      initialDataRef.current = currentData;
-      setIsDirty(false); // Reiniciar dirty state local
+      initialDataRef.current = currentDataRef.current;
+      setIsDirty(false);
       if (setHasUnsavedChanges) {
-        setHasUnsavedChanges(false); // Reiniciar flag global
+        setHasUnsavedChanges(false);
       }
       toast.success(successMessage, { id: toastId });
-      setIsSaving(false); // Marcar como no guardando ANTES de onSuccess
+      setIsSaving(false);
       if (onSuccess) {
-        onSuccess(currentData); // Ejecutar callback post-guardado (ej: form.reset)
+        onSuccess(currentDataRef.current);
       }
+      return true;
     } catch (error) {
       console.error('Error en useSaveAction:', error);
       toast.error(errorMessage, { id: toastId });
       setIsSaving(false);
+      return false;
     }
-  }, [ // Dependencias correctas
-    isDirty,
-    isSaving,
-    currentData,
+  }, [
     onSave,
     onSuccess,
     setHasUnsavedChanges,
@@ -88,8 +104,8 @@ export const useSaveAction = <TData>({
   ]);
 
   return {
-    handleSave, // La función para llamar desde el botón
-    isDirty,    // Para habilitar/deshabilitar el botón
-    isSaving,   // Para mostrar estado de carga en el botón
+    handleSave,
+    isDirty,
+    isSaving,
   };
 };

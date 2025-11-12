@@ -3,7 +3,7 @@ import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns"; // ✅ Importar isValid
 import { es } from "date-fns/locale";
 
 export const columns: ColumnDef<Act>[] = [
@@ -14,7 +14,7 @@ export const columns: ColumnDef<Act>[] = [
       const act = row.original;
       return (
         <Link
-          to={`/books/${act.tomeId}`}
+          to={`/books/${act.volumeId}`}
           state={{ initialActId: act.id }}
           className="font-medium text-primary hover:underline"
         >
@@ -24,30 +24,45 @@ export const columns: ColumnDef<Act>[] = [
     },
   },
   {
-    accessorKey: "tomeName",
+    accessorKey: "volumeName",
     header: "Tomo de Origen",
     cell: ({ row }) => {
       const act = row.original;
       return (
         <Link
-          to={`/books/${act.tomeId}`}
+          to={`/books/${act.volumeId}`}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
-          {act.tomeName}
+          {act.volumeName}
         </Link>
       );
     },
   },
   {
-    accessorKey: "agreementsCount",
+    accessorKey: "bookName",
+    header: "Libro de Origen",
+    cell: ({ row }) => {
+      const act = row.original;
+      return (
+        <Link
+          to={`/books/${act.bookId}`}
+          className="font-medium text-primary hover:underline flex items-center gap-2"
+        >
+          {act.bookName}
+        </Link>
+      );
+    },
+  },
+  {
+    accessorKey: "agreementCount",
     header: () => <div className="text-right"># Acuerdos</div>,
     cell: ({ row }) => {
-      const count = row.getValue("agreementsCount") as number;
+      const count = row.getValue("agreementCount") as number;
       return <div className="text-center">{count}</div>;
     },
   },
   {
-    accessorKey: "createdBy",
+    accessorKey: "createdByName",
     header: "Creado por",
   },
   {
@@ -62,7 +77,18 @@ export const columns: ColumnDef<Act>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
+      // ✅ --- INICIO DE LA CORRECCIÓN ---
+      const dateValue = row.getValue("createdAt") as string;
+      if (!dateValue) {
+        return <div className="font-medium text-muted-foreground">-</div>;
+      }
+      const date = new Date(dateValue);
+      if (!isValid(date)) {
+        return (
+          <div className="font-medium text-destructive">Fecha inválida</div>
+        );
+      }
+      // ✅ --- FIN DE LA CORRECCIÓN ---
       return (
         <div className="font-medium">
           {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
@@ -71,14 +97,31 @@ export const columns: ColumnDef<Act>[] = [
     },
   },
   {
-    accessorKey: "modifiedBy",
+    accessorKey: "latestModifierName",
     header: "Modificado por",
+    cell: ({ row }) => {
+      const modifierName = row.getValue("latestModifierName") as string | null;
+      return (
+        <div className="font-medium">{modifierName ? modifierName : "-"}</div>
+      );
+    },
   },
   {
-    accessorKey: "lastModified",
+    accessorKey: "latestModificationDate",
     header: "Última Modificación",
     cell: ({ row }) => {
-      const date = new Date(row.getValue("lastModified"));
+      // ✅ --- INICIO DE LA CORRECCIÓN ---
+      const dateValue = row.getValue("latestModificationDate") as string;
+      if (!dateValue) {
+        return <div className="font-medium text-muted-foreground">-</div>;
+      }
+      const date = new Date(dateValue);
+      if (!isValid(date)) {
+        return (
+          <div className="font-medium text-destructive">Fecha inválida</div>
+        );
+      }
+      // ✅ --- FIN DE LA CORRECCIÓN ---
       return (
         <div className="font-medium">
           {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}

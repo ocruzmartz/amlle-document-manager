@@ -1,8 +1,8 @@
 // filepath: src/features/user/pages/UserListPage.tsx
-import { useState, useMemo, useCallback } from "react";
-import { PlusCircle } from "lucide-react"; // Icon
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { PlusCircle, Loader2 } from "lucide-react"; // Importar Loader2
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/DataTable"; // Reusable DataTable component
+import { DataTable } from "@/components/ui/DataTable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,164 +12,155 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Confirmation dialogs
-// Use updated API function names (English)
+} from "@/components/ui/alert-dialog";
+// Importamos todas las funciones conectadas de la API
 import { getUsers, deleteUser, terminateUserSession } from "../api/user";
-// Use updated column definition function name (English)
 import { getColumns } from "../components/UserColumns";
-import { UserForm } from "../components/UserForm"; // The form component (in Sheet)
-import { type User } from "@/types"; // Import the User type
-import { toast } from "sonner"; // For user feedback notifications
+import { UserForm } from "../components/UserForm";
+import { type User } from "@/types";
+import { toast } from "sonner";
 
 /**
- * Renders the main page for managing users.
- * Displays a DataTable of users and provides actions like create, edit, delete.
+ * Renderiza la página principal para la gestión de usuarios.
+ * Muestra una DataTable de usuarios y provee acciones de CRUD.
  */
 export const UserListPage: React.FC = () => {
-  // State variable to trigger data refetching after CUD operations
-  // Incrementing this value causes the `users` memo to recalculate
+  // Estado para forzar la recarga de datos
   const [dataVersion, setDataVersion] = useState(0);
+  // Estado para almacenar los usuarios de la API
+  const [users, setUsers] = useState<User[]>([]);
+  // Estado para mostrar el spinner de carga
+  const [isLoading, setIsLoading] = useState(true);
 
-  // State to control the visibility of the UserForm Sheet panel
+  // Estados para los modales y formularios
   const [isFormOpen, setIsFormOpen] = useState(false);
-  // State to hold the user currently being edited (null if in create mode)
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToTerminate, setUserToTerminate] = useState<User | null>(null);
 
-  // State variables to manage confirmation dialogs
-  const [userToDelete, setUserToDelete] = useState<User | null>(null); // Stores the user targeted for deletion
-  const [userToTerminate, setUserToTerminate] = useState<User | null>(null); // Stores the user whose session will be terminated
+  // --- Carga de Datos Asíncrona ---
+  useEffect(() => {
+    // Función flecha async para cargar usuarios
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      try {
+        console.log("Fetching users - dataVersion:", dataVersion);
+        // Llama a la API asíncrona (GET /api/users/all)
+        const userData = await getUsers(); 
+        setUsers(userData);
+      } catch (error) {
+        // El toast de error ya se muestra en la capa de API (getUsers)
+        console.error("Error en UserListPage al cargar usuarios:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // --- Data Fetching ---
-  // `useMemo` fetches and memoizes the user list. It only refetches when `dataVersion` changes.
-  const users = useMemo(() => {
-    // eslint-disable-next-line no-console
-    console.log("Fetching users - dataVersion:", dataVersion); // Debug log
-    return getUsers(); // Calls the simulated API to get user data
-  }, [dataVersion]);
+    fetchUsers();
+  }, [dataVersion]); // Se ejecuta al inicio y cada vez que dataVersion cambia
 
-  // --- Callback Functions ---
-  /** Callback function to refresh the user list by incrementing `dataVersion`. */
+  // --- Callbacks para Acciones ---
   const refreshData = useCallback(() => {
     setDataVersion((currentVersion) => currentVersion + 1);
-  }, []); // Empty dependency array means this function reference never changes
+  }, []);
 
-  /** Opens the UserForm in edit mode with the specified user's data. */
   const handleEdit = useCallback((user: User) => {
-    setSelectedUser(user); // Set the user to be edited
-    setIsFormOpen(true); // Open the form panel
-  }, []); // Depends only on functions that don't change
+    setSelectedUser(user);
+    setIsFormOpen(true);
+  }, []);
 
-  /** Opens the UserForm in create mode (no user data pre-filled). */
   const handleCreate = useCallback(() => {
-    setSelectedUser(null); // Ensure no user is selected for editing
-    setIsFormOpen(true); // Open the form panel
-  }, []); // Depends only on functions that don't change
+    setSelectedUser(null);
+    setIsFormOpen(true);
+  }, []);
 
-  /** Sets the user to be deleted, triggering the delete confirmation dialog. */
   const handleDelete = useCallback((user: User) => {
     setUserToDelete(user);
-  }, []); // Depends only on functions that don't change
+  }, []);
 
-  /** Sets the user whose session will be terminated, triggering the confirmation dialog. */
   const handleTerminateSession = useCallback((user: User) => {
     setUserToTerminate(user);
-  }, []); // Depends only on functions that don't change
+  }, []);
 
-  // --- Confirmation Action Handlers ---
-  /** Confirms and executes the user deletion via the API. */
-  const confirmDelete = useCallback(() => {
-    if (!userToDelete) return; // Safety check
+  // --- Manejadores de Confirmación (Conectados a la API) ---
 
-    // UI Text: Spanish
+  const confirmDelete = useCallback(async () => {
+    if (!userToDelete) return;
     const toastId = toast.loading("Eliminando usuario...");
     try {
-      deleteUser(userToDelete.id); // Call the delete API function
-       // UI Text: Spanish
+      // Llama al endpoint real (DELETE /api/users/remove/:id)
+      await deleteUser(userToDelete.id); 
       toast.success(
-        `Usuario "${userToDelete.firstName} ${userToDelete.lastName}" eliminado.`,
+        `Usuario "${userToDelete.nombre}" eliminado.`,
         { id: toastId }
       );
-      refreshData(); // Refresh the data table to reflect the deletion
+      refreshData(); // Recarga la tabla
     } catch (error) {
       console.error("Error deleting user:", error);
-       // UI Text: Spanish
       toast.error(
         error instanceof Error ? error.message : "Error al eliminar el usuario.",
         { id: toastId }
       );
     }
-    setUserToDelete(null); // Close the confirmation dialog
-  }, [userToDelete, refreshData]); // Depends on userToDelete and refreshData
+    setUserToDelete(null);
+  }, [userToDelete, refreshData]);
 
-  /** Confirms and executes the session termination via the API. */
-  const confirmTerminate = useCallback(() => {
-    if (!userToTerminate) return; // Safety check
-
-    // UI Text: Spanish
-    const toastId = toast.loading("Terminando sesión...");
+  const confirmTerminate = useCallback(async () => {
+    if (!userToTerminate) return;
+    const toastId = toast.loading("Desactivando usuario...");
     try {
-      terminateUserSession(userToTerminate.id); // Call the terminate session API function
-      // UI Text: Spanish
+      // Llama al endpoint real (PATCH /api/users/deactivate/:id)
+      await terminateUserSession(userToTerminate.id); 
       toast.success(
-        `Sesión terminada para "${userToTerminate.firstName}". El usuario deberá volver a iniciar sesión.`,
-        { id: toastId, duration: 5000 } // Show toast longer for info
+        `Usuario "${userToTerminate.nombre}" desactivado.`,
+        { id: toastId }
       );
-      refreshData(); // Refresh table (e.g., to show INACTIVE status if applicable)
+      refreshData(); // Recarga la tabla
     } catch (error) {
       console.error("Error terminating session:", error);
-      // UI Text: Spanish
-       toast.error(
-        error instanceof Error ? error.message : "Error al terminar la sesión.",
+      toast.error(
+        error instanceof Error ? error.message : "Error al desactivar el usuario.",
         { id: toastId }
       );
     }
-    setUserToTerminate(null); // Close the confirmation dialog
-  }, [userToTerminate, refreshData]); // Depends on userToTerminate and refreshData
+    setUserToTerminate(null);
+  }, [userToTerminate, refreshData]);
 
-  // --- Column Definitions ---
-  // `useMemo` prevents recreating column definitions on every render unless handlers change.
+  // --- Definiciones de Columnas y Filtros ---
   const columns = useMemo(
     () => getColumns(handleEdit, handleDelete, handleTerminateSession),
-    [handleEdit, handleDelete, handleTerminateSession] // Recalculate if handlers change
+    [handleEdit, handleDelete, handleTerminateSession]
   );
 
-  // --- Faceted Filter Definitions ---
-  // Define options for DataTable's faceted filters (only created once)
+  // Filtros adaptados al modelo de datos real del backend
   const facetedFilters = useMemo(() => [
     {
-      columnId: "role",
-      // UI Text: Spanish
-      title: "Permisos", // Filter button title
+      columnId: "rol",
+      title: "Permisos",
       options: [
-        // UI Text: Spanish (labels for filter options)
-        { label: "Admin", value: "ADMIN" },
-        { label: "Editor", value: "EDITOR" },
-        { label: "Lector", value: "READER" }, // Corrected value
+        { label: "Admin", value: "admin" },
+        { label: "Editor", value: "editor" },
+        { label: "Lector", value: "lector" },
       ],
     },
     {
-      columnId: "status",
-      // UI Text: Spanish
-      title: "Estado", // Filter button title
+      columnId: "activo",
+      title: "Estado",
       options: [
-        // UI Text: Spanish
-        { label: "Activo", value: "ACTIVE" },
-        { label: "Inactivo", value: "INACTIVE" },
+        { label: "Activo", value: true },
+        { label: "Inactivo", value: false },
       ],
     },
-  ], []); // Empty dependency array means this is created only once
+  ], []);
 
-  // --- Render Logic ---
+  // --- Renderizado del Componente ---
   return (
     <>
-      {/* Main page container with full height and flex column layout */}
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Header Section (fixed height) */}
-        <div className="shrink-0 p-4"> {/* Non-scrolling header */}
+        {/* Header Section */}
+        <div className="shrink-0 p-4">
           <div className="flex items-center justify-between">
-            {/* Page Title and Description */}
             <div>
-               {/* UI Text: Spanish */}
               <h1 className="text-3xl font-bold tracking-tight">
                 Gestión de Usuarios
               </h1>
@@ -177,9 +168,7 @@ export const UserListPage: React.FC = () => {
                 Crear, editar y gestionar los usuarios del sistema y sus permisos.
               </p>
             </div>
-            {/* Create User Button */}
             <div>
-               {/* UI Text: Spanish */}
               <Button onClick={handleCreate}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Crear Usuario
               </Button>
@@ -187,52 +176,48 @@ export const UserListPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Data Table Section (scrollable) */}
-        {/* Takes remaining vertical space */}
+        {/* Data Table Section (con estado de carga) */}
         <div className="flex-1 overflow-y-auto p-4">
-          <DataTable
-            columns={columns} // Pass column definitions
-            data={users} // Pass user data
-            // Use 'fullName' derived column for primary text filtering
-            filterColumnId="fullName"
-            // UI Text: Spanish
-            filterPlaceholder="Filtrar por nombre o correo..." // Update placeholder
-            facetedFilters={facetedFilters} // Pass faceted filter configurations
-          />
+          {isLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={users} // Pasa los usuarios del estado
+              filterColumnId="nombre" // Filtra por 'nombre'
+              filterPlaceholder="Filtrar por nombre..."
+              facetedFilters={facetedFilters} 
+            />
+          )}
         </div>
       </div>
 
-
-      {/* UserForm Panel (Sheet) - Rendered outside main layout flow */}
+      {/* Panel lateral del Formulario */}
       <UserForm
-        isOpen={isFormOpen} // Control visibility
-        onOpenChange={setIsFormOpen} // Handle closing
-        userToEdit={selectedUser}   // Pass user data for editing (or null for creating)
-        onSave={refreshData}         // Pass refresh callback for after save
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        userToEdit={selectedUser}
+        onSave={refreshData}
       />
 
-      {/* Confirmation Dialog for Deletion */}
+      {/* Diálogo de Confirmación para Eliminar */}
       <AlertDialog
-        open={!!userToDelete} // Show dialog if userToDelete is not null
-        onOpenChange={(open) => !open && setUserToDelete(null)} // Close dialog logic
+        open={!!userToDelete}
+        onOpenChange={(open) => !open && setUserToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-             {/* UI Text: Spanish */}
             <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción eliminará permanentemente al usuario{" "}
-              <strong>
-                {/* Display user info safely */}
-                {userToDelete?.firstName} {userToDelete?.lastName} ({userToDelete?.email})
-              </strong>
-              . Esta acción no se puede deshacer.
+              <strong>{userToDelete?.nombre}</strong>. 
+              Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-             {/* UI Text: Spanish */}
             <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancelar</AlertDialogCancel>
-             {/* UI Text: Spanish */}
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
               Sí, eliminar usuario
             </AlertDialogAction>
@@ -240,30 +225,25 @@ export const UserListPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmation Dialog for Session Termination */}
+      {/* Diálogo de Confirmación para Desactivar (Terminar Sesión) */}
       <AlertDialog
-        open={!!userToTerminate} // Show dialog if userToTerminate is not null
-        onOpenChange={(open) => !open && setUserToTerminate(null)} // Close dialog logic
+        open={!!userToTerminate}
+        onOpenChange={(open) => !open && setUserToTerminate(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-             {/* UI Text: Spanish */}
-            <AlertDialogTitle>Confirmar Terminación de Sesión</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar Desactivación</AlertDialogTitle>
             <AlertDialogDescription>
-              Esto forzará el cierre de la sesión actual para{" "}
-              <strong>
-                 {/* Display user info safely */}
-                {userToTerminate?.firstName} {userToTerminate?.lastName} ({userToTerminate?.email})
-              </strong>
-              . El usuario tendrá que volver a iniciar sesión para continuar. ¿Deseas proceder?
+              Esto establecerá el estado de{" "}
+              <strong>{userToTerminate?.nombre}</strong> como "Inactivo" 
+              y cerrará su sesión. 
+              ¿Deseas proceder?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-             {/* UI Text: Spanish */}
             <AlertDialogCancel onClick={() => setUserToTerminate(null)}>Cancelar</AlertDialogCancel>
-             {/* UI Text: Spanish */}
             <AlertDialogAction onClick={confirmTerminate}>
-              Sí, terminar sesión
+              Sí, desactivar usuario
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

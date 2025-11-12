@@ -2,17 +2,26 @@
 import { type Agreement } from "./agreement";
 import type { CouncilMember } from "./council";
 
-export type ActSessionType = "Ordinary" | "Extraordinary" | "Special";
+export type ActSessionType = "Ordinaria" | "Extraordinaria" | "Especial";
 
 export type Act = {
   id: string;
   name: string;
   tomeId: string;
   tomeName: string;
-  sessionDate: string;
+  volumeId: string;
+  volumeName?: string;
+  bookName?: string;
+  bookId?: string;
   actNumber?: number;
   sessionType?: ActSessionType;
-  sessionTime?: string;
+  latestModificationDate?: string;
+  latestModifierName?: string;
+  createdByName?: string;
+  // sessionDate: string;
+  //sessionTime?: string;
+  meetingDate?: string;
+  meetingTime?: string;
   sessionPoints?: string[];
   attendees?: {
     syndic?: CouncilMember | null;
@@ -28,3 +37,4 @@ export type Act = {
   lastModified: string;
   modifiedBy: string;
 };
+

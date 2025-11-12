@@ -146,18 +146,16 @@ export const createTome = (
 
   const newTome: Tome = {
     id: crypto.randomUUID(),
-    bookId: bookId,
-    bookName: parentBook.name,
+    book: Book.bookId,
     name: data.name || `Tomo ${romanNumeral}`,
-    tomeNumber: data.tomeNumber,
+    number: data.tomeNumber,
     status: "BORRADOR",
     actCount: 0,
     agreementCount: 0,
     pageCount: 1,
     createdAt: now,
     authorizationDate: now,
-    createdBy: "Usuario Actual",
-    lastModified: now,
+    updatedAt: "Usuario Actual",
     modifiedBy: "Usuario Actual",
     acts: [],
   };

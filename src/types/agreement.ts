@@ -4,9 +4,17 @@ export type Agreement = {
   content: string;
   actId: string;
   actName: string;
+  minutesName?: string;
+  volumeName?: string;
+  agreementNumber?: number;
+  volumeId?: string;
+  minutesId?: string;
   tomeId: string; 
-  tomeName: string; 
+  tomeName: string | null; 
   createdAt: string;
+  createdByName?: string;
+  latestModifierName?: string;
+  latestModificationDate?: string;
   createdBy: string;
   lastModified: string;
   modifiedBy: string;

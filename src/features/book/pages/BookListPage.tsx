@@ -1,12 +1,12 @@
-import { PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 import { DataTable } from "@/components/ui/DataTable";
-import { createBook, deleteTome, getTomes, updateTome } from "../api/book";
+import { bookService } from "../../book/api/bookService";
+import { volumeService } from "../api/volumeService";
 import { getColumns } from "../components/BookColumns";
 import { useEffect, useState } from "react";
 import type { Tome } from "@/types";
-import { addAuditLog } from "@/features/audit/api/audit";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -20,11 +20,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import type { SortingState } from "@tanstack/react-table";
 
 export const BookListPage = () => {
   const navigate = useNavigate();
-
+  const initialSorting: SortingState = [{ id: "createdAt", desc: true }];
   const [tomes, setTomes] = useState<Tome[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [tomeToFinalize, setTomeToFinalize] = useState<Tome | null>(null);
   const [tomeToArchive, setTomeToArchive] = useState<Tome | null>(null);
   const [tomeToRestore, setTomeToRestore] = useState<Tome | null>(null);
@@ -32,7 +35,19 @@ export const BookListPage = () => {
   const [confirmationText, setConfirmationText] = useState("");
 
   useEffect(() => {
-    setTomes(getTomes());
+    const fetchTomes = async () => {
+      setIsLoading(true);
+      try {
+        const data = await volumeService.getAllVolumes(); // Llama a /api/volume/find-all
+        setTomes(data); // Establece los datos del backend
+      } catch (error) {
+        console.error("Error al cargar tomos:", error);
+        toast.error("No se pudieron cargar los tomos.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTomes();
   }, []);
 
   const updateLocalTome = (updatedTome: Tome) => {
@@ -41,112 +56,87 @@ export const BookListPage = () => {
     );
   };
 
-  // Elimina un tomo del estado local
   const removeLocalTome = (tomeId: string) => {
     setTomes((currentTomes) => currentTomes.filter((t) => t.id !== tomeId));
   };
 
-  // Simulación de usuario de auditoría (como en otras APIs)
-  const auditUser = { firstName: "Admin", lastName: "Sistema" };
-
-  const handleCreateBook = () => {
-    const newTome = createBook({
-      name: `Nuevo Libro - ${new Date().toLocaleDateString()}`,
-    });
-    // Añadir al estado local y registrar auditoría
-    setTomes((current) => [newTome, ...current]);
-    addAuditLog({
-      action: "CREATED",
-      user: auditUser,
-      target: {
-        type: "Book", // El log es sobre el "Libro" (aunque trabajemos con Tomo)
-        name: newTome.bookName,
-        url: `/books/${newTome.id}`,
-      },
-    });
-    navigate(`/books/${newTome.id}`);
+  const handleCreateBook = async () => {
+    setIsCreating(true);
+    try {
+      const defaultName = `Nuevo Libro - ${new Date().toLocaleDateString()}`;
+      const newBook = await bookService.createBook(defaultName);
+      const newTome = await volumeService.createVolume({
+        number: 1,
+        bookId: newBook.id,
+      });
+      setTomes((current) => [newTome, ...current]);
+      toast.success(`Libro "${newBook.name}" creado exitosamente`);
+      navigate(`/books/${newTome.id}`);
+    } catch (error) {
+      console.error("❌ Error al crear libro:", error);
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo crear el libro"
+      );
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     if (!tomeToFinalize) return;
-
-    const updatedTome = updateTome(tomeToFinalize.id, { status: "FINALIZADO" });
-    if (updatedTome) {
-      updateLocalTome(updatedTome);
-      addAuditLog({
-        action: "FINALIZED", // ✅ Auditoría
-        user: auditUser,
-        target: {
-          type: "Book",
-          name: updatedTome.name,
-          url: `/books/${updatedTome.id}`,
-        },
+    try {
+      const updatedTome = await volumeService.updateVolume(tomeToFinalize.id, {
+        status: "FINALIZADO",
       });
+      updateLocalTome(updatedTome);
       toast.success(
-        `El tomo "${updatedTome.name}" se ha marcado como FINALIZADO.`
+        `El tomo "${updatedTome.name || "Tomo"}" se ha marcado como FINALIZADO.`
       );
-    } else {
+    } catch (error) {
       toast.error("Error al finalizar el tomo.");
     }
     setTomeToFinalize(null);
     setConfirmationText("");
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!tomeToArchive) return;
-    const updatedTome = updateTome(tomeToArchive.id, { status: "ARCHIVADO" });
-    if (updatedTome) {
-      updateLocalTome(updatedTome);
-      addAuditLog({
-        action: "ARCHIVED", // ✅ Auditoría
-        user: auditUser,
-        target: {
-          type: "Book",
-          name: updatedTome.name,
-          url: `/books/${updatedTome.id}`,
-        },
+    try {
+      const updatedTome = await volumeService.updateVolume(tomeToArchive.id, {
+        status: "ARCHIVADO",
       });
-      toast.success(`El tomo "${updatedTome.name}" se ha movido a ARCHIVADO.`);
+      updateLocalTome(updatedTome);
+      toast.success(
+        `El tomo "${updatedTome.name || "Tomo"}" se ha movido a ARCHIVADO.`
+      );
+    } catch (error) {
+      toast.error("Error al archivar el tomo.");
     }
     setTomeToArchive(null);
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     if (!tomeToRestore) return;
-    const updatedTome = updateTome(tomeToRestore.id, { status: "BORRADOR" });
-    if (updatedTome) {
-      updateLocalTome(updatedTome);
-      addAuditLog({
-        action: "RESTORED", // ✅ Auditoría
-        user: auditUser,
-        target: {
-          type: "Book",
-          name: updatedTome.name,
-          url: `/books/${updatedTome.id}`,
-        },
+    try {
+      const updatedTome = await volumeService.updateVolume(tomeToRestore.id, {
+        status: "BORRADOR",
       });
+      updateLocalTome(updatedTome);
       toast.success(
-        `El tomo "${updatedTome.name}" se ha restaurado a BORRADOR.`
+        `El tomo "${updatedTome.name || "Tomo"}" se ha restaurado a BORRADOR.`
       );
+    } catch (error) {
+      toast.error("Error al restaurar el tomo.");
     }
     setTomeToRestore(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!tomeToDelete) return;
     try {
-      deleteTome(tomeToDelete.id);
+      await volumeService.deleteVolume(tomeToDelete.id);
       removeLocalTome(tomeToDelete.id);
-      addAuditLog({
-        action: "DELETED", // ✅ Auditoría
-        user: auditUser,
-        target: {
-          type: "Book",
-          name: tomeToDelete.name,
-          url: `#`,
-        },
-      });
-      toast.success(`Tomo "${tomeToDelete.name}" eliminado.`);
+      toast.success(`Tomo "${tomeToDelete.name || "Tomo"}" eliminado.`);
     } catch (e) {
       toast.error("Error al eliminar el tomo.");
     }
@@ -158,6 +148,7 @@ export const BookListPage = () => {
     onArchive: (tome) => setTomeToArchive(tome),
     onRestore: (tome) => setTomeToRestore(tome),
     onDelete: (tome) => setTomeToDelete(tome),
+    navigate, // Pasamos el hook
   });
 
   const statusFilters = [
@@ -184,25 +175,36 @@ export const BookListPage = () => {
           </p>
         </div>
         <div>
-          <Button onClick={handleCreateBook}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nuevo Libro
+          <Button onClick={handleCreateBook} disabled={isCreating}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {isCreating ? "Creando..." : "Añadir Nuevo Libro"}
           </Button>
         </div>
       </div>
-      <DataTable
-        columns={columns}
-        data={tomes}
-        filterColumnId="bookName"
-        filterPlaceholder="Filtrar por nombre de libro..."
-        facetedFilters={statusFilters}
-      />
 
+      {isLoading ? (
+        <div className="h-32 flex items-center justify-center">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground text-center">Cargando...</p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={tomes}
+          filterColumnId="name"
+          filterPlaceholder="Filtrar por nombre de libro o tomo..."
+          facetedFilters={statusFilters}
+          initialSorting={initialSorting}
+        />
+      )}
+
+      {/* ... (Modales de diálogo no cambian) ... */}
       <AlertDialog
         open={!!tomeToFinalize}
         onOpenChange={(open) => {
           if (!open) {
             setTomeToFinalize(null);
-            setConfirmationText(""); // Limpiar texto al cerrar
+            setConfirmationText("");
           }
         }}
       >
@@ -242,7 +244,7 @@ export const BookListPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal 2: Archivar Tomo (Simple) */}
+      {/* ... (Resto de modales) ... */}
       <AlertDialog
         open={!!tomeToArchive}
         onOpenChange={(open) => !open && setTomeToArchive(null)}
@@ -264,7 +266,6 @@ export const BookListPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal 3: Restaurar Tomo (Simple) */}
       <AlertDialog
         open={!!tomeToRestore}
         onOpenChange={(open) => !open && setTomeToRestore(null)}
@@ -287,7 +288,6 @@ export const BookListPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal 4: Eliminar Tomo (Simple) */}
       <AlertDialog
         open={!!tomeToDelete}
         onOpenChange={(open) => !open && setTomeToDelete(null)}

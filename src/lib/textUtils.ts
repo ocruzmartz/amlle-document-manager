@@ -1,3 +1,6 @@
+import { isValid, parseISO, format } from "date-fns";
+import { es } from "date-fns/locale";
+
 export const numberToWords = (num: number): string => {
   const units = [
     "",
@@ -107,4 +110,61 @@ export const numberToRoman = (num: number): string => {
     }
   }
   return roman;
+};
+
+export const formatDateToISO = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export const getInitials = (name: string): string => {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+export const parseDateSafely = (
+  dateString: string | undefined
+): Date | undefined => {
+  if (!dateString) return undefined;
+
+  // Si viene en formato ISO (YYYY-MM-DD), crear fecha local
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  // Si viene en formato ISO completo con hora, usar parseISO
+  try {
+    const parsed = parseISO(dateString);
+    if (isValid(parsed)) return parsed;
+  } catch {
+    // Ignorar error si parseISO falla
+  }
+
+  // Fallback para otros formatos que Date.parse pueda entender
+  const date = new Date(dateString);
+  if (isValid(date)) return date;
+
+  return undefined;
+};
+
+export const formatUIDate = (dateString: string | undefined): string => {
+  if (!dateString) return "Sin fecha";
+
+  const date = parseDateSafely(dateString);
+  if (!date || !isValid(date)) return "Fecha inválida";
+
+  return format(date, "dd 'de' MMM, yyyy", { locale: es });
+};
+
+export const removeEmptyParagraphsAtStart = (html: string): string => {
+  if (!html) return "";
+  return html.replace(/^(<p><\/p>|<p>\s*<\/p>|<p>&nbsp;<\/p>)+/i, "");
 };

@@ -1,5 +1,4 @@
-// filepath: src/features/book/pages/BookWorkspacePage.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
 import {
   ChevronLeft,
@@ -9,7 +8,7 @@ import {
   PlusCircle,
   Trash,
   PenSquare,
-  ArchiveIcon, // ✅ Importar ícono
+  ArchiveIcon,
 } from "lucide-react";
 import {
   Select,
@@ -19,15 +18,6 @@ import {
   SelectValue,
   SelectSeparator,
 } from "@/components/ui/select";
-import {
-  createAct,
-  getTomeById,
-  updateTome,
-  getBookById,
-  createTome,
-  deleteTome,
-  updateBook,
-} from "../api/book";
 import { type Tome, type Act, type Book } from "@/types";
 import { type WorkspaceView } from "../types";
 import {
@@ -51,28 +41,15 @@ import { Button } from "@/components/ui/button";
 import { BookSidebarNav } from "../components/BookSidebarNav";
 import { BookEditor } from "../components/BookEditor";
 import { BookPdfPreview } from "../components/BookPdfPreview";
-import { capitalize, numberToWords } from "@/lib/textUtils";
+import { capitalize, formatDateToISO, numberToWords } from "@/lib/textUtils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-
-// ... (helpers reorderArray y recalculateNumbers NO CAMBIAN)
-const reorderArray = <T extends { id: string }>(
-  list: T[],
-  itemId: string,
-  direction: "up" | "down"
-): T[] => {
-  const index = list.findIndex((item) => item.id === itemId);
-  if (index === -1) return list;
-
-  const newIndex = direction === "up" ? index - 1 : index + 1;
-  if (newIndex < 0 || newIndex >= list.length) return list;
-
-  const result = Array.from(list);
-  const [removed] = result.splice(index, 1);
-  result.splice(newIndex, 0, removed);
-
-  return result;
-};
+import { volumeService } from "../api/volumeService";
+import { bookService } from "../api/bookService";
+import { toast } from "sonner";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { actService } from "@/features/act/api/minutesService";
+import { reorderArray } from "@/lib/utils";
 
 const recalculateNumbers = (tomeState: Tome): Tome => {
   const recalculatedActs = tomeState.acts?.map((act, actIndex) => {
@@ -101,24 +78,32 @@ const recalculateNumbers = (tomeState: Tome): Tome => {
 };
 
 export const BookWorkspacePage = () => {
-  // ... (toda la lógica de estado y handlers NO CAMBIA)
   const navigate = useNavigate();
   const { bookId: tomeId } = useParams<{ bookId: string }>();
   const location = useLocation();
 
   const [tome, setTome] = useState<Tome | null>(null);
   const [parentBook, setParentBook] = useState<Book | null>(null);
+  const [allVolumes, setAllVolumes] = useState<Tome[]>([]); // ✅ Agregado
 
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  type SaveHandler = () => Promise<boolean>;
+  const activeSaveHandlerRef = useRef<SaveHandler | null>(null);
+
   const [isRenameBookDialogOpen, setIsRenameBookDialogOpen] = useState(false);
   const [newBookName, setNewBookName] = useState("");
   const [tomeToDelete, setTomeToDelete] = useState<Tome | null>(null);
 
+  const [isActLoading, setIsActLoading] = useState(false);
+
+  const [isCreatingAct, setIsCreatingAct] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+
   const previewKey = tome
-    ? tome.lastModified + JSON.stringify(tome.pdfSettings)
+    ? tome.updatedAt + JSON.stringify(tome.pdfSettings)
     : "";
 
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
@@ -144,100 +129,238 @@ export const BookWorkspacePage = () => {
     };
   });
 
+  const onRegisterSaveHandler = useCallback((handler: SaveHandler | null) => {
+    activeSaveHandlerRef.current = handler;
+  }, []);
+
   useEffect(() => {
-    if (tomeId) {
-      setIsLoading(true);
-      const foundTome = getTomeById(tomeId);
-
-      if (foundTome) {
-        setTome(foundTome);
-
-        const foundBook = getBookById(foundTome.bookId);
-        if (foundBook) {
-          setParentBook(foundBook);
-          setNewBookName(foundBook.name);
-        } else {
-          console.error("Error: Tomo encontrado pero sin Libro padre.");
-          navigate("/books");
-        }
-      } else {
-        console.error("Error: Tomo no encontrado.");
+    const loadWorkspace = async () => {
+      if (!tomeId) {
+        toast.error("ID de tomo no proporcionado");
         navigate("/books");
+        return;
       }
-      setIsLoading(false);
-    }
+
+      setIsLoading(true);
+      try {
+        console.log("🔍 Cargando tomo:", tomeId);
+
+        const foundTome = await volumeService.getVolumeById(tomeId);
+        console.log("✅ Tomo cargado:", foundTome);
+
+        const foundActs = await actService.getActsByVolumeId(tomeId);
+        console.log(
+          "✅ Actas cargadas desde /minutes/find-all-by-volume:",
+          foundActs
+        );
+
+        setTome({
+          ...foundTome,
+          acts: foundActs,
+        });
+
+        const bookId = foundTome.book.id;
+        const foundBook = await bookService.getBookById(bookId);
+        console.log("✅ Libro padre cargado:", foundBook);
+        setParentBook(foundBook);
+        setNewBookName(foundBook.name);
+
+        const volumes = await volumeService.getVolumesByBookId(bookId);
+        console.log("✅ Volúmenes del libro:", volumes);
+        setAllVolumes(volumes);
+      } catch (error: any) {
+        console.error("❌ Error al cargar workspace:", error);
+        toast.error(
+          error.response?.data?.message || "No se pudo cargar el tomo"
+        );
+        navigate("/books");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWorkspace();
   }, [tomeId, navigate]);
 
-  const handleRenameBookSubmit = () => {
-    // ... (sin cambios)
-    if (!parentBook || !newBookName) return;
-    updateBook(parentBook.id, { name: newBookName });
-    setParentBook((prev) => (prev ? { ...prev, name: newBookName } : null));
-    setParentBook((prev) =>
-      prev
-        ? {
-            ...prev,
-            name: newBookName,
-            tomos: prev.tomos?.map((t) => ({ ...t, bookName: newBookName })),
-          }
-        : null
-    );
-    setIsRenameBookDialogOpen(false);
-  };
+  const handleRenameBookSubmit = async () => {
+    if (!parentBook || !newBookName.trim()) {
+      toast.error("El nombre del libro no puede estar vacío");
+      return;
+    }
 
-  const handleTomeUpdate = (updatedTomeData: Partial<Tome>) => {
-    // ... (sin cambios)
-    setTome((prevTome) => {
-      if (!prevTome) return null;
-      let newTome = {
-        ...prevTome,
-        ...updatedTomeData,
-        lastModified: new Date().toISOString(),
-      };
-      if (updatedTomeData.acts) {
-        newTome = recalculateNumbers(newTome);
-      }
-      if (tomeId) {
-        updateTome(tomeId, newTome);
-      }
-      return newTome;
-    });
-    setHasUnsavedChanges(true);
-  };
+    try {
+      await bookService.updateBook(parentBook.id, { name: newBookName });
 
-  const handleActUpdate = (updatedAct: Act) => {
-    // ... (sin cambios)
-    setTome((prevTome) => {
-      if (!prevTome || !prevTome.acts) return prevTome;
-      const updatedActs = prevTome.acts.map((act) =>
-        act.id === updatedAct.id ? updatedAct : act
-      );
-      handleTomeUpdate({ acts: updatedActs });
-      return prevTome;
-    });
-  };
+      setParentBook((prev) => (prev ? { ...prev, name: newBookName } : null));
 
-  const handleCreateAct = () => {
-    // ... (sin cambios)
-    if (!tomeId) return;
-    const newAct = createAct(tomeId);
-    if (newAct) {
-      const updatedTome = getTomeById(tomeId);
-      if (updatedTome) {
-        setTome(updatedTome);
-        setCurrentView({
-          main: { type: "act-edit", actId: newAct.id },
-          detail: { type: "agreement-list" },
-          activeActId: newAct.id,
-          activeAgreementId: null,
-        });
-        setHasUnsavedChanges(true);
-      }
+      toast.success("Libro renombrado correctamente");
+      setIsRenameBookDialogOpen(false);
+    } catch (error: any) {
+      console.error("❌ Error al renombrar libro:", error);
+      toast.error("No se pudo renombrar el libro");
     }
   };
 
+  const handleTomeUpdate = useCallback(
+    async (updatedTomeData: Partial<Tome>) => {
+      if (!tome || !tomeId) return;
+
+      if (updatedTomeData.acts) {
+        console.warn(
+          "Actualización de ACTS (reordenar, crear, etc.) es solo local por ahora."
+        );
+        let newTome = {
+          ...tome,
+          ...updatedTomeData,
+          updatedAt: new Date().toISOString(),
+        };
+        if (updatedTomeData.acts) {
+          newTome = recalculateNumbers(newTome);
+        }
+        setTome(newTome);
+        return;
+      }
+
+      const toastId = toast.loading("Guardando cambios...");
+
+      try {
+        const updatedTome = await volumeService.updateVolume(
+          tomeId,
+          updatedTomeData
+        );
+        setTome((prevTome) => {
+          if (!prevTome) return updatedTome;
+
+          return {
+            ...prevTome,
+            ...updatedTome,
+            acts: prevTome.acts,
+          };
+        });
+
+        if (updatedTomeData.name) {
+          setAllVolumes((vols) =>
+            vols.map((v) =>
+              v.id === tomeId ? { ...v, name: updatedTome.name } : v
+            )
+          );
+        }
+
+        setHasUnsavedChanges(false);
+        toast.success("Cambios guardados exitosamente", { id: toastId });
+      } catch (error: any) {
+        console.error("❌ Error al actualizar tomo:", error);
+        toast.error("No se pudo actualizar el tomo", { id: toastId });
+      }
+    },
+    [tome, tomeId, setAllVolumes]
+  );
+
+  useEffect(() => {
+    const loadActForEditing = async () => {
+      if (currentView.main.type === "act-edit" && currentView.activeActId) {
+        setIsActLoading(true);
+
+        try {
+          const fetchedAct = await actService.getActById(
+            currentView.activeActId
+          );
+
+          setTome((prevTome) => {
+            if (!prevTome) return null;
+            const currentActs = prevTome.acts ?? [];
+            return {
+              ...prevTome,
+              acts: currentActs.map((a) =>
+                a.id === fetchedAct.id ? fetchedAct : a
+              ),
+            };
+          });
+        } catch (error: any) {
+          console.error("❌ Error al cargar acta por ID:", error);
+          toast.error("No se pudo cargar el acta para edición.");
+          setCurrentView({
+            main: { type: "act-list" },
+            detail: { type: "none" },
+            activeActId: null,
+            activeAgreementId: null,
+          });
+        } finally {
+          setIsActLoading(false);
+        }
+      }
+    };
+
+    loadActForEditing();
+  }, [currentView.main.type, currentView.activeActId, setTome]);
+
+  const handleActUpdate = useCallback(
+    async (updatedAct: Act) => {
+      if (!tome || !tome.acts) return;
+      try {
+        await actService.updateAct(updatedAct);
+        setTome((prevTome) => {
+          if (!prevTome) return null;
+          const updatedActs = prevTome.acts!.map((act) =>
+            act.id === updatedAct.id ? updatedAct : act
+          );
+          return { ...prevTome, acts: updatedActs };
+        });
+      } catch (error: any) {
+        console.error("❌ Error al guardar acta:", error);
+        throw new Error(error.message || "No se pudo guardar el acta");
+      }
+    },
+    [tome]
+  );
+
+  const handleCreateAct = async () => {
+    if (!tome || !tomeId || isCreatingAct) return;
+
+    setIsCreatingAct(true);
+    const toastId = toast.loading("Creando nueva acta...");
+
+    try {
+      const newActNumber = (tome.acts?.length || 0) + 1;
+      const newActName = `Acta número ${capitalize(
+        numberToWords(newActNumber)
+      )}`;
+
+      const payload = {
+        volumeId: tomeId,
+        name: newActName,
+        actNumber: newActNumber,
+        meetingDate: formatDateToISO(new Date()),
+      };
+
+      const newActFromBackend = await actService.createAct(payload);
+
+      setTome((prevTome) => {
+        if (!prevTome) return null;
+        return {
+          ...prevTome,
+          acts: [...(prevTome.acts || []), newActFromBackend],
+        };
+      });
+
+      setCurrentView({
+        main: { type: "act-edit", actId: newActFromBackend.id },
+        detail: { type: "agreement-list" },
+        activeActId: newActFromBackend.id,
+        activeAgreementId: null,
+      });
+
+      toast.success("Acta creada exitosamente", { id: toastId });
+    } catch (error: any) {
+      console.error("❌ Error al crear acta:", error);
+      toast.error(error.message || "No se pudo crear el acta", { id: toastId });
+    } finally {
+      setIsCreatingAct(false);
+    }
+  };
+
+  // ✅ Sin cambios
   const handleBackClick = () => {
-    // ... (sin cambios)
     if (hasUnsavedChanges) {
       setShowExitDialog(true);
     } else {
@@ -246,78 +369,186 @@ export const BookWorkspacePage = () => {
   };
 
   const handleConfirmExit = () => {
-    // ... (sin cambios)
     setShowExitDialog(false);
     navigate("/books");
   };
 
-  const handleSaveAndExit = () => {
-    // ... (sin cambios)
-    setHasUnsavedChanges(false);
-    setShowExitDialog(false);
-    navigate("/books");
-  };
+  const handleSaveAndExit = async () => {
+    // Leemos el handler MÁS RECIENTE directamente desde el Ref
+    const saveHandler = activeSaveHandlerRef.current;
 
-  const handleReorderAct = (actId: string, direction: "up" | "down") => {
-    // ... (sin cambios)
-    setTome((prevTome) => {
-      if (!prevTome || !prevTome.acts) return prevTome;
-      const reorderedActs = reorderArray(prevTome.acts, actId, direction);
-      const newState = recalculateNumbers({ ...prevTome, acts: reorderedActs });
-      if (tomeId) {
-        updateTome(tomeId, newState);
-      }
-      return newState;
-    });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleCreateTome = () => {
-    // ... (sin cambios)
-    if (!parentBook) return;
-    const newTomeNumber = (parentBook.tomos?.length || 0) + 1;
-    const newTome = createTome(parentBook.id, {
-      name: `Tomo ${newTomeNumber}`,
-      tomeNumber: newTomeNumber,
-    });
-    navigate(`/books/${newTome.id}`);
-  };
-
-  const handleConfirmDeleteTome = () => {
-    // ... (sin cambios)
-    if (!tomeToDelete || !parentBook || !parentBook.tomos) return;
-    deleteTome(tomeToDelete.id);
-    const newTomesList = parentBook.tomos.filter(
-      (t) => t.id !== tomeToDelete.id
-    );
-    setParentBook({ ...parentBook, tomos: newTomesList });
-    if (tomeToDelete.id === tomeId) {
-      if (newTomesList.length > 0) {
-        navigate(`/books/${newTomesList[0].id}`);
-      } else {
-        navigate("/books");
-      }
+    if (!saveHandler) {
+      // Esta es la validación que evita el crash.
+      // Ocurre si saliste del formulario (ActEditor)
+      // antes de presionar "Guardar y Salir".
+      toast.error("Error al guardar: No hay un formulario activo.", {
+        description:
+          "El formulario que estabas editando ya no está visible. Cierra este diálogo y vuelve a la sección que querías guardar.",
+      });
+      return; // Salir
     }
-    setTomeToDelete(null);
+
+    try {
+      // Si llegamos aquí, saveHandler ES una función.
+      const success = await saveHandler(); // ¡Llamar a la función del Ref!
+
+      if (success) {
+        // El 'useSaveAction' (dentro del hijo) ya habrá llamado
+        // a setHasUnsavedChanges(false) a través de su 'onSuccess'.
+        setShowExitDialog(false);
+        navigate("/books");
+      } else {
+        // El hook useSaveAction ya mostró el toast de error.
+        // Mantenemos el modal abierto.
+      }
+    } catch (error) {
+      // Esto captura cualquier error DENTRO de la función de guardado
+      console.error("Error en handleSaveAndExit:", error);
+      toast.error("Ocurrió un error inesperado al guardar.");
+    }
   };
 
-  // --- FIN LÓGICA EXISTENTE ---
+  const refetchActiveAct = useCallback(
+    async (options: { showLoadingScreen?: boolean } = {}) => {
+      const { showLoadingScreen = true } = options;
 
-  if (isLoading || !tome || !parentBook) {
+      if (currentView.main.type === "act-edit" && currentView.activeActId) {
+        if (showLoadingScreen) {
+          setIsActLoading(true);
+        }
+
+        try {
+          const fetchedAct = await actService.getActById(
+            currentView.activeActId
+          );
+          setTome((prevTome) => {
+            if (!prevTome) return null;
+            const currentActs = prevTome.acts ?? [];
+            return {
+              ...prevTome,
+              acts: currentActs.map((a) =>
+                a.id === fetchedAct.id ? fetchedAct : a
+              ),
+            };
+          });
+        } catch (error: Error) {
+          console.error("❌ Error al recargar acta por ID:", error);
+          toast.error(error.message || "No se pudo recargar el acta.");
+        } finally {
+          if (showLoadingScreen) {
+            setIsActLoading(false);
+          }
+        }
+      }
+    },
+    [currentView.activeActId, currentView.main.type]
+  );
+
+  useEffect(() => {
+    refetchActiveAct();
+  }, [refetchActiveAct]);
+
+  const handleReorderAct = async (actId: string, direction: "up" | "down") => {
+    if (!tome || !tome.acts || isReordering) return;
+
+    const originalActs = tome.acts;
+    const movingActIndex = originalActs.findIndex((a) => a.id === actId);
+    if (movingActIndex === -1) return;
+
+    const targetActIndex =
+      direction === "up" ? movingActIndex - 1 : movingActIndex + 1;
+    if (targetActIndex < 0 || targetActIndex >= originalActs.length) {
+      return;
+    }
+
+    const movingAct = originalActs[movingActIndex];
+    const targetAct = originalActs[targetActIndex];
+
+    setIsReordering(true);
+    const toastId = toast.loading("Reordenando actas...");
+
+    try {
+      await actService.updateActNameNumber(
+        movingAct.id,
+        targetAct.name,
+        targetAct.actNumber!
+      );
+
+      const reorderedActs = reorderArray(originalActs, actId, direction);
+      const newState = recalculateNumbers({ ...tome, acts: reorderedActs });
+
+      setTome(newState);
+      toast.success("Actas reordenadas exitosamente", { id: toastId });
+    } catch (error: any) {
+      console.error("❌ Error al reordenar actas:", error);
+      toast.error(error.message || "No se pudo reordenar las actas", {
+        id: toastId,
+      });
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleCreateTome = async () => {
+    if (!parentBook) return;
+
+    try {
+      const newTomeNumber = allVolumes.length + 1;
+
+      const newTome = await volumeService.createVolume({
+        number: newTomeNumber,
+        bookId: parentBook.id,
+      });
+
+      toast.success(`Tomo ${newTomeNumber} creado`);
+      navigate(`/books/${newTome.id}`);
+    } catch (error: any) {
+      console.error("❌ Error al crear tomo:", error);
+      toast.error("No se pudo crear el tomo");
+    }
+  };
+
+  const handleConfirmDeleteTome = async () => {
+    if (!tomeToDelete) return;
+
+    try {
+      await volumeService.deleteVolume(tomeToDelete.id);
+
+      const newVolumesList = allVolumes.filter((v) => v.id !== tomeToDelete.id);
+      setAllVolumes(newVolumesList);
+
+      toast.success("Tomo eliminado correctamente");
+
+      if (tomeToDelete.id === tomeId) {
+        if (newVolumesList.length > 0) {
+          navigate(`/books/${newVolumesList[0].id}`);
+        } else {
+          navigate("/books");
+        }
+      }
+
+      setTomeToDelete(null);
+    } catch (error: any) {
+      console.error("❌ Error al eliminar tomo:", error);
+      toast.error("No se pudo eliminar el tomo");
+    }
+  };
+
+  const isReadOnly = tome?.status === "FINALIZADO";
+  const isArchived = tome?.status === "ARCHIVADO";
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!tome || !parentBook) {
     return (
       <div className="flex justify-center items-center h-screen">
-        Cargando espacio de trabajo...
+        <p className="text-muted-foreground">Tomo no encontrado</p>
       </div>
     );
   }
 
-  // ✅ --- INICIO DE CAMBIOS: Lógica de Bloqueo ---
-
-  // 1. Definir el estado de bloqueo
-  const isReadOnly = tome.status === "FINALIZADO";
-  const isArchived = tome.status === "ARCHIVADO";
-
-  // 2. Renderizar el Header (con botones deshabilitados)
   const renderHeader = () => (
     <div className="shrink-0 p-3 border-b bg-background flex justify-between items-center">
       <div className="flex items-center gap-1">
@@ -329,10 +560,7 @@ export const BookWorkspacePage = () => {
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2
-          className="text-lg font-semibold truncate"
-          title={parentBook.name}
-        >
+        <h2 className="text-lg font-semibold truncate" title={parentBook.name}>
           {parentBook.name}
         </h2>
         <Button
@@ -341,7 +569,7 @@ export const BookWorkspacePage = () => {
           className="h-7 w-7"
           onClick={() => setIsRenameBookDialogOpen(true)}
           title="Renombrar libro padre"
-          disabled={isReadOnly || isArchived} // Deshabilitado
+          disabled={isReadOnly || isArchived}
         >
           <PenSquare className="h-4 w-4" />
         </Button>
@@ -354,26 +582,24 @@ export const BookWorkspacePage = () => {
             <SelectValue placeholder="Seleccionar Tomo..." />
           </SelectTrigger>
           <SelectContent>
-            {parentBook.tomos
-              ?.sort((a, b) => a.tomeNumber - b.tomeNumber)
-              .map((t) => (
-                <div key={t.id} className="flex items-center pr-2">
-                  <SelectItem value={t.id} className="flex-1">
-                    {t.name}
+            {allVolumes
+              .sort((a, b) => a.number - b.number)
+              .map((v) => (
+                <div key={v.id} className="flex items-center pr-2">
+                  <SelectItem value={v.id} className="flex-1">
+                    {v.name || `Tomo ${v.number}`}
                   </SelectItem>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-destructive hover:text-destructive"
                     disabled={
-                      (parentBook.tomos && parentBook.tomos.length <= 1) ||
-                      isReadOnly || // Deshabilitado
-                      isArchived
+                      allVolumes.length <= 1 || isReadOnly || isArchived
                     }
                     title="Eliminar tomo"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setTomeToDelete(t);
+                      setTomeToDelete(v);
                     }}
                   >
                     <Trash className="h-4 w-4" />
@@ -385,7 +611,7 @@ export const BookWorkspacePage = () => {
               variant="ghost"
               className="w-full justify-start h-8 px-2"
               onClick={handleCreateTome}
-              disabled={isReadOnly || isArchived} // Deshabilitado
+              disabled={isReadOnly || isArchived}
             >
               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Tomo
             </Button>
@@ -409,7 +635,6 @@ export const BookWorkspacePage = () => {
         )}
       </div>
 
-      {/* Botón de Vista Previa (siempre visible) */}
       <Sheet>
         <SheetTrigger asChild className="gap-0!">
           <Button variant="outline" className="shadow-none">
@@ -437,9 +662,7 @@ export const BookWorkspacePage = () => {
     </div>
   );
 
-  // 3. Renderizar el contenido principal
   const renderMainContent = () => {
-    // --- BLOQUEO PARA ARCHIVADO ---
     if (isArchived) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -448,8 +671,8 @@ export const BookWorkspacePage = () => {
           <p className="mt-2 text-muted-foreground">
             Este tomo está archivado y no puede ser editado.
             <br />
-            Para hacer cambios, primero debe restaurarlo a "Borrador" desde
-            la lista de libros.
+            Para hacer cambios, primero debe restaurarlo a "Borrador" desde la
+            lista de libros.
           </p>
           <Button variant="outline" className="mt-6" onClick={handleBackClick}>
             <ChevronLeft className="mr-2 h-4 w-4" />
@@ -459,7 +682,10 @@ export const BookWorkspacePage = () => {
       );
     }
 
-    // --- RENDERIZADO NORMAL (con prop isReadOnly) ---
+    if (currentView.main.type === "act-edit" && isActLoading) {
+      return <LoadingScreen />;
+    }
+
     return (
       <>
         <div className="w-[300px] border-r shrink-0 overflow-y-auto bg-white">
@@ -478,24 +704,21 @@ export const BookWorkspacePage = () => {
             onUpdateAct={handleActUpdate}
             onCreateActa={handleCreateAct}
             setHasUnsavedChanges={setHasUnsavedChanges}
+            onRefetchAct={refetchActiveAct}
             onReorderAct={handleReorderAct}
+            onRegisterSaveHandler={onRegisterSaveHandler}
             isReadOnly={isReadOnly}
+            isReordering={isReordering}
           />
         </div>
       </>
     );
   };
 
-  // --- Estructura principal ---
   return (
     <div className="flex flex-col h-screen">
       {renderHeader()}
-
-      <div className="flex flex-1 min-h-0">
-        {renderMainContent()}
-      </div>
-
-      {/* ... (Todos los Modales/Dialogs: renameBook, deleteTome, exitDialog) ... */}
+      <div className="flex flex-1 min-h-0">{renderMainContent()}</div>
       <AlertDialog
         open={isRenameBookDialogOpen}
         onOpenChange={setIsRenameBookDialogOpen}

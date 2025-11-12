@@ -15,9 +15,9 @@ export const columns: ColumnDef<Agreement>[] = [
       const agreement = row.original;
       return (
         <Link
-          to={`/books/${agreement.tomeId}`}
+          to={`/books/${agreement.volumeId}`}
           state={{
-            initialActId: agreement.actId,
+            initialActId: agreement.minutesId,
             initialDetailView: {
               type: "agreement-editor",
               agreementId: agreement.id,
@@ -31,23 +31,23 @@ export const columns: ColumnDef<Agreement>[] = [
     },
   },
   {
-    accessorKey: "actName",
+    accessorKey: "minutesName",
     header: "Acta de Origen",
     cell: ({ row }) => {
       const agreement = row.original;
       return (
         <Link
-          to={`/books/${agreement.tomeId}`}
-          state={{ initialActId: agreement.actId }}
+          to={`/books/${agreement.volumeId}`}
+          state={{ initialActId: agreement.minutesId }}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
-          {agreement.actName}
+          {agreement.minutesName}
         </Link>
       );
     },
   },
   {
-    accessorKey: "tomeName",
+    accessorKey: "volumeName",
     header: "Tomo de Origen",
     cell: ({ row }) => {
       const agreement = row.original;
@@ -56,14 +56,18 @@ export const columns: ColumnDef<Agreement>[] = [
           to={`/books/${agreement.tomeId}`}
           className="font-medium text-primary hover:underline flex items-center gap-2"
         >
-          {agreement.tomeName}
+          {agreement.volumeName}
         </Link>
       );
     },
   },
   {
-    accessorKey: "createdBy",
+    accessorKey: "createdByName",
     header: "Creado por",
+    cell: ({ row }) => {
+      const createdBy = row.getValue("createdByName") as string;
+      return <div className="font-medium">{createdBy || "-"}</div>;
+    }
   },
   {
     accessorKey: "createdAt",
@@ -89,14 +93,18 @@ export const columns: ColumnDef<Agreement>[] = [
     },
   },
   {
-    accessorKey: "modifiedBy",
+    accessorKey: "latestModifierName",
     header: "Modificado por",
+    cell: ({ row }) => {
+      const latestModifier = row.getValue("latestModifierName") as string;
+      return <div className="font-medium">{latestModifier || "-"}</div>;
+    }
   },
   {
-    accessorKey: "lastModified",
+    accessorKey: "latestModificationDate",
     header: "Última Modificación",
     cell: ({ row }) => {
-      const dateValue = row.getValue("lastModified");
+      const dateValue = row.getValue("latestModificationDate");
       if (!dateValue)
         return <div className="font-medium text-muted-foreground">-</div>;
       const date = new Date(dateValue as string);

@@ -40,7 +40,7 @@ export const AgreementList = ({
   // ✅ Filtrar acuerdos según la búsqueda
   const filteredAgreements =
     act.agreements?.filter((agreement) =>
-      agreement.content
+      (agreement.content || "")
         .toLowerCase()
         .replace(/<[^>]*>/g, "") // Limpiar HTML para buscar solo en el texto
         .includes(searchQuery.toLowerCase())

@@ -1,10 +1,9 @@
-// filepath: src/features/act/components/AttendeeSelectionModal.tsx
-import { useState, useEffect } from "react"; // Importar React explícitamente
+import { useState, useEffect } from "react";
 import { type Act, type CouncilMember } from "@/types";
-import { allCouncilMembers } from "@/features/book/data/mock";
+import { participantsService } from "@/features/act/api/participantsService";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox"; // Usar Checkbox de Shadcn
-import { Label } from "@/components/ui/label"; // Usar Label de Shadcn
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -12,17 +11,23 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog"; // Usar Dialog de Shadcn
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Usar Select de Shadcn
-import { Badge } from "@/components/ui/badge"; // Usar Badge de Shadcn
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Usar ScrollArea de Shadcn
-
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Loader2 } from "lucide-react";
+import {
+  availableSyndics,
+  availableSecretaries,
+  OFFICIAL_SYNDIC,
+  OFFICIAL_SECRETARY,
+} from "../lib/officials";
 
 interface AttendeeSelectionModalProps {
   isOpen: boolean;
@@ -37,59 +42,54 @@ export const AttendeeSelectionModal = ({
   currentAttendees,
   onAttendeesChange,
 }: AttendeeSelectionModalProps) => {
-  // ✅ Mover la definición de arrays DENTRO del componente pero FUERA del useEffect
-  const availableSubstitutes = allCouncilMembers.filter(
-    (m) => m.role === "SUBSTITUTE"
-  );
-  const availableSyndics = allCouncilMembers.filter((m) => m.role === "SYNDIC");
-  const availableSecretaries = allCouncilMembers.filter(
-    (m) => m.role === "SECRETARY"
-  );
-  const defaultOwners = allCouncilMembers.filter((m) => m.role === "OWNER");
+
+  const defaultSyndicId = availableSyndics[0]?.id || null;
+  const defaultSecretaryId = availableSecretaries[0]?.id || null;
+
+  const [propietariosList, setPropietariosList] = useState<CouncilMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [selectedSyndicId, setSelectedSyndicId] = useState<string | null>(
-    currentAttendees?.syndic?.id || null
+    defaultSyndicId
   );
   const [selectedSecretaryId, setSelectedSecretaryId] = useState<string | null>(
-    currentAttendees?.secretary?.id || null
+    defaultSecretaryId
   );
-  const [ownerAttendance, setOwnerAttendance] = useState(() => {
-    const owners = allCouncilMembers.filter((m) => m.role === "OWNER");
-    return owners.map((owner) => {
-      const current = currentAttendees?.owners?.find(
-        (att) => att.id === owner.id || att.substituteForId === owner.id
-      );
-      const isSubstituted = current && current.id !== owner.id;
-      return {
-        ownerId: owner.id,
-        attended: !!current,
-        substituteId: isSubstituted ? current.id : null,
-      };
-    });
-  });
 
-  // ✅ SOLUCIÓN: Eliminar defaultOwners de las dependencias
+  const [ownerAttendance, setOwnerAttendance] = useState<
+    {
+      ownerId: string;
+      attended: boolean;
+      substituteId: string | null;
+    }[]
+  >([]);
+
   useEffect(() => {
-    if (isOpen) {
-      setSelectedSyndicId(currentAttendees?.syndic?.id || null);
-      setSelectedSecretaryId(currentAttendees?.secretary?.id || null);
-
-      const owners = allCouncilMembers.filter((m) => m.role === "OWNER");
-      setOwnerAttendance(
-        owners.map((owner) => {
-          const current = currentAttendees?.owners?.find(
-            (att) => att.id === owner.id || att.substituteForId === owner.id
-          );
-          const isSubstituted = current && current.id !== owner.id;
-          return {
-            ownerId: owner.id,
-            attended: !!current,
-            substituteId: isSubstituted ? current.id : null,
-          };
-        })
-      );
-    }
-  }, [isOpen, currentAttendees]); // ✅ Solo isOpen y currentAttendees
+    const loadData = async () => {
+      if (isOpen) {
+        setIsLoading(true);
+        const ownersFromApi = await participantsService.getPropietarios();
+        setPropietariosList(ownersFromApi);
+        setSelectedSyndicId(currentAttendees?.syndic?.id || null);
+        setSelectedSecretaryId(currentAttendees?.secretary?.id || null);
+        setOwnerAttendance(
+          ownersFromApi.map((owner) => {
+            const current = currentAttendees?.owners?.find(
+              (att) => att.id === owner.id || att.substituteForId === owner.id
+            );
+            const isSubstituted = current && current.id !== owner.id;
+            return {
+              ownerId: owner.id,
+              attended: !!current,
+              substituteId: isSubstituted ? current.id : null,
+            };
+          })
+        );
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [isOpen, currentAttendees]);
 
   const handleOwnerAttendanceChange = (
     ownerId: string,
@@ -102,7 +102,7 @@ export const AttendeeSelectionModal = ({
           ? {
               ...item,
               attended: isAttending,
-              substituteId: isAttending ? item.substituteId : null,
+              substituteId: isAttending ? item.substituteId : null, // Si deja de asistir, anula al sustituto
             }
           : item
       )
@@ -111,48 +111,63 @@ export const AttendeeSelectionModal = ({
 
   const handleSubstituteChange = (ownerId: string, substituteId: string) => {
     setOwnerAttendance((prev) =>
-      prev.map(
-        (item) =>
-          item.ownerId === ownerId
-            ? {
-                ...item,
-                substituteId: substituteId === "none" ? null : substituteId,
-                attended: substituteId !== "none",
-              }
-            : item // Marca como asistido si se selecciona sustituto
+      prev.map((item) =>
+        item.ownerId === ownerId
+          ? {
+              ...item,
+              substituteId: substituteId === "none" ? null : substituteId,
+              attended: true, // Si selecciona algo (incluso "none"), es porque marcó asistencia
+            }
+          : item
       )
     );
   };
 
+  // 6. Handler para confirmar y guardar
   const handleConfirm = () => {
+
     const finalAttendees: Act["attendees"] = {
-      syndic: allCouncilMembers.find((m) => m.id === selectedSyndicId) || null,
-      secretary:
-        allCouncilMembers.find((m) => m.id === selectedSecretaryId) || null,
+      syndic: OFFICIAL_SYNDIC || null,
+      secretary: OFFICIAL_SECRETARY || null,
+
+      // Mapeo de asistencia de propietarios
       owners: ownerAttendance
-        .filter((item) => item.attended)
+        .filter((item) => item.attended) // Solo los que asistieron
         .map((item) => {
           if (item.substituteId) {
-            const substitute = allCouncilMembers.find(
+            // --- Lógica de Sustituto ---
+            const owner = propietariosList.find((p) => p.id === item.ownerId);
+            const substitute = owner?.approvedSubstitutes?.find(
               (m) => m.id === item.substituteId
             );
-            // IMPORTANTE: Almacenar la referencia al original en el sustituto
+
+            // Construir el objeto CouncilMember del sustituto
             return substitute
-              ? { ...substitute, substituteForId: item.ownerId }
+              ? {
+                  ...substitute, // id, name
+                  role: "SUBSTITUTE", // Asignar rol
+                  substituteForId: item.ownerId, // Indicar a quién reemplaza
+                }
               : null;
           } else {
-            const owner = allCouncilMembers.find((m) => m.id === item.ownerId);
-            // Asegurarse de quitar substituteForId si asiste el propietario
-            if (owner) delete owner.substituteForId;
-            return owner || null;
+            // --- Lógica de Propietario ---
+            const owner = propietariosList.find((m) => m.id === item.ownerId);
+            // Asegurarse que no tenga 'substituteForId' si asiste el propietario
+            if (owner) {
+              const { ...ownerWithoutSub } = owner;
+              return { ...ownerWithoutSub, role: "OWNER" }; // Asegurar el rol
+            }
+            return null;
           }
         })
         .filter((member): member is CouncilMember => member !== null),
     };
+
     onAttendeesChange(finalAttendees);
     onOpenChange(false);
   };
 
+  // 7. Renderizado del JSX
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[90vh] flex flex-col">
@@ -228,16 +243,20 @@ export const AttendeeSelectionModal = ({
                   </div>
                 </div>
                 {/* Resumen de Asistencia */}
-
-                <div className="h-11 flex items-center justify-between">
-                  <span className="text-sm font-medium mr-2">
-                    Concejales Presentes:
-                  </span>
-                  <Badge variant="secondary" className="text-sm font-semibold">
-                    {ownerAttendance.filter((a) => a.attended).length}/
-                    {defaultOwners.length}
-                  </Badge>
-                </div>
+                {!isLoading && (
+                  <div className="h-11 flex items-center justify-between">
+                    <span className="text-sm font-medium mr-2">
+                      Concejales Presentes:
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-sm font-semibold"
+                    >
+                      {ownerAttendance.filter((a) => a.attended).length}/
+                      {propietariosList.length}
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               {/* Separador */}
@@ -249,105 +268,115 @@ export const AttendeeSelectionModal = ({
                   Concejales Propietarios
                 </h3>
 
-                
+                {/* Grid de Concejales */}
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-48">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">
+                      Cargando propietarios...
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {propietariosList.map((owner, index) => {
+                      const attendanceInfo = ownerAttendance.find(
+                        (item) => item.ownerId === owner.id
+                      );
+                      const attended = attendanceInfo?.attended ?? false;
+                      const substituteId = attendanceInfo?.substituteId ?? null;
+                      const hasSubstitute = attended && substituteId;
 
-                {/* Grid de Concejales - 2 columnas en pantallas grandes */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {defaultOwners.map((owner, index) => {
-                    const attendanceInfo = ownerAttendance.find(
-                      (item) => item.ownerId === owner.id
-                    );
-                    const attended = attendanceInfo?.attended ?? false;
-                    const substituteId = attendanceInfo?.substituteId ?? null;
-                    const hasSubstitute = attended && substituteId;
-
-                    return (
-                      <div
-                        key={owner.id}
-                        className={`p-4 rounded-lg border transition-all ${
-                          attended
-                            ? "bg-muted/50 border-muted-foreground/20"
-                            : "hover:bg-muted/20"
-                        }`}
-                      >
-                        {/* Header del Concejal */}
-                        <div className="flex items-start gap-3 mb-3">
-                          <Checkbox
-                            id={`owner-${owner.id}`}
-                            checked={attended}
-                            onCheckedChange={(checked) =>
-                              handleOwnerAttendanceChange(owner.id, checked)
-                            }
-                            className="h-5 w-5 mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <Label
-                              htmlFor={`owner-${owner.id}`}
-                              className="cursor-pointer font-semibold text-base leading-tight block"
-                            >
-                              {owner.name}
-                            </Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                Concejal #{index + 1}
-                              </Badge>
-                              {hasSubstitute && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Sustituido
+                      return (
+                        <div
+                          key={owner.id}
+                          className={`p-4 rounded-lg border transition-all ${
+                            attended
+                              ? "bg-muted/50 border-muted-foreground/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
+                          {/* Header del Concejal */}
+                          <div className="flex items-start gap-3 mb-3">
+                            <Checkbox
+                              id={`owner-${owner.id}`}
+                              checked={attended}
+                              onCheckedChange={(checked) =>
+                                handleOwnerAttendanceChange(owner.id, checked)
+                              }
+                              className="h-5 w-5 mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <Label
+                                htmlFor={`owner-${owner.id}`}
+                                className="cursor-pointer font-semibold text-base leading-tight block"
+                              >
+                                {owner.name}
+                              </Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  Concejal #{index + 1}
                                 </Badge>
-                              )}
+                                {hasSubstitute && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    Sustituido
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Selector de Sustituto */}
-                        {attended && (
-                          <div className="pl-8 space-y-2">
-                            <Label
-                              htmlFor={`substitute-${owner.id}`}
-                              className="text-xs text-muted-foreground"
-                            >
-                              ¿Quién asiste?
-                            </Label>
-                            <Select
-                              value={substituteId || "none"}
-                              onValueChange={(id) =>
-                                handleSubstituteChange(owner.id, id)
-                              }
-                            >
-                              <SelectTrigger
-                                id={`substitute-${owner.id}`}
-                                className="h-9"
+                          {/* Selector de Sustituto */}
+                          {attended && (
+                            <div className="pl-8 space-y-2">
+                              <Label
+                                htmlFor={`substitute-${owner.id}`}
+                                className="text-xs text-muted-foreground"
                               >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">
-                                  <span className="font-medium">
-                                    {owner.name}
-                                  </span>
-                                  <span className="text-muted-foreground ml-2">
-                                    (Propietario)
-                                  </span>
-                                </SelectItem>
-                                {availableSubstitutes.map((sub) => (
-                                  <SelectItem key={sub.id} value={sub.id}>
+                                ¿Quién asiste?
+                              </Label>
+                              <Select
+                                value={substituteId || "none"}
+                                onValueChange={(id) =>
+                                  handleSubstituteChange(owner.id, id)
+                                }
+                              >
+                                <SelectTrigger
+                                  id={`substitute-${owner.id}`}
+                                  className="h-9"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">
                                     <span className="font-medium">
-                                      {sub.name}
+                                      {owner.name}
                                     </span>
                                     <span className="text-muted-foreground ml-2">
-                                      (Sustituto)
+                                      (Propietario)
                                     </span>
                                   </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                                  {owner.approvedSubstitutes?.map((sub) => (
+                                    <SelectItem key={sub.id} value={sub.id}>
+                                      <span className="font-medium">
+                                        {sub.name}
+                                      </span>
+                                      <span className="text-muted-foreground ml-2">
+                                        (Sustituto)
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <ScrollBar orientation="vertical" />

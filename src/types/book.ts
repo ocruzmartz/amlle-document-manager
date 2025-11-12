@@ -2,14 +2,23 @@ import type { Tome, RecentTome, BookStatus } from "./tome";
 
 export type { BookStatus, RecentTome };
 
-export type Book = {
+export interface Book {
   id: string;
   name: string;
-  tomos?: Tome[];
+  status: "BORRADOR" | "FINALIZADO" | "ARCHIVADO";
+  createdBy: {
+    id: string;
+    nombre: string;
+    rol: string;
+    activo: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+  authorizationDate: string | null;
+  closingDate: string | null;
   createdAt: string;
-  createdBy: string;
-  lastModified: string;
-  modifiedBy: string;
-};
+  updatedAt: string;
+  tomos?: Tome[];
+}
 
 export type RecentBook = RecentTome;

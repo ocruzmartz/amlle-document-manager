@@ -121,7 +121,7 @@ export const RichTextEditor = ({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden flex flex-col h-full">
+    <div className="border-t overflow-hidden flex flex-col h-full">
       {/* ✅ Ocultar barra de herramientas si es read-only */}
       {!isReadOnly && <ToolBar editor={editor} />}
       <div className="tiptap-editor overflow-y-auto flex-1 w-full">

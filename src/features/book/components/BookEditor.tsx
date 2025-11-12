@@ -4,28 +4,34 @@ import { BookCoverForm } from "./BookCoverForm";
 import { ActEditor } from "@/features/act/components/ActEditor";
 import { AgreementEditor } from "@/features/agreement/components/AgreementEditor";
 import { AgreementList } from "@/features/agreement/components/AgreementList";
-import { cn } from "@/lib/utils";
+import { cn, reorderArray } from "@/lib/utils";
 import { ActList } from "@/features/act/components/ActList";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { numberToWords } from "@/lib/textUtils";
+import { formatDateToISO, numberToWords } from "@/lib/textUtils";
 import { BookPdfSettingsForm } from "./BookPdfSettingsForm";
+import { capitalize } from "lodash";
+import { toast } from "sonner";
+import { agreementService } from "@/features/agreement/api/agreementService";
+import type { BookCoverFormValues } from "../schemas/bookCoverSchema";
 
-// ... (helper reorderArray NO CAMBIA)
-const reorderArray = <T extends { id: string }>(
-  list: T[],
-  itemId: string,
-  direction: "up" | "down"
-): T[] => {
-  const index = list.findIndex((item) => item.id === itemId);
-  if (index === -1) return list;
-  const newIndex = direction === "up" ? index - 1 : index + 1;
-  if (newIndex < 0 || newIndex >= list.length) return list;
-  const result = Array.from(list);
-  const [removed] = result.splice(index, 1);
-  result.splice(newIndex, 0, removed);
-  return result;
+const recalculateAgreementNumbers = (
+  act: Act,
+  newAgreements: Agreement[]
+): Act => {
+  const recalculatedAgreements = newAgreements.map(
+    (agreement, agreementIndex) => {
+      const newAgreementNumber = agreementIndex + 1;
+      const newAgreementName = `Acuerdo número ${capitalize(
+        numberToWords(newAgreementNumber)
+      )}`;
+      return { ...agreement, name: newAgreementName };
+    }
+  );
+  return { ...act, agreements: recalculatedAgreements };
 };
+
+type SaveHandler = () => Promise<boolean>;
 
 interface BookEditorProps {
   tome: Tome;
@@ -36,7 +42,10 @@ interface BookEditorProps {
   onUpdateAct: (updatedAct: Act) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   onReorderAct: (actId: string, direction: "up" | "down") => void;
-  isReadOnly: boolean; // ✅ AÑADIR PROP
+  onRefetchAct: (options?: { showLoadingScreen?: boolean }) => void;
+  isReadOnly: boolean;
+  isReordering: boolean;
+  onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
 
 export const BookEditor = ({
@@ -47,131 +56,187 @@ export const BookEditor = ({
   onCreateActa,
   setHasUnsavedChanges,
   onReorderAct,
-  isReadOnly, // ✅ RECIBIR PROP
+  isReadOnly,
+  onRefetchAct,
+  onUpdateAct,
+  isReordering,
+  onRegisterSaveHandler,
 }: BookEditorProps) => {
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
+  const [isCreatingAgreement, setIsCreatingAgreement] = useState(false);
+  const [isReorderingAgreements, setIsReorderingAgreements] = useState(false);
 
-  // --- MANEJADORES DE ACCIONES (Deshabilitar si es read-only) ---
-  const handleAddAgreement = (actId: string) => {
-    if (isReadOnly) return; // ✅ Bloquear
-    // ... (resto de la función)
+  const handleCoverFormDone = useCallback(
+    (data: BookCoverFormValues) => {
+      if (isReadOnly) return;
+      const updatePayload: Partial<Tome> = {
+        name: data.name,
+        number: data.tome,
+        authorizationDate: formatDateToISO(data.authorizationDate),
+        closingDate: data.closingDate
+          ? formatDateToISO(data.closingDate)
+          : null,
+      };
+      onUpdateTome(updatePayload); // Depende de 'onUpdateTome' (ahora estable)
+      setCurrentView({
+        ...currentView,
+        main: { type: "act-list" },
+        detail: { type: "none" },
+        activeActId: null,
+        activeAgreementId: null,
+      });
+    },
+    [isReadOnly, onUpdateTome, setCurrentView, currentView]
+  );
+
+  const handleAddAgreement = async (actId: string) => {
+    if (isReadOnly || isCreatingAgreement) return;
+
+    setIsCreatingAgreement(true);
+    const toastId = toast.loading("Creando acuerdo...");
+
     const act = tome.acts?.find((a) => a.id === actId);
-    if (!act) return;
-    const now = new Date().toISOString();
-    const currentUser = "Usuario Actual";
-    const agreementNumber = (act.agreements || []).length + 1;
-    const newAgreement: Agreement = {
-      id: crypto.randomUUID(),
-      name: `Acuerdo número ${numberToWords(agreementNumber)}`,
-      content: "",
-      actId: act.id,
-      actName: act.name,
-      tomeId: tome.id,
-      tomeName: tome.name,
-      createdAt: now,
-      createdBy: currentUser,
-      lastModified: now,
-      modifiedBy: currentUser,
-    };
-    const updatedAgreements = [...(act.agreements || []), newAgreement];
-    const updatedActs =
-      tome.acts?.map((a) =>
-        a.id === actId
-          ? {
-              ...a,
-              agreements: updatedAgreements,
-              agreementsCount: updatedAgreements.length,
-            }
-          : a
-      ) || [];
-    onUpdateTome({ acts: updatedActs });
-    setCurrentView({
-      ...currentView,
-      detail: {
-        type: "agreement-editor",
-        agreementId: newAgreement.id,
-      },
-      activeAgreementId: newAgreement.id,
-    });
+    if (!act) {
+      toast.error("No se encontró el acta de origen.", { id: toastId });
+      setIsCreatingAgreement(false);
+      return;
+    }
+
+    try {
+      // ✅ 1. Calcular nombre y número
+      const agreementNumber = (act.agreements || []).length + 1;
+      const newAgreementName = `Acuerdo número ${capitalize(
+        numberToWords(agreementNumber)
+      )}`;
+
+      // ✅ 2. Llamar a la API con el DTO completo
+      const newAgreement = await agreementService.createAgreement({
+        minutesId: actId,
+        name: newAgreementName,
+        agreementNumber: agreementNumber,
+        // No enviamos 'content' (opcional)
+      });
+
+      onRefetchAct({ showLoadingScreen: false });
+
+      // ✅ 3. Actualizar el estado local (Tome) con la respuesta de la API
+      const updatedActs =
+        tome.acts?.map((a) =>
+          a.id === actId
+            ? {
+                ...a,
+                agreements: [...(a.agreements || []), newAgreement],
+                agreementsCount: (a.agreements || []).length + 1,
+              }
+            : a
+        ) || [];
+      onUpdateTome({ acts: updatedActs });
+
+      // ✅ 4. Navegar al nuevo acuerdo
+      setCurrentView({
+        ...currentView,
+        detail: {
+          type: "agreement-editor",
+          agreementId: newAgreement.id,
+        },
+        activeAgreementId: newAgreement.id,
+      });
+
+      toast.success("Acuerdo creado exitosamente.", { id: toastId });
+    } catch (error) {
+      console.error("Error al crear acuerdo:", error);
+      toast.error("No se pudo crear el acuerdo.", {
+        id: toastId,
+      });
+    } finally {
+      setIsCreatingAgreement(false);
+    }
   };
 
-  const handleUpdateAgreement = (updatedAgreement: Agreement) => {
-    if (isReadOnly) return; // ✅ Bloquear
-    // ... (resto de la función)
-    if (!currentView.activeActId) return;
-    const now = new Date().toISOString();
-    const currentUser = "Usuario Actual";
-    const agreementWithTracking: Agreement = {
-      ...updatedAgreement,
-      lastModified: now,
-      modifiedBy: currentUser,
-    };
-    const updatedActs = tome.acts?.map((act) => {
-      if (act.id === currentView.activeActId) {
-        const updatedAgreements = act.agreements.map((agr) =>
-          agr.id === agreementWithTracking.id ? agreementWithTracking : agr
-        );
-        return { ...act, agreements: updatedAgreements };
-      }
-      return act;
-    });
-    onUpdateTome({ acts: updatedActs });
-  };
+  const handleUpdateAgreement = useCallback(
+    async (updatedAgreement: Agreement) => {
+      if (isReadOnly) return;
+      await agreementService.updateAgreement(updatedAgreement.id, {
+        content: updatedAgreement.content,
+      });
+      onRefetchAct({ showLoadingScreen: false });
+    },
+    [isReadOnly, onRefetchAct]
+  );
 
-  const handleReorderAgreement = (
+  const handleReorderAgreement = async (
     agreementId: string,
     direction: "up" | "down"
   ) => {
-    if (isReadOnly) return; // ✅ Bloquear
-    // ... (resto de la función)
-    if (!currentView.activeActId) return;
-    const updatedActs = tome.acts?.map((act) => {
-      if (act.id === currentView.activeActId) {
-        const reorderedAgreements = reorderArray(
-          act.agreements,
-          agreementId,
-          direction
-        );
-        return { ...act, agreements: reorderedAgreements };
-      }
-      return act;
-    });
-    setCurrentView({ ...currentView, activeAgreementId: agreementId });
-    onUpdateTome({ acts: updatedActs });
-    setHasUnsavedChanges(true);
+    if (isReadOnly || isReorderingAgreements || !currentView.activeActId)
+      return;
+
+    const act = tome.acts?.find((a) => a.id === currentView.activeActId);
+    if (!act || !act.agreements) return;
+
+    const originalAgreements = act.agreements;
+    const movingAgreementIndex = originalAgreements.findIndex(
+      (a) => a.id === agreementId
+    );
+    if (movingAgreementIndex === -1) return;
+
+    const targetAgreementIndex =
+      direction === "up" ? movingAgreementIndex - 1 : movingAgreementIndex + 1;
+    if (
+      targetAgreementIndex < 0 ||
+      targetAgreementIndex >= originalAgreements.length
+    ) {
+      return;
+    }
+
+    const movingAgreement = originalAgreements[movingAgreementIndex];
+    const targetAgreement = originalAgreements[targetAgreementIndex];
+    const targetAgreementNumber = targetAgreementIndex + 1;
+
+    setIsReorderingAgreements(true);
+    const toastId = toast.loading("Reordenando acuerdos...");
+
+    try {
+      await agreementService.updateAgreementNameNumber(movingAgreement.id, {
+        name: targetAgreement.name,
+        agreementNumber: targetAgreementNumber,
+      });
+
+      const reorderedAgreements = reorderArray(
+        originalAgreements,
+        agreementId,
+        direction
+      );
+
+      const updatedAct = recalculateAgreementNumbers(act, reorderedAgreements);
+      const updatedActs = tome.acts!.map((a) =>
+        a.id === updatedAct.id ? updatedAct : a
+      );
+      onUpdateTome({ acts: updatedActs });
+      setCurrentView({ ...currentView, activeAgreementId: agreementId });
+      toast.success("Acuerdos reordenados.", { id: toastId });
+    } catch (error) {
+      console.error("Error al reordenar acuerdos:", error);
+      toast.error("No se pudo reordenar.", {
+        id: toastId,
+      });
+    } finally {
+      setIsReorderingAgreements(false);
+    }
   };
 
   const isAgreementFocusMode =
     currentView.main.type === "act-edit" &&
     currentView.detail.type === "agreement-editor";
-
-  // --- RENDERIZADO DE COLUMNAS (Pasando isReadOnly) ---
   const renderMainColumn = () => {
     switch (currentView.main.type) {
       case "cover":
         return (
           <BookCoverForm
             tome={tome}
-            onDone={(data) => {
-              if (isReadOnly) return; // ✅ Bloquear
-              const updatePayload: Partial<Tome> = {
-                name: data.name,
-                tomeNumber: data.tome,
-                authorizationDate: data.authorizationDate.toISOString(),
-                closingDate: data.closingDate
-                  ? data.closingDate.toISOString()
-                  : undefined,
-              };
-              onUpdateTome(updatePayload);
-              setCurrentView({
-                ...currentView,
-                main: { type: "act-list" },
-                detail: { type: "none" },
-                activeActId: null,
-                activeAgreementId: null,
-              });
-            }}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            onDone={handleCoverFormDone}
+            isReadOnly={isReadOnly}
+            onRegisterSaveHandler={onRegisterSaveHandler}
           />
         );
 
@@ -183,14 +248,7 @@ export const BookEditor = ({
           <ActEditor
             key={act.id}
             act={act}
-            onUpdateAct={(updatedActa) => {
-              if (isReadOnly) return; // ✅ Bloquear
-              const updatedActs =
-                tome.acts?.map((a) =>
-                  a.id === updatedActa.id ? updatedActa : a
-                ) || [];
-              onUpdateTome({ acts: updatedActs });
-            }}
+            onUpdateAct={onUpdateAct}
             onToggleAgreements={() =>
               setIsDetailPanelVisible(!isDetailPanelVisible)
             }
@@ -204,7 +262,8 @@ export const BookEditor = ({
             }}
             isAgreementsPanelVisible={isDetailPanelVisible}
             setHasUnsavedChanges={setHasUnsavedChanges}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            onRegisterSaveHandler={onRegisterSaveHandler}
+            isReadOnly={isReadOnly}
           />
         );
       }
@@ -214,7 +273,7 @@ export const BookEditor = ({
           <BookPdfSettingsForm
             tome={tome}
             onUpdateSettings={(settings) => {
-              if (isReadOnly) return; // ✅ Bloquear
+              if (isReadOnly) return;
               onUpdateTome({ pdfSettings: settings });
               setCurrentView({
                 main: { type: "act-list" },
@@ -223,7 +282,8 @@ export const BookEditor = ({
                 activeAgreementId: null,
               });
             }}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            onRegisterSaveHandler={onRegisterSaveHandler}
+            isReadOnly={isReadOnly}
           />
         );
 
@@ -233,7 +293,7 @@ export const BookEditor = ({
           <ActList
             acts={tome.acts || []}
             onCreateAct={() => {
-              if (isReadOnly) return; // ✅ Bloquear
+              if (isReadOnly) return;
               onCreateActa();
             }}
             onEditAct={(actId) =>
@@ -245,7 +305,7 @@ export const BookEditor = ({
               })
             }
             onReorderAct={(actId, direction) => {
-              if (isReadOnly) return; // ✅ Bloquear
+              if (isReadOnly) return;
               setCurrentView({
                 ...currentView,
                 activeActId: actId,
@@ -254,19 +314,17 @@ export const BookEditor = ({
               onReorderAct(actId, direction);
             }}
             activeActId={currentView.activeActId}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            isReadOnly={isReadOnly || isReordering}
           />
         );
     }
   };
 
   const renderDetailColumn = () => {
-    // ... (sin cambios)
     const act = tome.acts?.find((a) => a.id === currentView.activeActId);
     if (!act) return null;
     switch (currentView.detail.type) {
       case "agreement-editor": {
-        // ... (sin cambios)
         const { agreementId } = currentView.detail;
         const agreement = act.agreements.find((agr) => agr.id === agreementId);
         const agreementIndex = act.agreements.findIndex(
@@ -308,7 +366,8 @@ export const BookEditor = ({
               })
             }
             setHasUnsavedChanges={setHasUnsavedChanges}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            onRegisterSaveHandler={onRegisterSaveHandler}
+            isReadOnly={isReadOnly}
           />
         );
       }
@@ -332,13 +391,12 @@ export const BookEditor = ({
               handleReorderAgreement(agreementId, direction);
             }}
             activeAgreementId={currentView.activeAgreementId}
-            isReadOnly={isReadOnly} // ✅ Pasar prop
+            isReadOnly={isReadOnly || isReorderingAgreements}
           />
         );
     }
   };
 
-  // ... (JSX de renderizado final NO CAMBIA)
   return (
     <div className="flex flex-1 min-h-0">
       <div

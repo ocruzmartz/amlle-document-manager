@@ -2,15 +2,11 @@ import { type Act } from "@/types";
 import { numberToWords } from "@/lib/textUtils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { SessionTypeMapper } from "./actMappers"; // ✅ Importar mapper
 
 export const generateActHeaderHtml = (act: Partial<Act>): string => {
-  const sessionType =
-    act.sessionType === "Ordinary"
-      ? "ordinaria"
-      : act.sessionType === "Extraordinary"
-      ? "extraordinaria"
-      : "especial";
-  const sessionTime = act.sessionTime || "diez horas";
+  const sessionType = SessionTypeMapper.toDisplayText(act.sessionType); // ✅ Usar mapper
+  const sessionTime = act.meetingTime || "diez horas"; // ✅ Usar meetingTime
 
   const formatDateInWords = (dateString: string): string => {
     const date = new Date(dateString);
@@ -24,24 +20,20 @@ export const generateActHeaderHtml = (act: Partial<Act>): string => {
   };
 
   const generateAttendeesList = (): string => {
-    return (
-      act.attendees?.owners?.map((p) => p.name).join(", ") ||
-      "[Lista de Asistentes]"
-    );
+    const attendees = act.attendees?.owners?.map((member) => member.name) || [];
+    return attendees.length > 0
+      ? attendees.join(", ")
+      : "[Lista de Asistentes]";
   };
 
   const sindicoName = act.attendees?.syndic?.name || "[Síndico]";
   const secretariaName = act.attendees?.secretary?.name || "[Secretaria]";
   const attendeesList = generateAttendeesList();
   const dateInWords = formatDateInWords(
-    act.sessionDate || new Date().toISOString()
+    act.meetingDate || new Date().toISOString()
   );
 
   const actName = act.name || "[Nombre del Acta]";
 
-  return `<p data-act-header="true"><strong>${actName}:</strong> Sesión ${sessionType} celebrada por el Concejo Municipal en el salón de reuniones de la Alcaldía Municipal de Antiguo Cuscatlán, a las ${sessionTime} del día ${dateInWords}, presidió la reunión la señora Alcaldesa Municipal Licda. Zoila Milagro Navas Quintanilla, con la asistencia del señor Síndico Municipal Licenciado ${sindicoName} y de los concejales propietarios: ${attendeesList} y la Secretaria Municipal del Concejo Sra. ${secretariaName}. Seguidamente la sesión dio inicio con los siguientes puntos:</p>
-<p>I-Comprobación del Quórum de Ley para celebrar la Sesión y se declaró abierta.</p>
-<p>II-Lectura del Acta anterior</p>
-<p>III-Lectura de la correspondencia Externa</p>
-<p>IV-Lectura de la correspondencia Interna</p>`;
+  return `<p data-act-header="true"><strong>${actName}:</strong> Sesión ${sessionType} celebrada por el Concejo Municipal en el salón de reuniones de la Alcaldía Municipal de Antiguo Cuscatlán, a las ${sessionTime} del día ${dateInWords}, presidió la reunión la señora Alcaldesa Municipal Licda. Zoila Milagro Navas Quintanilla, con la asistencia del señor Síndico Municipal Licenciado ${sindicoName} y de los concejales propietarios: ${attendeesList} y la Secretaria Municipal del Concejo Sra. ${secretariaName}. Seguidamente la sesión dio inicio con los siguientes puntos:<br>I-Comprobación del Quórum de Ley para celebrar la Sesión y se declaró abierta.<br>II-Lectura del Acta anterior<br>III-Lectura de la correspondencia Externa<br>IV-Lectura de la correspondencia Interna</p>`;
 };
