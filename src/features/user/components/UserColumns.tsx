@@ -3,7 +3,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { type User, type UserRole } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ArrowUpDown, Edit, Ban } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Edit, Trash, Ban } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +32,7 @@ const roleMap: RoleUIMap = {
 
 export const getColumns = (
   onEdit: (user: User) => void,
-  //onDelete: (user: User) => void,
+  onDelete: (user: User) => void,
   onTerminateSession: (user: User) => void
 ): ColumnDef<User>[] => [
   // ... (Columnas 'nombre', 'rol', 'activo', 'sessionType' sin cambios) ...
@@ -187,13 +187,13 @@ export const getColumns = (
                 Desactivar (Cerrar Sesión)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {/* <DropdownMenuItem
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => onDelete(user)}
               >
                 <Trash className="mr-2 h-4 w-4 text-destructive" />
                 <span>Eliminar</span>
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
