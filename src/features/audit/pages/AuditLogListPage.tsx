@@ -11,17 +11,10 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { numberToRoman } from "@/lib/textUtils";
-
-// 1. Importar los services reales
 import { volumeService } from "@/features/book/api/volumeService";
 import { actService } from "@/features/act/api/minutesService";
 import { agreementService } from "@/features/agreement/api/agreementService";
 
-// --- Mapeadores de Datos (Convierten objetos a FullActivityLog) ---
-
-/**
- * Convierte un Tomo en hasta dos eventos de FullActivityLog.
- */
 const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
   const createdUser = {
@@ -66,18 +59,14 @@ const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
   return logs;
 };
 
-/**
- * Convierte un Acta en hasta dos eventos de FullActivityLog.
- */
 const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
-  const createdUser = { nombre: act.createdBy || "Sistema" }; // ✅ CORREGIDO
+  const createdUser = { nombre: act.createdBy || "Sistema" };
   const modifiedUser = {
-    nombre: act.createdBy || act.createdBy || "Sistema", // ✅ CORREGIDO
+    nombre: act.createdBy || act.createdBy || "Sistema",
   };
   const targetType: LogTargetType = "Act";
 
-  // 1. Log de Creación
   logs.push({
     id: `${act.id}-created`,
     user: createdUser,
@@ -89,7 +78,6 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
     targetState: { initialActId: act.id },
   });
 
-  // 2. Log de Modificación (usando latestModificationDate)
   if (act.lastModified) {
     logs.push({
       id: `${act.id}-updated`,
@@ -105,9 +93,6 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
   return logs;
 };
 
-/**
- * Convierte un Acuerdo en hasta dos eventos de FullActivityLog.
- */
 const mapAgreementToActivityLogs = (
   agreement: Agreement
 ): FullActivityLog[] => {
@@ -167,12 +152,10 @@ export const AuditLogListPage = () => {
   const [allLogs, setAllLogs] = useState<FullActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect para cargar todos los datos
   useEffect(() => {
     const loadAllAuditData = async () => {
       setIsLoading(true);
       try {
-        // 1. Llamar a todas las APIs
         const [tomesResult, actsResult, agreementsResult] =
           await Promise.allSettled([
             volumeService.getAllVolumes(),
@@ -182,7 +165,6 @@ export const AuditLogListPage = () => {
 
         const combinedActivity: FullActivityLog[] = [];
 
-        // 2. Mapear Tomos
         if (tomesResult.status === "fulfilled") {
           combinedActivity.push(
             ...tomesResult.value.flatMap(mapTomeToActivityLogs)
@@ -191,7 +173,6 @@ export const AuditLogListPage = () => {
           toast.error("No se pudieron cargar los Tomos para la auditoría.");
         }
 
-        // 3. Mapear Actas
         if (actsResult.status === "fulfilled") {
           combinedActivity.push(
             ...actsResult.value.flatMap(mapActToActivityLogs)
@@ -200,7 +181,6 @@ export const AuditLogListPage = () => {
           toast.error("No se pudieron cargar las Actas para la auditoría.");
         }
 
-        // 4. Mapear Acuerdos
         if (agreementsResult.status === "fulfilled") {
           combinedActivity.push(
             ...agreementsResult.value.flatMap(mapAgreementToActivityLogs)
@@ -209,16 +189,21 @@ export const AuditLogListPage = () => {
           toast.error("No se pudieron cargar los Acuerdos para la auditoría.");
         }
 
-        // 5. Ordenar la lista combinada por fecha descendente
         const sortedActivity = combinedActivity.sort(
           (a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
 
         setAllLogs(sortedActivity);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error crítico al cargar la auditoría:", error);
-        toast.error("Error inesperado al cargar la auditoría.");
+        if (error instanceof Error) {
+          toast.error(
+            error.message || "Error inesperado al cargar la auditoría."
+          );
+        } else {
+          toast.error("Error inesperado al cargar la auditoría.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -227,7 +212,6 @@ export const AuditLogListPage = () => {
     loadAllAuditData();
   }, []);
 
-  // Filtros facetados (Actualizados para coincidir con los mappers)
   const facetedFilters = [
     {
       columnId: "action",

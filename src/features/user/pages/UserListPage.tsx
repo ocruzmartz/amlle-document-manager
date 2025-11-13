@@ -1,6 +1,5 @@
-// filepath: src/features/user/pages/UserListPage.tsx
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { PlusCircle, Loader2 } from "lucide-react"; // Importar Loader2
+import { PlusCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/DataTable";
 import {
@@ -13,53 +12,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// Importamos todas las funciones conectadas de la API
 import { getUsers, deleteUser, terminateUserSession } from "../api/user";
 import { getColumns } from "../components/UserColumns";
 import { UserForm } from "../components/UserForm";
 import { type User } from "@/types";
 import { toast } from "sonner";
+import type { SortingState } from "@tanstack/react-table";
 
-/**
- * Renderiza la página principal para la gestión de usuarios.
- * Muestra una DataTable de usuarios y provee acciones de CRUD.
- */
 export const UserListPage: React.FC = () => {
-  // Estado para forzar la recarga de datos
   const [dataVersion, setDataVersion] = useState(0);
-  // Estado para almacenar los usuarios de la API
   const [users, setUsers] = useState<User[]>([]);
-  // Estado para mostrar el spinner de carga
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados para los modales y formularios
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [userToTerminate, setUserToTerminate] = useState<User | null>(null);
 
-  // --- Carga de Datos Asíncrona ---
+  const initialSorting: SortingState = [{ id: "createdAt_exact", desc: true }];
+
   useEffect(() => {
-    // Función flecha async para cargar usuarios
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
         console.log("Fetching users - dataVersion:", dataVersion);
-        // Llama a la API asíncrona (GET /api/users/all)
         const userData = await getUsers();
         setUsers(userData);
       } catch (error) {
-        // El toast de error ya se muestra en la capa de API (getUsers)
         console.error("Error en UserListPage al cargar usuarios:", error);
+        toast.error("No se pudieron cargar los usuarios.");
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchUsers();
-  }, [dataVersion]); // Se ejecuta al inicio y cada vez que dataVersion cambia
+  }, [dataVersion]);
 
-  // --- Callbacks para Acciones ---
   const refreshData = useCallback(() => {
     setDataVersion((currentVersion) => currentVersion + 1);
   }, []);
@@ -184,9 +172,10 @@ export const UserListPage: React.FC = () => {
 
         {/* Data Table Section (con estado de carga) */}
         <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
+          {isLoading ? ( // <-- Mostrar estado de carga
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Cargando lista de usuarios...</span>
             </div>
           ) : (
             <DataTable
@@ -195,6 +184,7 @@ export const UserListPage: React.FC = () => {
               filterColumnId="nombre" // Filtra por 'nombre'
               filterPlaceholder="Filtrar por nombre..."
               facetedFilters={facetedFilters}
+              initialSorting={initialSorting}
             />
           )}
         </div>

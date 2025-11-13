@@ -1,17 +1,11 @@
 import { useState, useEffect } from "react";
 import { Book, FileText, Handshake, Loader2 } from "lucide-react";
-
-// 1. Importar los servicios reales de API
 import { volumeService } from "@/features/book/api/volumeService";
 import { actService } from "@/features/act/api/minutesService";
 import { agreementService } from "@/features/agreement/api/agreementService";
-
-// 2. Importar los componentes visuales
 import StatCard from "../components/StatCard/StatCard";
 import { RecentBooksTable } from "../components/RecentBookTable";
 import { ActivityCard } from "../components/ActivityCard/ActiviyCard";
-
-// 3. Importar los tipos necesarios
 import {
   type Tome,
   type Act,
@@ -23,44 +17,34 @@ import {
 import { numberToRoman } from "@/lib/textUtils";
 import { toast } from "sonner";
 
-// Definir el tipo para nuestras estadísticas
 interface DashboardStats {
   tomeCount: number;
   actCount: number;
   agreementCount: number;
 }
 
-// --- Mapeadores de Datos (AHORA USAN LOS CAMPOS DEL JSON REAL) ---
-
-/**
- * Convierte un Tomo en hasta dos eventos de ActivityLog.
- */
 const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
   const logs: ActivityLog[] = [];
-
-  // Usuario que CREÓ
   const createdUser = {
     nombre: tome.createdByName || "Sistema",
   };
 
-  // Usuario que MODIFICÓ
   const lastModifier =
     tome.modificationName && tome.modificationName.length > 0
       ? tome.modificationName[tome.modificationName.length - 1]
-      : tome.createdByName; // Fallback al creador
+      : tome.createdByName;
 
   const modifiedUser = {
-    nombre: lastModifier || "Sistema", // ✅ CORREGIDO
+    nombre: lastModifier || "Sistema",
   };
 
   const target = {
-    type: "Book" as LogTargetType, // Lo tratamos como "Book" para el ícono
+    type: "Book" as LogTargetType, 
     name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
     url: `/books/${tome.id}`,
     state: { initialActId: null },
   };
 
-  // 1. Log de Creación
   logs.push({
     id: `${tome.id}-created`,
     user: createdUser,
@@ -69,8 +53,6 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
     target: target,
   });
 
-  // 2. Log de Modificación (usando updatedAt)
-  // Solo si la fecha de actualización es diferente a la de creación
   if (tome.updatedAt && tome.updatedAt !== tome.createdAt) {
     logs.push({
       id: `${tome.id}-updated`,
@@ -83,9 +65,6 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
   return logs;
 };
 
-/**
- * Convierte un Acta en hasta dos eventos de ActivityLog.
- */
 const mapActToActivityLogs = (act: Act): ActivityLog[] => {
   const logs: ActivityLog[] = [];
   const createdUser = { nombre: act.createdBy || "Sistema" };
@@ -99,7 +78,6 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
     state: { initialActId: act.id },
   };
 
-  // 1. Log de Creación
   logs.push({
     id: `${act.id}-created`,
     user: createdUser,
@@ -108,7 +86,6 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
     target: target,
   });
 
-  // 2. Log de Modificación (usando lastModified)
   if (act.lastModified) {
     logs.push({
       id: `${act.id}-updated`,
@@ -121,9 +98,6 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
   return logs;
 };
 
-/**
- * Convierte un Acuerdo en hasta dos eventos de ActivityLog.
- */
 const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
   const logs: ActivityLog[] = [];
   const createdUser = {
@@ -329,6 +303,7 @@ const DashboardPage = () => {
       {isLoading ? (
         <div className="flex h-64 items-center justify-center rounded-lg border">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Cargando datos del dashboard...</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
