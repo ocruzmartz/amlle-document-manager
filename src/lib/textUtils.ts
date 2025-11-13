@@ -1,4 +1,4 @@
-import { isValid, parseISO, format } from "date-fns";
+import { isValid, format } from "date-fns";
 import { es } from "date-fns/locale";
 
 export const numberToWords = (num: number): string => {
@@ -113,9 +113,9 @@ export const numberToRoman = (num: number): string => {
 };
 
 export const formatDateToISO = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0"); // getUTCMonth es 0-11
+  const day = String(date.getUTCDate()).padStart(2, "0"); // <-- Usar getUTCDate
   return `${year}-${month}-${day}`;
 };
 
@@ -134,21 +134,20 @@ export const parseDateSafely = (
 ): Date | undefined => {
   if (!dateString) return undefined;
 
-  // Si viene en formato ISO (YYYY-MM-DD), crear fecha local
-  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateString.split("-").map(Number);
-    return new Date(year, month - 1, day);
+  // Busca el patrón YYYY-MM-DD al inicio del string.
+  // Esto funciona para "2025-11-13" Y para "2025-11-13T00:00:00.000Z"
+  const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // Meses en JS son 0-indexados
+    const day = parseInt(match[3], 10);
+    
+    // Crea una fecha local a medianoche (ignorando la hora UTC)
+    return new Date(year, month, day);
   }
 
-  // Si viene en formato ISO completo con hora, usar parseISO
-  try {
-    const parsed = parseISO(dateString);
-    if (isValid(parsed)) return parsed;
-  } catch {
-    // Ignorar error si parseISO falla
-  }
-
-  // Fallback para otros formatos que Date.parse pueda entender
+  // Fallback para otros formatos (menos confiable)
   const date = new Date(dateString);
   if (isValid(date)) return date;
 

@@ -1,21 +1,26 @@
+// filepath: src/types/agreement.ts
+
+// El objeto completo (cuando se carga un acuerdo O en una lista)
 export type Agreement = {
   id: string;
   name: string;
-  content: string;
-  actId: string;
-  actName: string;
+  agreementNumber?: number;
+  content: string; // <-- Ahora siempre está presente
+
+  // Campos que pueden o no estar en la lista (hacer opcionales)
+  actId?: string;
+  actName?: string;
   minutesName?: string;
   volumeName?: string;
-  agreementNumber?: number;
   volumeId?: string;
   minutesId?: string;
-  tomeId: string; 
-  tomeName: string | null; 
+  tomeId?: string;
+  tomeName?: string | null;
   createdAt: string;
+  createdBy?: string;
   createdByName?: string;
+  lastModified?: string;
   latestModifierName?: string;
   latestModificationDate?: string;
-  createdBy: string;
-  lastModified: string;
-  modifiedBy: string;
+  updatedAt?: string;
 };

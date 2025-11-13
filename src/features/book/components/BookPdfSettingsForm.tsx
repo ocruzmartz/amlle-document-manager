@@ -419,7 +419,10 @@ export const BookPdfSettingsForm = ({
                                   type="number"
                                   min="0"
                                   value={field.value ?? ""}
-                                  onChange={field.onChange}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    field.onChange(value === "" ? undefined : Number(value));
+                                  }}
                                 />
                               </FormControl>
                               <FormDescription>

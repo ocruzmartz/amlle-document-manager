@@ -10,10 +10,20 @@ import {
 } from "@react-pdf/renderer";
 import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
 import type { Style, HyphenationCallback } from "@react-pdf/types";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { es } from "date-fns/locale";
-import { numberToWords, capitalize, numberToRoman } from "@/lib/textUtils";
-import { type Tome, type Act, type CouncilMember } from "@/types";
+import {
+  numberToWords,
+  capitalize,
+  numberToRoman,
+  parseDateSafely,
+} from "@/lib/textUtils";
+import {
+  type Tome,
+  type Act,
+  type CouncilMember,
+  type Agreement,
+} from "@/types";
 import createHyphenator from "hyphen";
 import patternsEs from "hyphen/patterns/es";
 
@@ -251,18 +261,18 @@ const getStyles = (
     tableCell: {},
     tableCellText: {},
     signaturesSection: {
-      marginTop: 60,
+      marginTop: 40,
       fontSize: fontSize,
     },
-    mainSignatureName: { fontFamily: "Museo Sans", fontWeight: 700 },
-    mainSignatureRole: { fontSize: fontSize - 1, marginBottom: 25 },
+    mainSignatureName: { fontFamily: "Museo Sans" },
+    mainSignatureRole: { fontSize: fontSize - 0.5, marginBottom: 25 },
     signatureColumnsContainer: {
       flexDirection: "row",
       justifyContent: "space-between",
       textAlign: "left",
     },
     signatureColumn: { width: "48%", flexDirection: "column" },
-    signatureName: { marginBottom: 20, fontSize: fontSize },
+    signatureName: { marginBottom: 35, fontSize: fontSize },
     secretariaSignature: {
       marginTop: 30,
       paddingTop: 5,
@@ -789,31 +799,43 @@ export const BookPdfDocument = ({
   };
 
   const authDateString = tome.authorizationDate || tome.createdAt;
-  const authorizationDate = new Date(authDateString);
-  const authYearInWords = capitalize(
-    numberToWords(authorizationDate.getFullYear())
-  );
-  const authDayInWords = numberToWords(authorizationDate.getDate());
-  const authMonthName = format(authorizationDate, "MMMM", { locale: es });
+  const authorizationDate = parseDateSafely(authDateString);
+  const authYearInWords =
+    authorizationDate && isValid(authorizationDate)
+      ? capitalize(numberToWords(authorizationDate.getFullYear()))
+      : "[Año]";
+  const authDayInWords =
+    authorizationDate && isValid(authorizationDate)
+      ? numberToWords(authorizationDate.getDate())
+      : "[Día]";
+  const authMonthName =
+    authorizationDate && isValid(authorizationDate)
+      ? format(authorizationDate, "MMMM", { locale: es })
+      : "[Mes]";
 
   let closingDayInWords = "[Día]";
   let closingMonthName = "[Mes]";
   let closingYearInWords = "[Año]";
+
   if (tome.closingDate) {
-    const closingDate = new Date(tome.closingDate);
-    closingDayInWords = numberToWords(closingDate.getDate());
-    closingMonthName = format(closingDate, "MMMM", { locale: es });
-    closingYearInWords = capitalize(numberToWords(closingDate.getFullYear()));
+    // ✅ 4. Usar parseDateSafely para leer la fecha de cierre
+    const closingDate = parseDateSafely(tome.closingDate);
+
+    if (closingDate && isValid(closingDate)) {
+      closingDayInWords = numberToWords(closingDate.getDate());
+      closingMonthName = format(closingDate, "MMMM", { locale: es });
+      closingYearInWords = capitalize(numberToWords(closingDate.getFullYear()));
+    }
   }
 
   const actCount = tome.acts?.length || 0;
 
   const actCountInWords = numberToWords(actCount).toLowerCase();
 
-  const alcaldesa = allSigners.find((m) =>
-    m.name.includes("Licda. Zoila Milagro Navas")
-  );
-  const secretaria = allSigners.find((m) => m.role === "SECRETARY");
+  // const alcaldesa = allSigners.find((m) =>
+  //   m.name.includes("Licda. Zoila Milagro Navas")
+  // );
+  // const secretaria = allSigners.find((m) => m.role === "SECRETARY");
 
   const signatories = allSigners.filter(
     (m) =>
@@ -877,39 +899,31 @@ export const BookPdfDocument = ({
             >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
-              y Acuerdos Municipales,{" "}
-              <Text style={{ fontWeight: 700 }}>{tome.name}</Text>, de las
-              Sesiones que celebre durante el año{" "}
-              <Text style={{ fontWeight: 700 }}>{authYearInWords}</Text>{" "}
-              numeradas correlativamente.
+              y Acuerdos Municipales <Text>{tome.name}</Text>, de las Sesiones
+              que celebre durante el año<Text>{authYearInWords}</Text> numeradas
+              correlativamente.
             </Text>
             <Text
               style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
             >
               Alcaldía Municipal de Antiguo Cuscatlán, a los{" "}
-              <Text style={{ fontWeight: 700 }}>
+              <Text>
                 {authDayInWords} días del mes de {authMonthName}
               </Text>{" "}
-              de <Text style={{ fontWeight: 700 }}>{authYearInWords}</Text>.
+              de <Text>{authYearInWords}</Text>.
             </Text>
           </View>
           <View>
             <View style={{ flexDirection: "row" }}>
               <View style={{ marginTop: 80, width: "50%" }}>
-                <Text style={{ fontWeight: 700 }}>
-                  Licda. Zoila Milagro Navas Quintanilla
-                </Text>
-                <Text style={{ fontWeight: 700, marginLeft: 50 }}>
-                  Alcaldesa Municipal
-                </Text>
+                <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
+                <Text style={{ marginLeft: 50 }}>Alcaldesa Municipal</Text>
               </View>
               <View
                 style={{ marginTop: 100, textAlign: "center", width: "50%" }}
               >
                 <Text>Ante Mí,</Text>
-                <Text style={{ marginTop: 60, fontWeight: 700 }}>
-                  Secretaria Municipal
-                </Text>
+                <Text style={{ marginTop: 60 }}>Secretaria Municipal</Text>
               </View>
             </View>
           </View>
@@ -998,7 +1012,7 @@ export const BookPdfDocument = ({
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
                         {renderContentBlocks(
-                          agreement.content,
+                          (agreement as Agreement).content, // Forzamos el tipo completo
                           dynamicTextStyle,
                           settings.fontSize
                         )}
@@ -1011,7 +1025,7 @@ export const BookPdfDocument = ({
                     Y no habiendo más que hacer constar se termina la presente
                     Acta que firmamos.
                   </Text>
-                  <View style={{ marginTop: 40 }}>
+                  <View style={{ marginTop: 40, textAlign: "center" }}>
                     <Text style={styles.mainSignatureName}>
                       Licda. Zoila Milagro Navas Quintanilla
                     </Text>
@@ -1055,8 +1069,13 @@ export const BookPdfDocument = ({
                       </View>
                     );
                   })()}
-                  <View style={styles.secretariaSignature}>
-                    <View style={styles.secretariaSignatureLine} />
+                  <View
+                    style={{
+                      ...styles.secretariaSignature,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Text>Licda. Maria Antonia Juárez Martínez</Text>
                     <Text>Secretaria Municipal</Text>
                   </View>
                 </View>
@@ -1122,19 +1141,17 @@ export const BookPdfDocument = ({
             <View
               style={{
                 ...styles.signaturesSection,
-                marginTop: 20,
+                marginTop: 40,
                 textAlign: "left",
               }}
             >
               {/* --- ✅ 2. Firma Alcaldesa (AHORA SÍ APARECE) --- */}
-              {alcaldesa && (
-                <View style={{ marginBottom: 25 }}>
-                  <Text style={styles.mainSignatureName}>{alcaldesa.name}</Text>
-                  <Text style={styles.mainSignatureRole}>
-                    Alcaldesa Municipal
-                  </Text>
-                </View>
-              )}
+              <View style={{ marginBottom: 25, textAlign: "center" }}>
+                <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
+                <Text style={styles.mainSignatureRole}>
+                  Alcaldesa Municipal
+                </Text>
+              </View>
 
               {/* --- ✅ 3. Disposición 3x2 (DINÁMICA) --- */}
               <View style={styles.signatureColumnsContainer}>
@@ -1155,22 +1172,20 @@ export const BookPdfDocument = ({
                   ))}
                 </View>
               </View>
-
-              {/* --- ✅ 4. Firma Secretaria (ALINEADA A LA DERECHA) --- */}
-              {secretaria && (
-                <View
-                  style={{
-                    ...styles.secretariaSignature,
-                    textAlign: "left",
-                    marginHorizontal: 0,
-                    width: "48%",
-                    marginLeft: "52%",
-                  }}
-                >
-                  <View style={styles.secretariaSignatureLine} />
-                  <Text>Secretaria Municipal</Text>
-                </View>
-              )}
+              <View
+                style={{
+                  ...styles.secretariaSignature,
+                  textAlign: "center",
+                  marginHorizontal: 0,
+                  width: "48%",
+                  marginLeft: "52%",
+                }}
+              >
+                <Text>Licda. Maria Antonia Juárez Martínez</Text>
+                <Text style={styles.mainSignatureRole}>
+                  Secretaria Municipal
+                </Text>
+              </View>
             </View>
           </View>
           <PageNumberRenderer />

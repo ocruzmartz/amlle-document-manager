@@ -1,16 +1,17 @@
 import { type Act } from "@/types";
-import { numberToWords } from "@/lib/textUtils";
+import { numberToWords, parseDateSafely } from "@/lib/textUtils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { SessionTypeMapper } from "./actMappers"; // ✅ Importar mapper
+import { SessionTypeMapper } from "./actMappers";
 
 export const generateActHeaderHtml = (act: Partial<Act>): string => {
-  const sessionType = SessionTypeMapper.toDisplayText(act.sessionType); // ✅ Usar mapper
-  const sessionTime = act.meetingTime || "diez horas"; // ✅ Usar meetingTime
+  const sessionType = SessionTypeMapper.toDisplayText(act.sessionType);
+  const sessionTime = act.meetingTime || "diez horas";
 
-  const formatDateInWords = (dateString: string): string => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
+  const formatDateInWords = (dateString: string | undefined): string => {
+    const date = parseDateSafely(dateString);
+
+    if (!date) {
       return "[Fecha inválida]";
     }
     const day = numberToWords(date.getDate());
@@ -29,9 +30,7 @@ export const generateActHeaderHtml = (act: Partial<Act>): string => {
   const sindicoName = act.attendees?.syndic?.name || "[Síndico]";
   const secretariaName = act.attendees?.secretary?.name || "[Secretaria]";
   const attendeesList = generateAttendeesList();
-  const dateInWords = formatDateInWords(
-    act.meetingDate || new Date().toISOString()
-  );
+  const dateInWords = formatDateInWords(act.meetingDate);
 
   const actName = act.name || "[Nombre del Acta]";
 

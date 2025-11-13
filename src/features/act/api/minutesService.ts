@@ -4,7 +4,12 @@ import {
   apiPatchDirect,
   apiPostDirect,
 } from "@/lib/apiHelpers";
-import { type Act, type Agreement, type CouncilMember } from "@/types";
+import {
+  type Act,
+  type ActApiResponse,
+  type Agreement,
+  type CouncilMember,
+} from "@/types";
 import { participantsService } from "./participantsService";
 import { SessionTypeMapper } from "../lib/actMappers";
 
@@ -13,6 +18,7 @@ interface CreateMinutesDto {
   actNumber: number;
   meetingDate: string;
   name: string;
+  meetingTime: string | null;
 }
 
 interface UpdateMinutesNameNumberDto {
@@ -44,58 +50,125 @@ interface UpdateMinutesDto {
   attendanceList?: AttendanceListItemDto[];
 }
 
-interface PropietarioConvocadoApiItem {
-  id: string;
-  name: string;
-}
+async function _parseActFromApi(
+  actResponse: ActApiResponse, // Aceptamos el JSON crudo
+  allPropietarios: CouncilMember[],
+  officials: {
+    OFFICIAL_SYNDIC: CouncilMember;
+    OFFICIAL_SECRETARY: CouncilMember;
+  }
+): Promise<Act> {
+  const { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY } = officials;
 
-interface AttendanceListApiResponseItem {
-  id: string;
-  syndic: string | null; // El backend devuelve el NOMBRE
-  secretary: string | null; // El backend devuelve el NOMBRE
-  propietarioConvocado: PropietarioConvocadoApiItem;
-  asistioPropietario: boolean;
-  substitutoAsistente: string | null; // ID del sustituto
-}
+  let syndic: CouncilMember | null = null;
+  let secretary: CouncilMember | null = null;
+  const owners: CouncilMember[] = [];
 
-interface ActApiResponse {
-  id: string;
-  name: string;
-  volume: { id: string; name: string };
-  actNumber: number;
-  meetingDate: string;
-  meetingTime: string | null;
-  bodyContent: string;
-  status: string; // "ORDINARIA", "ESPECIAL", etc.
-  attendanceList: AttendanceListApiResponseItem[];
-  agreements: Agreement[];
-  createdBy: {
-    id: string;
-    nombre: string;
-    rol: string;
-  } | null;
-  // Faltan 'sessionPoints' y 'clarifyingNote' en tu JSON,
-  // pero los mantendremos por si acaso
-  sessionPoints?: string[];
-  clarifyingNote?: string;
-  createdAt: string;
-  updatedAt: string;
+  const attendanceList = actResponse.attendanceList;
+
+  if (attendanceList && attendanceList.length > 0) {
+    const firstRecord = attendanceList[0];
+
+    // Asistencia de Oficiales
+    if (firstRecord.syndic && firstRecord.syndic === OFFICIAL_SYNDIC.name) {
+      syndic = OFFICIAL_SYNDIC;
+    }
+    if (
+      firstRecord.secretary &&
+      firstRecord.secretary === OFFICIAL_SECRETARY.name
+    ) {
+      secretary = OFFICIAL_SECRETARY;
+    }
+
+    // Asistencia de Propietarios
+    attendanceList.forEach((record) => {
+      const propietarioId =
+        record.propietarioConvocado?.id || record.propietarioId;
+      const attended = record.asistioPropietario ?? record.attended ?? false;
+      const substituteId = record.substitutoAsistente || record.substituteId;
+
+      if (attended) {
+        if (substituteId) {
+          const owner = allPropietarios.find((p) => p.id === propietarioId);
+          const substitute = owner?.approvedSubstitutes?.find(
+            (s) => s.id === substituteId
+          );
+          if (substitute) {
+            owners.push({
+              ...substitute,
+              role: "SUBSTITUTE",
+              substituteForId: owner?.id,
+            });
+          }
+        } else {
+          const owner = allPropietarios.find((p) => p.id === propietarioId);
+          if (owner) {
+            owners.push(owner);
+          }
+        }
+      }
+    });
+  }
+
+  // Ordenar acuerdos (AHORA SON COMPLETOS)
+  const agreements = (actResponse.agreements || []).sort(
+    (a: Agreement, b: Agreement) => {
+      if (a.agreementNumber != null && b.agreementNumber != null) {
+        return a.agreementNumber - b.agreementNumber;
+      }
+      return 0;
+    }
+  );
+
+  // Mapear al tipo 'Act' limpio
+  const finalAct: Act = {
+    ...actResponse, // Copiamos la mayoría de los campos
+    tomeId: actResponse.volume?.id ?? actResponse.volumeId!,
+    tomeName: actResponse.volume?.name ?? actResponse.volumeName!,
+    volumeId: actResponse.volume?.id ?? actResponse.volumeId!,
+    volumeName: actResponse.volume?.name ?? actResponse.volumeName,
+    bookName: actResponse.bookName ?? "",
+    bookId: actResponse.bookId ?? "",
+    sessionType: SessionTypeMapper.fromBackend(actResponse.status),
+    attendees: { syndic, secretary, owners },
+    agreements: agreements,
+    agreementsCount: actResponse.agreementCount ?? agreements.length,
+    bodyContent: actResponse.bodyContent || "",
+    meetingTime: actResponse.meetingTime || undefined,
+    createdBy:
+      actResponse.createdByName || actResponse.createdBy?.nombre || "Sistema",
+    lastModified:
+      actResponse.latestModificationDate ||
+      actResponse.updatedAt ||
+      actResponse.createdAt,
+    modifiedBy:
+      actResponse.latestModifierName ||
+      actResponse.createdBy?.nombre ||
+      "Sistema",
+  };
+
+  return finalAct;
 }
 
 export const actService = {
   createAct: async (payload: CreateMinutesDto): Promise<Act> => {
-    const newAct = await apiPostDirect<CreateMinutesDto, Act>(
-      "/minutes/create",
-      payload
-    );
+    const newActResponse = await apiPostDirect<
+      CreateMinutesDto,
+      ActApiResponse
+    >("/minutes/create", payload);
 
-    console.log("✅ Acta creada desde el backend:", newAct);
+    console.log("✅ Acta creada desde el backend:", newActResponse);
 
-    if (!newAct.agreements) {
-      newAct.agreements = [];
-    }
+    const [allPropietarios, { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY }] =
+      await Promise.all([
+        participantsService.getPropietarios(),
+        import("../lib/officials"),
+      ]);
 
-    return newAct;
+    return _parseActFromApi(newActResponse, allPropietarios, {
+      OFFICIAL_SYNDIC,
+      OFFICIAL_SECRETARY,
+    });
   },
 
   getActById: async (id: string): Promise<Act> => {
@@ -103,128 +176,46 @@ export const actService = {
       `🔍 Llamando a GET /api/minutes/find/${id} para cargar acta...`
     );
 
-    const allPropietarios = await participantsService.getPropietarios();
-
-    // ✅ 2. Cargar nuestra "fuente de verdad" de oficiales
-    const { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY } = await import(
-      "../lib/officials"
-    );
-
-    const actResponse = await apiGetDirect<ActApiResponse>(
-      `/minutes/find/${id}`
-    );
+    const [
+      allPropietarios,
+      { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },
+      actResponse,
+    ] = await Promise.all([
+      participantsService.getPropietarios(),
+      import("../lib/officials"),
+      apiGetDirect<ActApiResponse>(`/minutes/find/${id}`), // Recibimos 'any'
+    ]);
 
     console.log("✅ Acta recibida del backend:", actResponse);
 
-    let syndic: CouncilMember | null = null;
-    let secretary: CouncilMember | null = null;
-    const owners: CouncilMember[] = [];
-
-    const attendanceList: AttendanceListApiResponseItem[] | undefined =
-      actResponse.attendanceList;
-
-    if (attendanceList && attendanceList.length > 0) {
-      // Usamos el primer registro solo para verificar la asistencia
-      // de los oficiales.
-      const firstRecord = attendanceList[0];
-
-      // ✅ 5. Lógica de asistencia (CORREGIDA)
-      // Comparamos el NOMBRE del JSON de API con el NOMBRE de nuestra
-      // fuente de verdad.
-      if (firstRecord.syndic && firstRecord.syndic === OFFICIAL_SYNDIC.name) {
-        syndic = OFFICIAL_SYNDIC; // Asistió
-      } else {
-        syndic = null; // No asistió
-      }
-
-      if (
-        firstRecord.secretary &&
-        firstRecord.secretary === OFFICIAL_SECRETARY.name
-      ) {
-        secretary = OFFICIAL_SECRETARY; // Asistió
-      } else {
-        secretary = null; // No asistió
-      }
-
-      // ✅ 6. Lógica de propietarios (sin cambios, ya era correcta)
-      attendanceList.forEach((record) => {
-        if (record.asistioPropietario) {
-          const isSubstitute = !!record.substitutoAsistente;
-
-          if (isSubstitute) {
-            const owner = allPropietarios.find(
-              (p) => p.id === record.propietarioConvocado.id
-            );
-            const substitute = owner?.approvedSubstitutes?.find(
-              (s) => s.id === record.substitutoAsistente
-            );
-
-            if (substitute) {
-              owners.push({
-                ...substitute,
-                role: "SUBSTITUTE",
-                substituteForId: owner?.id,
-              });
-            }
-          } else {
-            const owner = allPropietarios.find(
-              (p) => p.id === record.propietarioConvocado.id
-            );
-            if (owner) {
-              owners.push(owner);
-            }
-          }
-        }
-      });
-    }
-
-    const agreementsFromApi: Agreement[] = actResponse.agreements || [];
-    const sortedAgreements = agreementsFromApi.sort((a, b) => {
-      if (a.agreementNumber && b.agreementNumber) {
-        return a.agreementNumber - b.agreementNumber;
-      }
-      return 0;
+    return _parseActFromApi(actResponse, allPropietarios, {
+      OFFICIAL_SYNDIC,
+      OFFICIAL_SECRETARY,
     });
-
-    const finalAct: Act = {
-      id: actResponse.id,
-      name: actResponse.name,
-      tomeId: actResponse.volume.id,
-      tomeName: actResponse.volume.name,
-      volumeId: actResponse.volume.id,
-      actNumber: actResponse.actNumber,
-      meetingDate: actResponse.meetingDate,
-      meetingTime: actResponse.meetingTime || undefined,
-      sessionType: SessionTypeMapper.fromBackend(actResponse.status),
-      attendees: {
-        syndic,
-        secretary,
-        owners,
-      },
-      agreements: sortedAgreements,
-      sessionPoints: actResponse.sessionPoints || [],
-      bodyContent: actResponse.bodyContent || "",
-      clarifyingNote: actResponse.clarifyingNote || "",
-      createdAt: actResponse.createdAt,
-      createdBy: actResponse.createdBy?.nombre || "",
-      lastModified: actResponse.updatedAt,
-      modifiedBy: actResponse.createdBy?.nombre || "",
-    };
-
-    console.log(
-      `✅ Acta ${id} cargada y mapeada. Concejales Presentes: ${owners.length}`
-    );
-    return finalAct;
   },
 
   getAllActs: async (): Promise<Act[]> => {
     console.log("🔍 Cargando TODAS las actas...");
-    const acts = await apiGetDirect<Act[]>("/minutes/find-all");
-    console.log(acts);
-    return acts.map((act) => ({
-      ...act,
-      agreements: act.agreements || [],
-    }));
+
+    const [
+      allPropietarios,
+      { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },
+      actsResponse,
+    ] = await Promise.all([
+      participantsService.getPropietarios(),
+      import("../lib/officials"),
+      apiGetDirect<ActApiResponse[]>("/minutes/find-all"), // Recibimos 'any[]'
+    ]);
+
+    const parsedActs = await Promise.all(
+      actsResponse.map((actResponse) =>
+        _parseActFromApi(actResponse, allPropietarios, {
+          OFFICIAL_SYNDIC,
+          OFFICIAL_SECRETARY,
+        })
+      )
+    );
+    return parsedActs;
   },
 
   updateAct: async (actToSave: Act): Promise<void> => {
@@ -264,7 +255,7 @@ export const actService = {
 
     // ✅ Payload simplificado
     const payload: UpdateMinutesDto = {
-      actNumber: actToSave.actNumber,
+      //actNumber: actToSave.actNumber,
       meetingDate: actToSave.meetingDate,
       meetingTime: actToSave.meetingTime,
       bodyContent: actToSave.bodyContent,
@@ -283,13 +274,26 @@ export const actService = {
   getActsByVolumeId: async (volumeId: string): Promise<Act[]> => {
     console.log(`🔍 Cargando actas para el tomo ${volumeId}...`);
 
-    const acts = await apiGetDirect<Act[]>(
-      `/minutes/find-all-by-volume/${volumeId}`
+    const [
+      allPropietarios,
+      { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },
+      actsResponse,
+    ] = await Promise.all([
+      participantsService.getPropietarios(),
+      import("../lib/officials"),
+      apiGetDirect<ActApiResponse[]>(`/minutes/find-all-by-volume/${volumeId}`), // Recibimos 'any[]'
+    ]);
+
+    const parsedActs = await Promise.all(
+      actsResponse.map((actResponse) =>
+        _parseActFromApi(actResponse, allPropietarios, {
+          OFFICIAL_SYNDIC,
+          OFFICIAL_SECRETARY,
+        })
+      )
     );
-    return acts.map((act) => ({
-      ...act,
-      agreements: act.agreements || [],
-    }));
+
+    return parsedActs;
   },
 
   updateActNameNumber: async (

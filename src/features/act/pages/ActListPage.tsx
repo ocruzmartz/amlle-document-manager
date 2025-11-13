@@ -17,12 +17,13 @@ export const ActListPage = () => {
         // Llamar al servicio REAL (que apunta al endpoint futuro)
         const acts = await actService.getAllActs();
         setAllActs(acts);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error al cargar actas:", error);
         // Si el endpoint aún no existe, esto mostrará un error 404
         toast.error(
-          error.message ||
-            "No se pudieron cargar las actas (endpoint no disponible)."
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar las actas (endpoint no disponible)."
         );
       } finally {
         setIsLoading(false);

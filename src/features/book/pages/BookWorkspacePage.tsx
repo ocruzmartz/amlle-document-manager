@@ -307,29 +307,34 @@ export const BookWorkspacePage = () => {
     const toastId = toast.loading("Eliminando acta...");
 
     try {
-      // Llamar al servicio
       await actService.deleteAct(actToDelete.id);
+      const actsAfterDelete = tome!.acts!.filter(
+        (a) => a.id !== actToDelete.id
+      );
 
-      // Actualizar estado local (Tome)
-      setTome((prevTome) => {
-        if (!prevTome || !prevTome.acts) return prevTome;
-        const updatedActs = prevTome.acts.filter(
-          (a) => a.id !== actToDelete.id
-        );
-        // Recalcular números después de eliminar
-        return recalculateNumbers({ ...prevTome, acts: updatedActs });
-      });
+      // Recalcula NOMBRES y NÚMEROS de las actas restantes
+      const newState = recalculateNumbers({ ...tome!, acts: actsAfterDelete });
 
-      toast.success("Acta eliminada exitosamente.", { id: toastId });
-      setActToDelete(null); // Cerrar modal
-      setConfirmationText("");
-    } catch (error: unknown) {
-      console.error("❌ Error al eliminar acta:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "No se pudo eliminar el acta";
-      toast.error(errorMessage, {
+      // Llama a 'updateActNameNumber' para las actas restantes
+      const updatePromises = newState.acts!.map((act) =>
+        actService.updateActNameNumber(act.id, act.name, act.actNumber!)
+      );
+      await Promise.all(updatePromises);
+
+      setTome(newState);
+      toast.success("Acta eliminada y actas restantes actualizadas.", {
         id: toastId,
       });
+      setActToDelete(null);
+      setConfirmationText("");
+    } catch (error: unknown) {
+      console.error("❌ Error al eliminar o actualizar actas:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo completar la eliminación",
+        { id: toastId }
+      );
     } finally {
       setIsDeletingAct(false);
     }
@@ -452,11 +457,12 @@ export const BookWorkspacePage = () => {
         numberToWords(newActNumber)
       )}`;
 
-      const payload = {
+     const payload = {
         volumeId: tomeId,
         name: newActName,
         actNumber: newActNumber,
         meetingDate: formatDateToISO(new Date()),
+        meetingTime: "diez horas", // <-- VALOR POR DEFECTO
       };
 
       const newActFromBackend = await actService.createAct(payload);
@@ -502,13 +508,9 @@ export const BookWorkspacePage = () => {
   };
 
   const handleSaveAndExit = async () => {
-    // Leemos el handler MÁS RECIENTE directamente desde el Ref
     const saveHandler = activeSaveHandlerRef.current;
 
     if (!saveHandler) {
-      // Esta es la validación que evita el crash.
-      // Ocurre si saliste del formulario (ActEditor)
-      // antes de presionar "Guardar y Salir".
       toast.error("Error al guardar: No hay un formulario activo.", {
         description:
           "El formulario que estabas editando ya no está visible. Cierra este diálogo y vuelve a la sección que querías guardar.",
@@ -517,12 +519,9 @@ export const BookWorkspacePage = () => {
     }
 
     try {
-      // Si llegamos aquí, saveHandler ES una función.
-      const success = await saveHandler(); // ¡Llamar a la función del Ref!
+      const success = await saveHandler();
 
       if (success) {
-        // El 'useSaveAction' (dentro del hijo) ya habrá llamado
-        // a setHasUnsavedChanges(false) a través de su 'onSuccess'.
         setShowExitDialog(false);
         navigate("/books");
       } else {
@@ -530,7 +529,6 @@ export const BookWorkspacePage = () => {
         // Mantenemos el modal abierto.
       }
     } catch (error) {
-      // Esto captura cualquier error DENTRO de la función de guardado
       console.error("Error en handleSaveAndExit:", error);
       toast.error("Ocurrió un error inesperado al guardar.");
     }
@@ -583,34 +581,23 @@ export const BookWorkspacePage = () => {
   const handleReorderAct = async (actId: string, direction: "up" | "down") => {
     if (!tome || !tome.acts || isReordering) return;
 
-    const originalActs = tome.acts;
-    const movingActIndex = originalActs.findIndex((a) => a.id === actId);
-    if (movingActIndex === -1) return;
-
-    const targetActIndex =
-      direction === "up" ? movingActIndex - 1 : movingActIndex + 1;
-    if (targetActIndex < 0 || targetActIndex >= originalActs.length) {
-      return;
-    }
-
-    const movingAct = originalActs[movingActIndex];
-    const targetAct = originalActs[targetActIndex];
-
     setIsReordering(true);
     const toastId = toast.loading("Reordenando actas...");
 
     try {
-      await actService.updateActNameNumber(
-        movingAct.id,
-        targetAct.name,
-        targetAct.actNumber!
+      const reorderedActs = reorderArray(tome.acts, actId, direction);
+      const newState = recalculateNumbers({ ...tome, acts: reorderedActs });
+      const updatePromises = newState.acts!.map((act) =>
+        actService.updateActNameNumber(act.id, act.name, act.actNumber!)
       );
 
-      const reorderedActs = reorderArray(originalActs, actId, direction);
-      const newState = recalculateNumbers({ ...tome, acts: reorderedActs });
-
+      await Promise.all(updatePromises);
       setTome(newState);
-      toast.success("Actas reordenadas exitosamente", { id: toastId });
+
+      toast.success("Actas reordenadas exitosamente.", {
+        id: toastId,
+        description: "El encabezado del acta debe regenerarse manualmente.",
+      });
     } catch (error: unknown) {
       console.error("❌ Error al reordenar actas:", error);
       toast.error(
@@ -621,6 +608,7 @@ export const BookWorkspacePage = () => {
           id: toastId,
         }
       );
+      await refetchActiveAct({ showLoadingScreen: true });
     } finally {
       setIsReordering(false);
     }

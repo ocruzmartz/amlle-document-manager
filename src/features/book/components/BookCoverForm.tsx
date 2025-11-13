@@ -27,8 +27,7 @@ import {
   bookCoverSchema,
   type BookCoverFormValues,
 } from "../schemas/bookCoverSchema";
-// ✅ 1. Importar el helper para números romanos
-import { numberToRoman } from "@/lib/textUtils";
+import { numberToRoman, parseDateSafely } from "@/lib/textUtils";
 
 type SaveHandler = () => Promise<boolean>;
 
@@ -48,15 +47,15 @@ export const BookCoverForm = ({
   // ✅ 2. Lógica para generar el nombre por defecto si es 'null'
   const defaultTomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
 
-  const form = useForm<BookCoverFormValues>({
+const form = useForm<BookCoverFormValues>({
     resolver: zodResolver(
       bookCoverSchema
     ) as unknown as Resolver<BookCoverFormValues>,
     defaultValues: {
-      name: defaultTomeName, // ✅ 3. Usar el nombre por defecto
-      authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
-      closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.number, // ✅ 4. Corregir tome.tomeNumber a tome.number
+      name: defaultTomeName,
+      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt),
+      closingDate: parseDateSafely(tome.closingDate ?? undefined),
+      tome: tome.number,
     },
   });
 
@@ -65,9 +64,9 @@ export const BookCoverForm = ({
   const initialHookData = useMemo(
     () => ({
       name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
-      authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
-      closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.number,
+      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt) ?? new Date(),
+      closingDate: parseDateSafely(tome.closingDate ?? undefined),
+      tome: tome.number
     }),
     [tome]
   );
@@ -116,10 +115,10 @@ export const BookCoverForm = ({
 
   useEffect(() => {
     form.reset({
-      name: tome.name || `Tomo ${numberToRoman(tome.number)}`, // ✅ 3. Usar por defecto
-      authorizationDate: new Date(tome.authorizationDate || tome.createdAt),
-      closingDate: tome.closingDate ? new Date(tome.closingDate) : undefined,
-      tome: tome.number, // ✅ 4. Corregir
+      name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
+      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt),
+      closingDate: parseDateSafely(tome.closingDate ?? undefined),
+      tome: tome.number,
     });
   }, [tome, form]);
 
