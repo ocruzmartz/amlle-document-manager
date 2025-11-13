@@ -2,7 +2,7 @@
 import { Link } from "react-router";
 import { type Book, type BookStatus } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { Book as BookIcon, FileText, Handshake, Users } from "lucide-react";
+import { Book as BookIcon, FileText, Handshake } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 

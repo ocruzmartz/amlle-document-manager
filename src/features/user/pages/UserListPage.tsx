@@ -46,7 +46,7 @@ export const UserListPage: React.FC = () => {
       try {
         console.log("Fetching users - dataVersion:", dataVersion);
         // Llama a la API asíncrona (GET /api/users/all)
-        const userData = await getUsers(); 
+        const userData = await getUsers();
         setUsers(userData);
       } catch (error) {
         // El toast de error ya se muestra en la capa de API (getUsers)
@@ -89,16 +89,17 @@ export const UserListPage: React.FC = () => {
     const toastId = toast.loading("Eliminando usuario...");
     try {
       // Llama al endpoint real (DELETE /api/users/remove/:id)
-      await deleteUser(userToDelete.id); 
-      toast.success(
-        `Usuario "${userToDelete.nombre}" eliminado.`,
-        { id: toastId }
-      );
+      await deleteUser(userToDelete.id);
+      toast.success(`Usuario "${userToDelete.nombre}" eliminado.`, {
+        id: toastId,
+      });
       refreshData(); // Recarga la tabla
     } catch (error) {
       console.error("Error deleting user:", error);
       toast.error(
-        error instanceof Error ? error.message : "Error al eliminar el usuario.",
+        error instanceof Error
+          ? error.message
+          : "Error al eliminar el usuario.",
         { id: toastId }
       );
     }
@@ -110,16 +111,17 @@ export const UserListPage: React.FC = () => {
     const toastId = toast.loading("Desactivando usuario...");
     try {
       // Llama al endpoint real (PATCH /api/users/deactivate/:id)
-      await terminateUserSession(userToTerminate.id); 
-      toast.success(
-        `Usuario "${userToTerminate.nombre}" desactivado.`,
-        { id: toastId }
-      );
+      await terminateUserSession(userToTerminate.id);
+      toast.success(`Usuario "${userToTerminate.nombre}" desactivado.`, {
+        id: toastId,
+      });
       refreshData(); // Recarga la tabla
     } catch (error) {
       console.error("Error terminating session:", error);
       toast.error(
-        error instanceof Error ? error.message : "Error al desactivar el usuario.",
+        error instanceof Error
+          ? error.message
+          : "Error al desactivar el usuario.",
         { id: toastId }
       );
     }
@@ -133,25 +135,28 @@ export const UserListPage: React.FC = () => {
   );
 
   // Filtros adaptados al modelo de datos real del backend
-  const facetedFilters = useMemo(() => [
-    {
-      columnId: "rol",
-      title: "Permisos",
-      options: [
-        { label: "Admin", value: "admin" },
-        { label: "Editor", value: "editor" },
-        { label: "Lector", value: "lector" },
-      ],
-    },
-    {
-      columnId: "activo",
-      title: "Estado",
-      options: [
-        { label: "Activo", value: true },
-        { label: "Inactivo", value: false },
-      ],
-    },
-  ], []);
+  const facetedFilters = useMemo(
+    () => [
+      {
+        columnId: "rol",
+        title: "Permisos",
+        options: [
+          { label: "Admin", value: "admin" },
+          { label: "Editor", value: "editor" },
+          { label: "Lector", value: "lector" },
+        ],
+      },
+      {
+        columnId: "activo",
+        title: "Estado",
+        options: [
+          { label: "Activo", value: "true" },
+          { label: "Inactivo", value: "false" },
+        ],
+      },
+    ],
+    []
+  );
 
   // --- Renderizado del Componente ---
   return (
@@ -165,7 +170,8 @@ export const UserListPage: React.FC = () => {
                 Gestión de Usuarios
               </h1>
               <p className="text-muted-foreground mt-1">
-                Crear, editar y gestionar los usuarios del sistema y sus permisos.
+                Crear, editar y gestionar los usuarios del sistema y sus
+                permisos.
               </p>
             </div>
             <div>
@@ -188,7 +194,7 @@ export const UserListPage: React.FC = () => {
               data={users} // Pasa los usuarios del estado
               filterColumnId="nombre" // Filtra por 'nombre'
               filterPlaceholder="Filtrar por nombre..."
-              facetedFilters={facetedFilters} 
+              facetedFilters={facetedFilters}
             />
           )}
         </div>
@@ -212,13 +218,18 @@ export const UserListPage: React.FC = () => {
             <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción eliminará permanentemente al usuario{" "}
-              <strong>{userToDelete?.nombre}</strong>. 
-              Esta acción no se puede deshacer.
+              <strong>{userToDelete?.nombre}</strong>. Esta acción no se puede
+              deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
               Sí, eliminar usuario
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -235,13 +246,14 @@ export const UserListPage: React.FC = () => {
             <AlertDialogTitle>Confirmar Desactivación</AlertDialogTitle>
             <AlertDialogDescription>
               Esto establecerá el estado de{" "}
-              <strong>{userToTerminate?.nombre}</strong> como "Inactivo" 
-              y cerrará su sesión. 
-              ¿Deseas proceder?
+              <strong>{userToTerminate?.nombre}</strong> como "Inactivo" y
+              cerrará su sesión. ¿Deseas proceder?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToTerminate(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setUserToTerminate(null)}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmTerminate}>
               Sí, desactivar usuario
             </AlertDialogAction>

@@ -1,9 +1,6 @@
 import * as React from "react";
-// import { Command } from "lucide-react";
-
 import { NavMain } from "@/components/nav-main";
-import {NavAdmin} from "@/components/nav-administration";
-// import { NavSecondary } from "@/components/nav-secondary"
+import { NavAdmin } from "@/components/nav-administration";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -17,11 +14,6 @@ import {
 import { adminNavItems, mainNavItems } from "@/config/navigation";
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: mainNavItems,
   navAdmin: adminNavItems,
 };
@@ -55,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" />  */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

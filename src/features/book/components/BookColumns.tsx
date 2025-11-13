@@ -66,7 +66,7 @@ export const getColumns = ({
       );
     },
     // ✅ 3. Actualizar filtro para que busque en los nombres generados
-    filterFn: (row, id, value) => {
+    filterFn: (row, value) => {
       const tome = row.original;
       const bookName = tome.book?.name || "";
       const tomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;

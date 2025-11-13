@@ -38,7 +38,7 @@ interface CreateVolumeInput {
 
 type UpdateVolumePayload = Partial<{
   name: string | null;
-  pdfSettings: typeof DEFAULT_PDF_SETTINGS | null; // ✅ CORRECCIÓN: Aceptar null
+  pdfSettings: Tome["pdfSettings"] | null;
   number: number;
   pageCount: number;
   status: BookStatus;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { type Act, type CouncilMember } from "@/types";
 import { participantsService } from "../api/participantsService";
 import { Button } from "@/components/ui/button";

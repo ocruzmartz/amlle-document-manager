@@ -31,6 +31,7 @@ export type Tome = {
     pageNumberingPosition?: "left" | "center" | "right";
     pageNumberingFormat?: "simple" | "dash" | "page" | "pageTotal";
   } | null;
+  modifiedByName?: string | null;
   authorizationDate: string | null;
   closingDate: string | null;
   createdBy: User;

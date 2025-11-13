@@ -96,7 +96,7 @@ export const BookWorkspacePage = () => {
 
   const [tome, setTome] = useState<Tome | null>(null);
   const [parentBook, setParentBook] = useState<Book | null>(null);
-  const [allVolumes, setAllVolumes] = useState<Tome[]>([]); // ✅ Agregado
+  const [allVolumes, setAllVolumes] = useState<Tome[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -193,11 +193,11 @@ export const BookWorkspacePage = () => {
         const volumes = await volumeService.getVolumesByBookId(bookId);
         console.log("✅ Volúmenes del libro:", volumes);
         setAllVolumes(volumes);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("❌ Error al cargar workspace:", error);
-        toast.error(
-          error.response?.data?.message || "No se pudo cargar el tomo"
-        );
+        const errorMessage =
+          error instanceof Error ? error.message : "No se pudo cargar el tomo";
+        toast.error(errorMessage);
         navigate("/books");
       } finally {
         setIsLoading(false);
@@ -220,8 +220,12 @@ export const BookWorkspacePage = () => {
 
       toast.success("Libro renombrado correctamente");
       setIsRenameBookDialogOpen(false);
-    } catch (error: any) {
-      console.error("❌ Error al renombrar libro:", error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("❌ Error al renombrar libro:", error.message);
+      } else {
+        console.error("❌ Error al renombrar libro:", error);
+      }
       toast.error("No se pudo renombrar el libro");
     }
   };
@@ -249,9 +253,16 @@ export const BookWorkspacePage = () => {
       const toastId = toast.loading("Guardando cambios...");
 
       try {
+        const sanitizedTomeData = {
+          ...updatedTomeData,
+          authorizationDate:
+            updatedTomeData.authorizationDate === null
+              ? undefined
+              : updatedTomeData.authorizationDate,
+        };
         const updatedTome = await volumeService.updateVolume(
           tomeId,
-          updatedTomeData
+          sanitizedTomeData
         );
         setTome((prevTome) => {
           if (!prevTome) return updatedTome;
@@ -273,7 +284,7 @@ export const BookWorkspacePage = () => {
 
         setHasUnsavedChanges(false);
         toast.success("Cambios guardados exitosamente", { id: toastId });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("❌ Error al actualizar tomo:", error);
         toast.error("No se pudo actualizar el tomo", { id: toastId });
       }
@@ -312,9 +323,11 @@ export const BookWorkspacePage = () => {
       toast.success("Acta eliminada exitosamente.", { id: toastId });
       setActToDelete(null); // Cerrar modal
       setConfirmationText("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al eliminar acta:", error);
-      toast.error(error.message || "No se pudo eliminar el acta", {
+      const errorMessage =
+        error instanceof Error ? error.message : "No se pudo eliminar el acta";
+      toast.error(errorMessage, {
         id: toastId,
       });
     } finally {
@@ -350,11 +363,16 @@ export const BookWorkspacePage = () => {
       toast.success("Acuerdo eliminado exitosamente.", { id: toastId });
       setAgreementToDelete(null); // Cerrar modal
       setConfirmationText("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al eliminar acuerdo:", error);
-      toast.error(error.message || "No se pudo eliminar el acuerdo", {
-        id: toastId,
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo eliminar el acuerdo",
+        {
+          id: toastId,
+        }
+      );
     } finally {
       setIsDeletingAgreement(false);
     }
@@ -380,7 +398,7 @@ export const BookWorkspacePage = () => {
               ),
             };
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("❌ Error al cargar acta por ID:", error);
           toast.error("No se pudo cargar el acta para edición.");
           setCurrentView({
@@ -410,9 +428,13 @@ export const BookWorkspacePage = () => {
           );
           return { ...prevTome, acts: updatedActs };
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("❌ Error al guardar acta:", error);
-        throw new Error(error.message || "No se pudo guardar el acta");
+        if (error instanceof Error) {
+          throw new Error(error.message || "No se pudo guardar el acta");
+        } else {
+          throw new Error("No se pudo guardar el acta");
+        }
       }
     },
     [tome]
@@ -455,9 +477,11 @@ export const BookWorkspacePage = () => {
       });
 
       toast.success("Acta creada exitosamente", { id: toastId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al crear acta:", error);
-      toast.error(error.message || "No se pudo crear el acta", { id: toastId });
+      const errorMessage =
+        error instanceof Error ? error.message : "No se pudo crear el acta";
+      toast.error(errorMessage, { id: toastId });
     } finally {
       setIsCreatingAct(false);
     }
@@ -535,9 +559,13 @@ export const BookWorkspacePage = () => {
               ),
             };
           });
-        } catch (error: Error) {
+        } catch (error: unknown) {
           console.error("❌ Error al recargar acta por ID:", error);
-          toast.error(error.message || "No se pudo recargar el acta.");
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "No se pudo recargar el acta."
+          );
         } finally {
           if (showLoadingScreen) {
             setIsActLoading(false);
@@ -583,11 +611,16 @@ export const BookWorkspacePage = () => {
 
       setTome(newState);
       toast.success("Actas reordenadas exitosamente", { id: toastId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al reordenar actas:", error);
-      toast.error(error.message || "No se pudo reordenar las actas", {
-        id: toastId,
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo reordenar las actas",
+        {
+          id: toastId,
+        }
+      );
     } finally {
       setIsReordering(false);
     }
@@ -606,7 +639,7 @@ export const BookWorkspacePage = () => {
 
       toast.success(`Tomo ${newTomeNumber} creado`);
       navigate(`/books/${newTome.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al crear tomo:", error);
       toast.error("No se pudo crear el tomo");
     }
@@ -632,7 +665,7 @@ export const BookWorkspacePage = () => {
       }
 
       setTomeToDelete(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error al eliminar tomo:", error);
       toast.error("No se pudo eliminar el tomo");
     }

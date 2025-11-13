@@ -18,7 +18,12 @@ export interface Book {
   closingDate: string | null;
   createdAt: string;
   updatedAt: string;
+  createdByName?: string;
+  agreementCount?: number;
+  volumeCount?: number;
+  minutesCount?: number;
   tomos?: Tome[];
+  modificationName?: string[];
 }
 
 export type RecentBook = RecentTome;
