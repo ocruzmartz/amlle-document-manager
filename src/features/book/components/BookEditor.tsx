@@ -70,13 +70,13 @@ export const BookEditor = ({
   const [isCreatingAgreement, setIsCreatingAgreement] = useState(false);
   const [isReorderingAgreements, setIsReorderingAgreements] = useState(false);
 
-  const handleCoverFormDone = useCallback(
+  const handleSaveCover = useCallback(
     (data: BookCoverFormValues) => {
       if (isReadOnly) return;
       const updatePayload: Partial<Tome> = {
         name: data.name,
         number: data.tome,
-        authorizationDate: formatDateToISO(data.authorizationDate),
+        authorizationDate: formatDateToISO(data.authorizationDate!),
         closingDate: data.closingDate
           ? formatDateToISO(data.closingDate)
           : null,
@@ -92,6 +92,16 @@ export const BookEditor = ({
     },
     [isReadOnly, onUpdateTome, setCurrentView, currentView]
   );
+
+  const handleSkipCover = () => {
+    setCurrentView({
+      ...currentView,
+      main: { type: "act-list" },
+      detail: { type: "none" },
+      activeActId: null,
+      activeAgreementId: null,
+    });
+  };
 
   const handleAddAgreement = async (actId: string) => {
     if (isReadOnly || isCreatingAgreement) return;
@@ -238,7 +248,8 @@ export const BookEditor = ({
         return (
           <BookCoverForm
             tome={tome}
-            onDone={handleCoverFormDone}
+            onSaveCover={handleSaveCover}
+            onSkip={handleSkipCover}
             isReadOnly={isReadOnly}
             onRegisterSaveHandler={onRegisterSaveHandler}
           />

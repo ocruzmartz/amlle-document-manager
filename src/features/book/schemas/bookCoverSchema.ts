@@ -6,10 +6,11 @@ export const bookCoverSchema = z.object({
     .min(5, { message: "El nombre debe tener al menos 5 caracteres." }),
   authorizationDate: z
     .date()
+    .nullable()
     .refine((val) => val !== null && val !== undefined, {
       message: "La fecha de autorización es requerida.",
     }),
-  closingDate: z.date().optional(),
+  closingDate: z.date().nullable().optional(),
   tome: z.preprocess(
     (val) => (val === "" || val == null ? undefined : Number(val)),
     z
@@ -17,6 +18,6 @@ export const bookCoverSchema = z.object({
       .positive({ message: "El tomo debe ser un número positivo" })
       .optional()
   ),
-});
+}); 
 
 export type BookCoverFormValues = z.infer<typeof bookCoverSchema>;

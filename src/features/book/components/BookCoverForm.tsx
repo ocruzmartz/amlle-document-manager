@@ -33,27 +33,31 @@ type SaveHandler = () => Promise<boolean>;
 
 interface BookCoverFormProps {
   tome: Tome;
-  onDone: (data: BookCoverFormValues) => void;
+  onSaveCover: (data: BookCoverFormValues) => void;
+  onSkip: () => void;
   isReadOnly?: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
 
 export const BookCoverForm = ({
   tome,
-  onDone,
+  onSaveCover,
+  onSkip,
   isReadOnly = false,
   onRegisterSaveHandler,
 }: BookCoverFormProps) => {
   // ✅ 2. Lógica para generar el nombre por defecto si es 'null'
   const defaultTomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
 
-const form = useForm<BookCoverFormValues>({
+  const form = useForm<BookCoverFormValues>({
     resolver: zodResolver(
       bookCoverSchema
     ) as unknown as Resolver<BookCoverFormValues>,
     defaultValues: {
       name: defaultTomeName,
-      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt),
+      authorizationDate: parseDateSafely(
+        tome.authorizationDate || tome.createdAt
+      ),
       closingDate: parseDateSafely(tome.closingDate ?? undefined),
       tome: tome.number,
     },
@@ -64,9 +68,10 @@ const form = useForm<BookCoverFormValues>({
   const initialHookData = useMemo(
     () => ({
       name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
-      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt) ?? new Date(),
+      authorizationDate:
+        parseDateSafely(tome.authorizationDate || tome.createdAt) ?? new Date(),
       closingDate: parseDateSafely(tome.closingDate ?? undefined),
-      tome: tome.number
+      tome: tome.number,
     }),
     [tome]
   );
@@ -83,23 +88,21 @@ const form = useForm<BookCoverFormValues>({
 
   const onSaveCallback = useCallback(
     async (dataToSave: BookCoverFormValues) => {
-      onDone(dataToSave);
+      onSaveCover(dataToSave);
     },
-    [onDone]
-  ); // Depende de 'onDone' (ahora estable)
+    [onSaveCover]
+  );
 
-  // ✅ 2. ENVOLVER 'onSuccess' EN useCallback
   const onSuccessCallback = useCallback(
     (savedData: BookCoverFormValues) => {
       form.reset(savedData);
     },
     [form]
-  ); // Depende de 'form' (que es estable)
+  );
 
   const { handleSave, isDirty, isSaving } = useSaveAction<BookCoverFormValues>({
     initialData: initialHookData,
     currentData: currentHookData,
-
     onSave: onSaveCallback,
     onSuccess: onSuccessCallback,
     loadingMessage: "Guardando portada...",
@@ -116,7 +119,9 @@ const form = useForm<BookCoverFormValues>({
   useEffect(() => {
     form.reset({
       name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
-      authorizationDate: parseDateSafely(tome.authorizationDate || tome.createdAt),
+      authorizationDate: parseDateSafely(
+        tome.authorizationDate || tome.createdAt
+      ),
       closingDate: parseDateSafely(tome.closingDate ?? undefined),
       tome: tome.number,
     });
@@ -223,9 +228,8 @@ const form = useForm<BookCoverFormValues>({
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
+                              selected={field.value || undefined}
+                              onSelect={(date) => field.onChange(date || null)}
                             />
                           </PopoverContent>
                         </Popover>
@@ -261,8 +265,8 @@ const form = useForm<BookCoverFormValues>({
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
+                              selected={field.value || undefined}
+                              onSelect={(date) => field.onChange(date || null)}
                             />
                           </PopoverContent>
                         </Popover>
@@ -279,6 +283,14 @@ const form = useForm<BookCoverFormValues>({
 
       <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
         <div className="flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSkip}
+            disabled={isReadOnly}
+          >
+            Ir a la lista de actas
+          </Button>
           <Button
             type="submit"
             form="book-cover-form"
