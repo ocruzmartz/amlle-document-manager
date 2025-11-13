@@ -51,6 +51,7 @@ export const columns: ColumnDef<Agreement>[] = [
     header: "Tomo de Origen",
     cell: ({ row }) => {
       const agreement = row.original;
+      
       return (
         <Link
           to={`/books/${agreement.tomeId}`}

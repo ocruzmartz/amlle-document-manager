@@ -17,13 +17,14 @@ export const AgreementListPage = () => {
         // Llamar al servicio REAL (que apunta al endpoint futuro)
         const agreements = await agreementService.getAllAgreements();
         setAllAgreements(agreements);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error al cargar acuerdos:", error);
         // Si el endpoint aún no existe, esto mostrará un error 404
-        toast.error(
-          error.message ||
-            "No se pudieron cargar los acuerdos (endpoint no disponible)."
-        );
+        const errorMessage =
+          error && typeof error === "object" && "message" in error
+            ? (error as { message?: string }).message
+            : "No se pudieron cargar los acuerdos (endpoint no disponible).";
+        toast.error(errorMessage);
       } finally {
         setIsLoading(false);
       }

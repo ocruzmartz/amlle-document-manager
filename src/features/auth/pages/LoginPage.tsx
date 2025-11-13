@@ -360,7 +360,7 @@ export const LoginPage = () => {
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950">
       {/* Columna Izquierda: Logo */}
-      <div className="hidden lg:flex w-1/2 items-center justify-center bg-primary p-8">
+      <div className="hidden lg:flex w-1/2 items-center justify-center bg-[#ff3586] p-8">
         <img
           src="https://lalibertadeste.gob.sv/images/logo/escudo-alcaldia_white.png"
           alt="Escudo de la Alcaldía La Libertad Este"
