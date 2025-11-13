@@ -1,5 +1,5 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import { type FullActivityLog, type ActivityLog } from "@/types";
+import { type FullActivityLog, type ActivityLog, type User } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
@@ -60,16 +60,12 @@ export const columns: ColumnDef<FullActivityLog>[] = [
     header: "Usuario",
     cell: ({ row }) => {
       const user = row.getValue("user") as FullActivityLog["user"];
-      return (
-        <div className="font-medium">
-          {user.firstName} {user.lastName}
-        </div>
-      );
+      return <div className="font-medium">{user.nombre}</div>;
     },
     // Filtro simple (no facetado)
     filterFn: (row, id, value) => {
-      const user = row.getValue(id) as FullActivityLog["user"];
-      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      const user = row.getValue(id) as Pick<User, "nombre">;
+      const fullName = user.nombre.toLowerCase(); // ✅ CORREGIDO
       return fullName.includes(String(value).toLowerCase());
     },
   },
@@ -113,6 +109,7 @@ export const columns: ColumnDef<FullActivityLog>[] = [
       return (
         <Link
           to={log.targetUrl}
+          state={log.targetState}
           className="font-medium text-primary hover:underline"
         >
           {log.targetName}

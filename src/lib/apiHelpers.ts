@@ -1,3 +1,4 @@
+// filepath: src/lib/apiHelpers.ts
 import { apiClient } from "@/services/apiClient";
 import type { ApiResponse, PaginatedResponse } from "@/types/index";
 import { AxiosError } from "axios";
@@ -17,10 +18,11 @@ export const handleApiError = (
 
 /**
  * GET genérico con estructura estándar { data: { data: T } }
+ * ✅ 1. Añadido TParams genérico
  */
-export const apiGet = async <T>(
+export const apiGet = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
-  params?: Record<string, unknown>
+  params?: TParams
 ): Promise<T> => {
   try {
     const response = await apiClient.get<ApiResponse<T>>(endpoint, {
@@ -34,11 +36,11 @@ export const apiGet = async <T>(
 
 /**
  * GET directo - cuando el backend devuelve los datos sin envolver
- * Ejemplo: response.data = "string" o response.data = { id: "..." }
+ * ✅ 2. Añadido TParams genérico
  */
-export const apiGetDirect = async <T>(
+export const apiGetDirect = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
-  params?: Record<string, unknown>
+  params?: TParams
 ): Promise<T> => {
   try {
     const response = await apiClient.get<T>(endpoint, { params });
@@ -50,10 +52,11 @@ export const apiGetDirect = async <T>(
 
 /**
  * GET con paginación
+ * ✅ 3. Añadido TParams genérico
  */
-export const apiGetPaginated = async <T>(
+export const apiGetPaginated = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
-  params?: Record<string, unknown>
+  params?: TParams
 ): Promise<PaginatedResponse<T>> => {
   try {
     const response = await apiClient.get<PaginatedResponse<T>>(endpoint, {
@@ -69,7 +72,7 @@ export const apiGetPaginated = async <T>(
 };
 
 /**
- * POST genérico con estructura estándar { data: { data: T } }
+ * POST genérico (sin cambios, ya era correcto)
  */
 export const apiPost = async <TData, TResponse>(
   endpoint: string,
@@ -87,7 +90,7 @@ export const apiPost = async <TData, TResponse>(
 };
 
 /**
- * POST directo - cuando el backend devuelve los datos sin envolver
+ * POST directo (sin cambios, ya era correcto)
  */
 export const apiPostDirect = async <TData, TResponse>(
   endpoint: string,
@@ -102,7 +105,7 @@ export const apiPostDirect = async <TData, TResponse>(
 };
 
 /**
- * PATCH genérico
+ * PATCH genérico (sin cambios, ya era correcto)
  */
 export const apiPatch = async <TData, TResponse>(
   endpoint: string,
@@ -120,7 +123,7 @@ export const apiPatch = async <TData, TResponse>(
 };
 
 /**
- * PATCH directo
+ * PATCH directo (sin cambios, ya era correcto)
  */
 export const apiPatchDirect = async <TData, TResponse>(
   endpoint: string,
@@ -135,7 +138,7 @@ export const apiPatchDirect = async <TData, TResponse>(
 };
 
 /**
- * PUT genérico con estructura estándar
+ * PUT genérico con estructura estándar (sin cambios, ya era correcto)
  */
 export const apiPut = async <TData, TResponse>(
   endpoint: string,
@@ -153,7 +156,7 @@ export const apiPut = async <TData, TResponse>(
 };
 
 /**
- * PUT directo
+ * PUT directo (sin cambios, ya era correcto)
  */
 export const apiPutDirect = async <TData, TResponse>(
   endpoint: string,
@@ -168,7 +171,7 @@ export const apiPutDirect = async <TData, TResponse>(
 };
 
 /**
- * DELETE genérico
+ * DELETE genérico (sin cambios, ya era correcto)
  */
 export const apiDelete = async (endpoint: string): Promise<void> => {
   try {

@@ -10,9 +10,11 @@ export type Tome = {
   number: number;
   bookName?: string | null;
   createdByName?: string | null;
+  minutesIds?: string[] | null;
   pageCount: number;
   status: BookStatus;
   book: Book;
+  tomeNumber: number;
   pdfSettings?: {
     pageSize: "A4" | "LETTER";
     orientation: "portrait" | "landscape";

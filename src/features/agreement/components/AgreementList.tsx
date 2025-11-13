@@ -1,20 +1,20 @@
-// filepath: src/features/agreements/components/AgreementsManager.tsx
-import { useState } from "react"; // ✅ Importar useState
+import { useState } from "react";
 import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // ✅ Importar Input
+import { Input } from "@/components/ui/input";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"; // ✅ Importar Collapsible
+} from "@/components/ui/collapsible";
 import {
   PlusCircle,
   ChevronsUpDown,
   Search,
   ArrowDown,
   ArrowUp,
-} from "lucide-react"; // ✅ Importar iconos
+  Trash2,
+} from "lucide-react";
 import { numberToWords, capitalize } from "@/lib/textUtils";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ interface AgreementListProps {
   onAddAgreement: () => void;
   onEditAgreement: (agreementId: string) => void;
   onReorderAgreement: (agreementId: string, direction: "up" | "down") => void;
+  onDeleteAgreement: (agreementId: string) => void;
   activeAgreementId: string | null;
   isReadOnly?: boolean;
 }
@@ -34,15 +35,15 @@ export const AgreementList = ({
   onReorderAgreement,
   activeAgreementId,
   isReadOnly = false,
+  onDeleteAgreement,
 }: AgreementListProps) => {
-  const [searchQuery, setSearchQuery] = useState(""); // ✅ Estado para el buscador
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // ✅ Filtrar acuerdos según la búsqueda
   const filteredAgreements =
     act.agreements?.filter((agreement) =>
       (agreement.content || "")
         .toLowerCase()
-        .replace(/<[^>]*>/g, "") // Limpiar HTML para buscar solo en el texto
+        .replace(/<[^>]*>/g, "")
         .includes(searchQuery.toLowerCase())
     ) || [];
 
@@ -145,7 +146,10 @@ export const AgreementList = ({
                               onClick={() =>
                                 onReorderAgreement(agreement.id, "down")
                               }
-                              disabled={index === filteredAgreements.length - 1 || isReadOnly}
+                              disabled={
+                                index === filteredAgreements.length - 1 ||
+                                isReadOnly
+                              }
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0"
@@ -153,6 +157,16 @@ export const AgreementList = ({
                               <ArrowDown className="h-3 w-3" />
                             </Button>
                           </div>
+                          <Button
+                            onClick={() => onDeleteAgreement(agreement.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            title="Eliminar acuerdo"
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           <Button
                             onClick={() => onEditAgreement(agreement.id)}
                             variant="outline"

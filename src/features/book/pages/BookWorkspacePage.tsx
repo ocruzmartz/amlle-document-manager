@@ -18,7 +18,13 @@ import {
   SelectValue,
   SelectSeparator,
 } from "@/components/ui/select";
-import { type Tome, type Act, type Book } from "@/types";
+import {
+  type Tome,
+  type Act,
+  type Book,
+  type Agreement,
+  type CouncilMember,
+} from "@/types";
 import { type WorkspaceView } from "../types";
 import {
   Sheet,
@@ -50,6 +56,12 @@ import { toast } from "sonner";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { actService } from "@/features/act/api/minutesService";
 import { reorderArray } from "@/lib/utils";
+import { agreementService } from "@/features/agreement/api/agreementService";
+import { participantsService } from "@/features/act/api/participantsService";
+import {
+  OFFICIAL_SYNDIC,
+  OFFICIAL_SECRETARY,
+} from "@/features/act/lib/officials";
 
 const recalculateNumbers = (tomeState: Tome): Tome => {
   const recalculatedActs = tomeState.acts?.map((act, actIndex) => {
@@ -96,11 +108,19 @@ export const BookWorkspacePage = () => {
   const [isRenameBookDialogOpen, setIsRenameBookDialogOpen] = useState(false);
   const [newBookName, setNewBookName] = useState("");
   const [tomeToDelete, setTomeToDelete] = useState<Tome | null>(null);
-
+  const [actToDelete, setActToDelete] = useState<Act | null>(null);
+  const [agreementToDelete, setAgreementToDelete] = useState<Agreement | null>(
+    null
+  );
+  const [isDeletingAgreement, setIsDeletingAgreement] = useState(false);
   const [isActLoading, setIsActLoading] = useState(false);
 
   const [isCreatingAct, setIsCreatingAct] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
+  const [isDeletingAct, setIsDeletingAct] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
+
+  const [allSigners, setAllSigners] = useState<CouncilMember[]>([]);
 
   const previewKey = tome
     ? tome.updatedAt + JSON.stringify(tome.pdfSettings)
@@ -145,23 +165,28 @@ export const BookWorkspacePage = () => {
       try {
         console.log("🔍 Cargando tomo:", tomeId);
 
-        const foundTome = await volumeService.getVolumeById(tomeId);
-        console.log("✅ Tomo cargado:", foundTome);
+        const [foundTome, propietarios] = await Promise.all([
+          volumeService.getVolumeById(tomeId!),
+          participantsService.getPropietarios(), // <-- Cargar concejales
+        ]);
 
-        const foundActs = await actService.getActsByVolumeId(tomeId);
-        console.log(
-          "✅ Actas cargadas desde /minutes/find-all-by-volume:",
-          foundActs
-        );
+        console.log("✅ Tomo cargado:", foundTome);
+        console.log("✅ Propietarios cargados:", propietarios);
+
+        const foundActs = await actService.getActsByVolumeId(tomeId!);
+        console.log("✅ Actas cargadas:", foundActs);
 
         setTome({
           ...foundTome,
           acts: foundActs,
         });
 
+        setAllSigners([OFFICIAL_SECRETARY, OFFICIAL_SYNDIC, ...propietarios]);
+
         const bookId = foundTome.book.id;
         const foundBook = await bookService.getBookById(bookId);
         console.log("✅ Libro padre cargado:", foundBook);
+
         setParentBook(foundBook);
         setNewBookName(foundBook.name);
 
@@ -255,6 +280,85 @@ export const BookWorkspacePage = () => {
     },
     [tome, tomeId, setAllVolumes]
   );
+
+  const handleDeleteActClick = (actId: string) => {
+    if (isReadOnly) return;
+    const act = tome?.acts?.find((a) => a.id === actId);
+    if (act) {
+      setActToDelete(act);
+    }
+  };
+
+  const handleConfirmDeleteAct = async () => {
+    if (!actToDelete || isDeletingAct) return;
+
+    setIsDeletingAct(true);
+    const toastId = toast.loading("Eliminando acta...");
+
+    try {
+      // Llamar al servicio
+      await actService.deleteAct(actToDelete.id);
+
+      // Actualizar estado local (Tome)
+      setTome((prevTome) => {
+        if (!prevTome || !prevTome.acts) return prevTome;
+        const updatedActs = prevTome.acts.filter(
+          (a) => a.id !== actToDelete.id
+        );
+        // Recalcular números después de eliminar
+        return recalculateNumbers({ ...prevTome, acts: updatedActs });
+      });
+
+      toast.success("Acta eliminada exitosamente.", { id: toastId });
+      setActToDelete(null); // Cerrar modal
+      setConfirmationText("");
+    } catch (error: any) {
+      console.error("❌ Error al eliminar acta:", error);
+      toast.error(error.message || "No se pudo eliminar el acta", {
+        id: toastId,
+      });
+    } finally {
+      setIsDeletingAct(false);
+    }
+  };
+
+  const handleDeleteAgreementClick = (agreementId: string) => {
+    if (isReadOnly || !currentView.activeActId) return;
+    const act = tome?.acts?.find((a) => a.id === currentView.activeActId);
+    const agreement = act?.agreements.find((a) => a.id === agreementId);
+    if (agreement) {
+      setAgreementToDelete(agreement);
+    }
+  };
+
+  // ✅ 5. Lógica para confirmar la eliminación (Acuerdo)
+  const handleConfirmDeleteAgreement = async () => {
+    if (!agreementToDelete || !currentView.activeActId || isDeletingAgreement)
+      return;
+
+    setIsDeletingAgreement(true);
+    const toastId = toast.loading("Eliminando acuerdo...");
+
+    try {
+      // 1. Llamar al servicio API
+      await agreementService.deleteAgreement(agreementToDelete.id);
+
+      // 2. Refrescar el acta actual para actualizar la lista
+      // (Esto es más limpio que manipular el estado local)
+      await refetchActiveAct({ showLoadingScreen: false });
+
+      toast.success("Acuerdo eliminado exitosamente.", { id: toastId });
+      setAgreementToDelete(null); // Cerrar modal
+      setConfirmationText("");
+    } catch (error: any) {
+      console.error("❌ Error al eliminar acuerdo:", error);
+      toast.error(error.message || "No se pudo eliminar el acuerdo", {
+        id: toastId,
+      });
+    } finally {
+      setIsDeletingAgreement(false);
+    }
+  };
 
   useEffect(() => {
     const loadActForEditing = async () => {
@@ -655,7 +759,11 @@ export const BookWorkspacePage = () => {
             </Button>
           </SheetHeader>
           <div className="flex-1 overflow-hidden">
-            <BookPdfPreview key={previewKey} tome={tome} />
+            <BookPdfPreview
+              key={previewKey}
+              tome={tome}
+              allSigners={allSigners}
+            />
           </div>
         </SheetContent>
       </Sheet>
@@ -704,11 +812,13 @@ export const BookWorkspacePage = () => {
             onUpdateAct={handleActUpdate}
             onCreateActa={handleCreateAct}
             setHasUnsavedChanges={setHasUnsavedChanges}
+            onDeleteAgreement={handleDeleteAgreementClick}
             onRefetchAct={refetchActiveAct}
             onReorderAct={handleReorderAct}
             onRegisterSaveHandler={onRegisterSaveHandler}
             isReadOnly={isReadOnly}
             isReordering={isReordering}
+            onDeleteAct={handleDeleteActClick}
           />
         </div>
       </>
@@ -802,6 +912,106 @@ export const BookWorkspacePage = () => {
             >
               Salir sin guardar
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!actToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActToDelete(null);
+            setConfirmationText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Acta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar permanentemente el acta{" "}
+              <strong>"{actToDelete?.name}"</strong>. Esta acción no se puede
+              deshacer.
+              <br />
+              Para confirmar, por favor escribe <strong>ELIMINAR</strong> en el
+              campo de abajo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Label
+              htmlFor="confirm-text-delete-act"
+              className="text-muted-foreground"
+            >
+              Escribe "ELIMINAR" para confirmar
+            </Label>
+            <Input
+              id="confirm-text-delete-act"
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              className="mt-2"
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDeleteAct}
+              disabled={confirmationText !== "ELIMINAR" || isDeletingAct}
+            >
+              {isDeletingAct ? "Eliminando..." : "Sí, eliminar"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!agreementToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAgreementToDelete(null);
+            setConfirmationText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Acuerdo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar permanentemente el acuerdo{" "}
+              <strong>"{agreementToDelete?.name}"</strong>. Esta acción no se
+              puede deshacer.
+              <br />
+              Para confirmar, por favor escribe <strong>ELIMINAR</strong> en el
+              campo de abajo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Label
+              htmlFor="confirm-text-delete-agreement"
+              className="text-muted-foreground"
+            >
+              Escribe "ELIMINAR" para confirmar
+            </Label>
+            <Input
+              id="confirm-text-delete-agreement"
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              className="mt-2"
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDeleteAgreement}
+              disabled={confirmationText !== "ELIMINAR" || isDeletingAgreement}
+            >
+              {isDeletingAgreement ? "Eliminando..." : "Sí, eliminar"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

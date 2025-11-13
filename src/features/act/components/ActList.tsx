@@ -11,6 +11,7 @@ import {
   CalendarDays,
   FileText,
   Users,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ interface ActasListProps {
   onCreateAct: () => void;
   onEditAct: (actId: string) => void;
   onReorderAct: (actId: string, direction: "up" | "down") => void;
+  onDeleteAct: (actId: string) => void;
   activeActId: string | null;
   isReadOnly?: boolean;
 }
@@ -32,6 +34,7 @@ export const ActList = ({
   onEditAct,
   onReorderAct,
   activeActId,
+  onDeleteAct,
   isReadOnly = false,
 }: ActasListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,6 +123,16 @@ export const ActList = ({
                           <ArrowDown className="h-4 w-4" />
                         </Button>
                       </div>
+                      <Button
+                        onClick={() => onDeleteAct(act.id)} // ✅ 5. Conectar acción
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        title="Eliminar acta"
+                        disabled={isReadOnly}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                       <Button
                         onClick={() => onEditAct(act.id)}
                         variant="outline"

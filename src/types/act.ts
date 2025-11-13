@@ -18,6 +18,8 @@ export type Act = {
   latestModificationDate?: string;
   latestModifierName?: string;
   createdByName?: string;
+  agreementCount: number;
+  status: "Borrador" | "Finalizado" | "Archivado";
   // sessionDate: string;
   //sessionTime?: string;
   meetingDate?: string;

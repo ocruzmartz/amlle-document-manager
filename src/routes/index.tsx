@@ -10,6 +10,7 @@ import { authRoutes } from "@/features/auth/routes";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RoleProtectedRoute } from "./RoleProtectedRoute";
 import { PublicRoute } from "./PublicRoute";
+import { searchRoutes } from "@/features/search/routes";
 
 // Rutas protegidas - Solo usuarios autenticados
 const protectedShellRoute: RouteObject = {
@@ -20,6 +21,7 @@ const protectedShellRoute: RouteObject = {
       children: [
         // Dashboard: Todos pueden ver
         ...dashboardRoutes,
+        ...searchRoutes,
 
         // Todas las funcionalidades: Solo Admin
         {

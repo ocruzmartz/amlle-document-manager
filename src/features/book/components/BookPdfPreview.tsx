@@ -1,12 +1,13 @@
-import { type Tome } from "@/types";
+import { type CouncilMember, type Tome } from "@/types";
 import { BookPdfRenderer } from "./BookPdfRenderer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface BookPdfPreview {
   tome: Tome;
+  allSigners: CouncilMember[];
 }
 
-export const BookPdfPreview = ({ tome }: BookPdfPreview) => {
+export const BookPdfPreview = ({ tome, allSigners }: BookPdfPreview) => {
   console.log("🖼️ BookPdfPreview - Libro actualizado:", tome);
 
   return (
@@ -47,7 +48,7 @@ export const BookPdfPreview = ({ tome }: BookPdfPreview) => {
             </div>
           }
         >
-          <BookPdfRenderer tome={tome} />
+          <BookPdfRenderer tome={tome} allSigners={allSigners} />
         </ErrorBoundary>
       </div>
     </section>

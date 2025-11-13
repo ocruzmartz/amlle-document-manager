@@ -42,6 +42,8 @@ interface BookEditorProps {
   onUpdateAct: (updatedAct: Act) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   onReorderAct: (actId: string, direction: "up" | "down") => void;
+  onDeleteAct: (actId: string) => void;
+  onDeleteAgreement: (agreementId: string) => void;
   onRefetchAct: (options?: { showLoadingScreen?: boolean }) => void;
   isReadOnly: boolean;
   isReordering: boolean;
@@ -61,6 +63,8 @@ export const BookEditor = ({
   onUpdateAct,
   isReordering,
   onRegisterSaveHandler,
+  onDeleteAct,
+  onDeleteAgreement,
 }: BookEditorProps) => {
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
   const [isCreatingAgreement, setIsCreatingAgreement] = useState(false);
@@ -314,6 +318,7 @@ export const BookEditor = ({
               onReorderAct(actId, direction);
             }}
             activeActId={currentView.activeActId}
+            onDeleteAct={onDeleteAct}
             isReadOnly={isReadOnly || isReordering}
           />
         );
@@ -390,6 +395,7 @@ export const BookEditor = ({
             onReorderAgreement={(agreementId, direction) => {
               handleReorderAgreement(agreementId, direction);
             }}
+            onDeleteAgreement={onDeleteAgreement}
             activeAgreementId={currentView.activeAgreementId}
             isReadOnly={isReadOnly || isReorderingAgreements}
           />

@@ -15,7 +15,6 @@ import {
 import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
-// Mapa de UI para 'rol'
 type RoleUIMap = Record<
   UserRole,
   {
@@ -28,6 +27,7 @@ const roleMap: RoleUIMap = {
   admin: { label: "Admin", variant: "default" },
   editor: { label: "Editor", variant: "secondary" },
   lector: { label: "Lector", variant: "outline" },
+  regular: { label: "Regular", variant: "outline" },
 };
 
 export const getColumns = (
@@ -35,6 +35,7 @@ export const getColumns = (
   onDelete: (user: User) => void,
   onTerminateSession: (user: User) => void
 ): ColumnDef<User>[] => [
+  // ... (Columnas 'nombre', 'rol', 'activo', 'sessionType' sin cambios) ...
   {
     accessorKey: "nombre",
     id: "nombre",
@@ -90,7 +91,6 @@ export const getColumns = (
     cell: ({ row }) => {
       const sessionType = row.original.sessionType;
       const sessionDuration = row.original.sessionDuration;
-
       if (sessionType === "indefinida") {
         return <div className="text-muted-foreground italic">Indefinido</div>;
       }
@@ -103,9 +103,40 @@ export const getColumns = (
     },
   },
   {
+    // 1. Columna "Fecha de Creación" (Exacta)
     accessorKey: "createdAt",
-    header: "Fecha de Creación",
+    // ❗️ Esta columna usará 'createdAt' como su ID por defecto,
+    // lo cual coincide con el 'initialSorting' de la página.
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Fecha de Creación
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
+      const createdAtISO = row.getValue("createdAt") as string | null;
+      if (!createdAtISO) {
+        return <div className="text-muted-foreground italic">N/A</div>;
+      }
+      const date = parseISO(createdAtISO);
+      if (!isValid(date)) {
+        return <div className="text-destructive">Fecha inválida</div>;
+      }
+      const exactTime = format(date, "dd/MM/yyyy HH:mm", { locale: es });
+      return <div className="font-medium">{exactTime}</div>;
+    },
+    sortingFn: "datetime",
+  },
+  {
+    // 2. Columna "Antigüedad" (Relativa)
+    accessorKey: "createdAt", // Ambas usan el mismo accesor
+    id: "antiguedad", // ✅ PERO esta tiene un ID personalizado
+    header: "Antigüedad",
+    cell: ({ row }) => {
+      // Usamos 'row.getValue'
       const createdAtISO = row.getValue("createdAt") as string | null;
       if (!createdAtISO) {
         return <div className="text-muted-foreground italic">N/A</div>;
@@ -124,6 +155,9 @@ export const getColumns = (
     },
     sortingFn: "datetime",
   },
+
+  // --- ✅ FIN DE LA CORRECCIÓN ---
+
   {
     id: "actions",
     cell: ({ row }) => {
@@ -141,12 +175,10 @@ export const getColumns = (
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              {/* ✅ Texto actualizado */}
               <DropdownMenuItem onClick={() => onEdit(user)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Editar</span>
               </DropdownMenuItem>
-              {/* ✅ Texto actualizado */}
               <DropdownMenuItem
                 onClick={() => onTerminateSession(user)}
                 disabled={!isActive}
@@ -155,7 +187,6 @@ export const getColumns = (
                 Desactivar (Cerrar Sesión)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {/* ✅ Texto actualizado */}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => onDelete(user)}

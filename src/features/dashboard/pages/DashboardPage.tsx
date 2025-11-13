@@ -40,8 +40,7 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
 
   // Usuario que CREÓ
   const createdUser = {
-    firstName: tome.createdByName || "Sistema",
-    lastName: "",
+    nombre: tome.createdByName || "Sistema",
   };
 
   // Usuario que MODIFICÓ
@@ -51,14 +50,14 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
       : tome.createdByName; // Fallback al creador
 
   const modifiedUser = {
-    firstName: lastModifier || "Sistema",
-    lastName: "",
+    nombre: lastModifier || "Sistema", // ✅ CORREGIDO
   };
 
   const target = {
     type: "Book" as LogTargetType, // Lo tratamos como "Book" para el ícono
     name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
     url: `/books/${tome.id}`,
+    state: { initialActId: null },
   };
 
   // 1. Log de Creación
@@ -89,18 +88,15 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
  */
 const mapActToActivityLogs = (act: Act): ActivityLog[] => {
   const logs: ActivityLog[] = [];
-  const createdUser = {
-    firstName: act.createdByName || "Sistema",
-    lastName: "",
-  };
+  const createdUser = { nombre: act.createdByName || "Sistema" };
   const modifiedUser = {
-    firstName: act.latestModifierName || act.createdByName || "Sistema",
-    lastName: "",
+    nombre: act.latestModifierName || act.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const target = {
     type: "Act" as LogTargetType,
     name: act.name,
-    url: `/books/${act.volumeId}`, // Enviar al Tomo padre
+    url: `/books/${act.volumeId}`,
+    state: { initialActId: act.id },
   };
 
   // 1. Log de Creación
@@ -131,18 +127,23 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
 const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
   const logs: ActivityLog[] = [];
   const createdUser = {
-    firstName: agreement.createdByName || "Sistema",
-    lastName: "",
+    nombre: agreement.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const modifiedUser = {
-    firstName:
-      agreement.latestModifierName || agreement.createdByName || "Sistema",
-    lastName: "",
+    nombre:
+      agreement.latestModifierName || agreement.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const target = {
     type: "Agreement" as LogTargetType,
     name: agreement.name,
-    url: `/books/${agreement.volumeId}`, // Enviar al Tomo padre
+    url: `/books/${agreement.volumeId}`,
+    state: {
+      initialActId: agreement.minutesId,
+      initialDetailView: {
+        type: "agreement-editor",
+        agreementId: agreement.id,
+      },
+    },
   };
 
   // 1. Log de Creación

@@ -1,4 +1,9 @@
-import { apiGetDirect, apiPatchDirect, apiPostDirect } from "@/lib/apiHelpers";
+import {
+  apiDelete,
+  apiGetDirect,
+  apiPatchDirect,
+  apiPostDirect,
+} from "@/lib/apiHelpers";
 import { type Act, type Agreement, type CouncilMember } from "@/types";
 import { participantsService } from "./participantsService";
 import { SessionTypeMapper } from "../lib/actMappers";
@@ -301,5 +306,9 @@ export const actService = {
       `update-name-number/${id}`,
       payload
     );
+  },
+
+  deleteAct: async (id: string): Promise<void> => {
+    await apiDelete(`/minutes/delete/${id}`); //
   },
 };

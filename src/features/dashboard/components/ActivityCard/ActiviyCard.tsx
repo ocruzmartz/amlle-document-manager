@@ -54,8 +54,7 @@ export function ActivityCard({ logs }: ActivityCardProps) {
           </p>
         )}
       </CardContent>
-      
-      {/* ✅ 3. CardFooter ELIMINADO */}
+
     </Card>
   );
 }

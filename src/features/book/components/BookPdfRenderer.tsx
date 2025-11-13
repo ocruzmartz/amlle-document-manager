@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { type Tome } from "@/types";
+import { type CouncilMember, type Tome } from "@/types";
 
 interface BookPdfRendererProps {
   tome: Tome;
+  allSigners: CouncilMember[];
   currentPageIndex?: number;
 }
 
@@ -13,7 +14,7 @@ const PDFPreview = React.lazy(async () => {
     const { BookPdfDocument } = await import("./BookPdfDocument");
 
     return {
-      default: ({ tome }: { tome: Tome }) => (
+      default: ({ tome, allSigners }: { tome: Tome; allSigners: CouncilMember[] }) => (
         <PDFViewer
           style={{
             width: "100%",
@@ -22,7 +23,7 @@ const PDFPreview = React.lazy(async () => {
           }}
           showToolbar={true}
         >
-          <BookPdfDocument tome={tome} />
+          <BookPdfDocument tome={tome} allSigners={allSigners} />
         </PDFViewer>
       ),
     };
@@ -88,7 +89,7 @@ const PDFPreview = React.lazy(async () => {
   }
 });
 
-export const BookPdfRenderer = ({ tome }: BookPdfRendererProps) => {
+export const BookPdfRenderer = ({ tome, allSigners }: BookPdfRendererProps) => {
   const [isClient, setIsClient] = useState(false);
 
   // ✅ Solo renderizar en el cliente para evitar errores de hidratación
@@ -129,7 +130,7 @@ export const BookPdfRenderer = ({ tome }: BookPdfRendererProps) => {
           </div>
         }
       >
-        <PDFPreview tome={tome} />
+        <PDFPreview tome={tome} allSigners={allSigners} />
       </React.Suspense>
     </div>
   );

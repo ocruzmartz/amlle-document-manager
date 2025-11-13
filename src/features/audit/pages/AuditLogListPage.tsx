@@ -1,4 +1,4 @@
-  import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   type FullActivityLog,
   type Tome,
@@ -25,16 +25,14 @@ import { agreementService } from "@/features/agreement/api/agreementService";
 const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
   const createdUser = {
-    firstName: tome.createdByName || "Sistema",
-    lastName: "",
+    nombre: tome.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const lastModifier =
     tome.modificationName && tome.modificationName.length > 0
       ? tome.modificationName[tome.modificationName.length - 1]
       : tome.createdByName;
   const modifiedUser = {
-    firstName: lastModifier || "Sistema",
-    lastName: "",
+    nombre: lastModifier || "Sistema", // ✅ CORREGIDO
   };
   const targetName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
   const targetUrl = `/books/${tome.id}`;
@@ -49,6 +47,7 @@ const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
     targetType: targetType,
     targetName: targetName,
     targetUrl: targetUrl,
+    targetState: { initialActId: null },
   });
 
   // 2. Log de Modificación (usando updatedAt)
@@ -61,6 +60,7 @@ const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
       targetType: targetType,
       targetName: targetName,
       targetUrl: targetUrl,
+      targetState: { initialActId: null },
     });
   }
   return logs;
@@ -71,10 +71,9 @@ const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
  */
 const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
-  const createdUser = { firstName: act.createdByName || "Sistema", lastName: "" };
+  const createdUser = { nombre: act.createdByName || "Sistema" }; // ✅ CORREGIDO
   const modifiedUser = {
-    firstName: act.latestModifierName || act.createdByName || "Sistema",
-    lastName: "",
+    nombre: act.latestModifierName || act.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const targetType: LogTargetType = "Act";
 
@@ -87,6 +86,7 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
     targetType: targetType,
     targetName: act.name,
     targetUrl: `/books/${act.volumeId}`,
+    targetState: { initialActId: act.id },
   });
 
   // 2. Log de Modificación (usando latestModificationDate)
@@ -99,6 +99,7 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
       targetType: targetType,
       targetName: act.name,
       targetUrl: `/books/${act.volumeId}`,
+      targetState: { initialActId: act.id },
     });
   }
   return logs;
@@ -107,16 +108,16 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
 /**
  * Convierte un Acuerdo en hasta dos eventos de FullActivityLog.
  */
-const mapAgreementToActivityLogs = (agreement: Agreement): FullActivityLog[] => {
+const mapAgreementToActivityLogs = (
+  agreement: Agreement
+): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
   const createdUser = {
-    firstName: agreement.createdByName || "Sistema",
-    lastName: "",
+    nombre: agreement.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const modifiedUser = {
-    firstName:
-      agreement.latestModifierName || agreement.createdByName || "Sistema",
-    lastName: "",
+    nombre:
+      agreement.latestModifierName || agreement.createdByName || "Sistema", // ✅ CORREGIDO
   };
   const targetType: LogTargetType = "Agreement";
 
@@ -129,6 +130,13 @@ const mapAgreementToActivityLogs = (agreement: Agreement): FullActivityLog[] => 
     targetType: targetType,
     targetName: agreement.name,
     targetUrl: `/books/${agreement.volumeId}`,
+    targetState: {
+      initialActId: agreement.minutesId,
+      initialDetailView: {
+        type: "agreement-editor",
+        agreementId: agreement.id,
+      },
+    },
   });
 
   // 2. Log de Modificación (usando latestModificationDate)
@@ -141,6 +149,13 @@ const mapAgreementToActivityLogs = (agreement: Agreement): FullActivityLog[] => 
       targetType: targetType,
       targetName: agreement.name,
       targetUrl: `/books/${agreement.volumeId}`,
+      targetState: {
+        initialActId: agreement.minutesId,
+        initialDetailView: {
+          type: "agreement-editor",
+          agreementId: agreement.id,
+        },
+      },
     });
   }
   return logs;

@@ -13,12 +13,10 @@ import type { Style, HyphenationCallback } from "@react-pdf/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { numberToWords, capitalize, numberToRoman } from "@/lib/textUtils";
-import { type Tome, type Act } from "@/types";
+import { type Tome, type Act, type CouncilMember } from "@/types";
 import createHyphenator from "hyphen";
 import patternsEs from "hyphen/patterns/es";
-import { allCouncilMembers } from "../data/mock";
 
-// ✅ ELIMINAR el hyphenationCallback - Esta es la causa principal de los guiones
 const hyphenator = createHyphenator(patternsEs);
 const hyphenationCallback: HyphenationCallback = (word) => {
   if (word.length < 8) {
@@ -27,8 +25,6 @@ const hyphenationCallback: HyphenationCallback = (word) => {
   const result = hyphenator(word);
   return Array.isArray(result) ? result : [word];
 };
-
-// ❌ COMENTAR o ELIMINAR las líneas anteriores y no usar hyphenationCallback
 
 Font.register({
   family: "Museo Sans",
@@ -76,7 +72,6 @@ const parseStyleAttribute = (styleString: string | null): Style => {
       const val = value.trim();
       switch (prop) {
         case "font-size": {
-          // ✅ Agregar llaves para crear un bloque de scope
           const parsedSize = parseFloat(val);
           style.fontSize = Math.round(parsedSize);
           break;
@@ -115,7 +110,6 @@ const parseStyleAttribute = (styleString: string | null): Style => {
           style.width = val;
           break;
         case "letter-spacing":
-          // No aplicar letter-spacing, causa problemas visuales
           break;
         default:
           break;
@@ -148,10 +142,8 @@ const renderHtmlNodes = (
           key={key++}
           style={{
             ...baseStyle,
-            letterSpacing: 0, // ✅ Forzar a 0 en todos los nodos de texto
+            letterSpacing: 0,
           }}
-          // ❌ ELIMINAR esta línea:
-          // hyphenationCallback={hyphenationCallback}
         >
           {plainText}
         </Text>
@@ -165,7 +157,7 @@ const renderHtmlNodes = (
     }
 
     if (tagName) {
-      let style: Style = { ...baseStyle, letterSpacing: 0 }; // ✅ Forzar a 0
+      let style: Style = { ...baseStyle, letterSpacing: 0 };
       const styleAttr = attributes.match(/style="([^"]*)"/);
       const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
 
@@ -180,7 +172,7 @@ const renderHtmlNodes = (
           style = { ...style, textDecoration: "underline" };
           break;
         case "span":
-          style = { ...style, ...inlineStyle, letterSpacing: 0 }; // ✅ Forzar después de merge
+          style = { ...style, ...inlineStyle, letterSpacing: 0 };
           break;
         default:
           break;
@@ -301,11 +293,10 @@ const getStyles = (
     },
     justifiedText: {
       textAlign: "justify",
-      wordBreak: "keep-all", // ✅ Agregar esto
+      wordBreak: "keep-all",
     },
   });
 
-// ✅ Función mejorada para renderizar contenido de celdas con mejor wrapping
 const renderCellContent = (
   html: string,
   baseTextStyle: Style
@@ -318,8 +309,6 @@ const renderCellContent = (
     typeof baseTextStyle.fontSize === "number"
       ? Math.round(baseTextStyle.fontSize) // ✅ Redondear fontSize
       : 11;
-
-  // Renderizar directamente los bloques de contenido
   const content = renderContentBlocks(html, baseTextStyle, fontSize);
 
   if (Array.isArray(content) && content.length > 0) {
@@ -334,28 +323,25 @@ const parseHtmlTable = (
   baseTextStyle: Style,
   fontSize: number
 ) => {
-  console.log("🔍 HTML de tabla recibido:", tableHtml); // DEBUG
+  console.log("🔍 HTML de tabla recibido:", tableHtml);
 
-  // ✅ 1. Extraer anchos de <colgroup> si existen
   const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
   const columnWidths: (number | null)[] = [];
 
   if (colgroupMatch) {
     const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
-    console.log("📊 Encontradas", cols.length, "columnas en colgroup"); // DEBUG
+    console.log("📊 Encontradas", cols.length, "columnas en colgroup");
     cols.forEach((col, index) => {
-      // Buscar width en style
       const styleMatch = col.match(/style="[^"]*width:\s*(\d+(?:\.\d+)?)\s*%/i);
       if (styleMatch) {
         const width = parseFloat(styleMatch[1]);
         columnWidths.push(width);
-        console.log(`  Col ${index}: ${width}%`); // DEBUG
+        console.log(`  Col ${index}: ${width}%`);
       } else {
-        // Buscar atributo width directo
         const widthMatch = col.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
         const width = widthMatch ? parseFloat(widthMatch[1]) : null;
         columnWidths.push(width);
-        console.log(`  Col ${index}: ${width || "sin ancho"}%`); // DEBUG
+        console.log(`  Col ${index}: ${width || "sin ancho"}%`);
       }
     });
   }
@@ -390,19 +376,13 @@ const parseHtmlTable = (
         styleAttr ? styleAttr[1] : null
       );
 
-      // ✅ 2. Extraer width de la celda individual
       let cellWidth: number | null = null;
-
-      // Buscar en atributo width directo
       const widthAttrMatch = attributes.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
       if (widthAttrMatch) {
         cellWidth = parseFloat(widthAttrMatch[1]);
       }
-
-      // O en el style parseado (esto ya busca "width: X%" o "width:X%")
       if (cellInlineStyle.width && typeof cellInlineStyle.width === "string") {
         const widthValue = cellInlineStyle.width;
-        // Puede ser "25%", "25.5%", "100px", etc.
         const percentMatch = widthValue.match(/(\d+(?:\.\d+)?)\s*%/);
         if (percentMatch) {
           cellWidth = parseFloat(percentMatch[1]);
@@ -413,7 +393,7 @@ const parseHtmlTable = (
         `    Celda ${cellIndex}: width=${
           cellWidth || "auto"
         }%, colspan=${colspan}`
-      ); // DEBUG
+      );
 
       const innerHtml = cellHtml
         .replace(/<t[dh][^>]*>/, "")
@@ -447,7 +427,7 @@ const parseHtmlTable = (
     maxColumns = parseCells(headerRow || bodyRows[0] || "").length;
   }
 
-  console.log(`📏 Total de columnas: ${maxColumns}`); // DEBUG
+  console.log(`📏 Total de columnas: ${maxColumns}`);
 
   const adjustedFontSize =
     maxColumns > 8 ? Math.max(fontSize - 2, 8) : fontSize - 1;
@@ -458,7 +438,6 @@ const parseHtmlTable = (
     letterSpacing: 0,
   };
 
-  // ✅ 3. Función helper mejorada para calcular ancho de celda
   const calculateCellWidth = (
     cellIndex: number,
     colspan: number,
@@ -466,13 +445,11 @@ const parseHtmlTable = (
   ): string => {
     const currentCell = cells[cellIndex];
 
-    // Prioridad 1: Si la celda tiene ancho propio explícito, usarlo
     if (currentCell.cellWidth !== null && currentCell.cellWidth !== undefined) {
       console.log(`    ✅ Usando ancho de celda: ${currentCell.cellWidth}%`);
       return `${currentCell.cellWidth}%`;
     }
 
-    // Prioridad 2: Si hay colgroup definido, sumar anchos
     if (columnWidths.length > 0) {
       const startCol = cells
         .slice(0, cellIndex)
@@ -495,7 +472,6 @@ const parseHtmlTable = (
       }
     }
 
-    // Prioridad 3: Fallback a distribución equitativa
     const fallbackWidth = (colspan / maxColumns) * 100;
     console.log(`    ⚠️ Fallback equitativo: ${fallbackWidth.toFixed(2)}%`);
     return `${fallbackWidth}%`;
@@ -503,7 +479,6 @@ const parseHtmlTable = (
 
   return (
     <PdfTable totalColumns={maxColumns}>
-      {/* Fila de Encabezado */}
       {headerRow && (
         <PdfTableRow isHeader>
           {parseCells(headerRow).map((cell, idx, arr) => {
@@ -538,7 +513,6 @@ const parseHtmlTable = (
         </PdfTableRow>
       )}
 
-      {/* Filas del Cuerpo */}
       {bodyRows.map((rowContent, rowIndex) => {
         const cells = parseCells(rowContent);
 
@@ -623,12 +597,10 @@ const renderContentBlocks = (
 
   return blocks
     .map((block, blockIndex) => {
-      // --- RENDERIZADO DE TABLA ---
       if (block.trim().startsWith("<table")) {
-        // ✅ Para tablas, SIEMPRE usar textAlign: "left", nunca justify
         const cellTextStyle: Style = {
           ...baseTextStyle,
-          textAlign: "left", // ✅ Forzar left para evitar problemas de justificación
+          textAlign: "left",
           fontSize: fontSize - 1,
           letterSpacing: 0,
         };
@@ -647,7 +619,6 @@ const renderContentBlocks = (
         );
       }
 
-      // --- RENDERIZADO DE PÁRRAFO (sin cambios, aquí SÍ respetamos justify) ---
       if (block.trim().startsWith("<p")) {
         const tagMatch = block.match(/<p([^>]*)>/);
         const attributes = tagMatch ? tagMatch[1] : "";
@@ -684,7 +655,6 @@ const renderContentBlocks = (
         );
       }
 
-      // --- RENDERIZADO DE LISTAS (sin cambios) ---
       if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
         const isOrdered = block.trim().startsWith("<ol");
         const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
@@ -766,7 +736,13 @@ const renderContentBlocks = (
 // =================================================================
 // RESTO DEL ARCHIVO (Sin cambios)
 // =================================================================
-export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
+export const BookPdfDocument = ({
+  tome,
+  allSigners,
+}: {
+  tome: Tome | null;
+  allSigners: CouncilMember[];
+}) => {
   if (!tome) {
     return (
       <Document>
@@ -831,14 +807,18 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
   }
 
   const actCount = tome.acts?.length || 0;
-  const actCountInWords = numberToWords(actCount);
 
-  const alcaldesa = allCouncilMembers.find((m) =>
-    m.name.includes("Zoila Milagro Navas")
+  const actCountInWords = numberToWords(actCount).toLowerCase();
+
+  const alcaldesa = allSigners.find((m) =>
+    m.name.includes("Licda. Zoila Milagro Navas")
   );
-  const secretaria = allCouncilMembers.find((m) => m.role === "SECRETARY");
-  const signatories = allCouncilMembers.filter(
-    (m) => m.role === "OWNER" || m.role === "SYNDIC"
+  const secretaria = allSigners.find((m) => m.role === "SECRETARY");
+
+  const signatories = allSigners.filter(
+    (m) =>
+      (m.role === "OWNER" || m.role === "SYNDIC") &&
+      !m.name.includes("Zoila Milagro Navas")
   );
 
   const PageNumberRenderer = () => {
@@ -894,7 +874,6 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
             </Text>
             <Text
               style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
-              // ❌ ELIMINAR: hyphenationCallback={hyphenationCallback}
             >
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
@@ -1027,8 +1006,6 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                     ))}
                   </View>
                 )}
-
-                {/* ... (Sección de firmas sin cambios) ... */}
                 <View style={styles.signaturesSection}>
                   <Text>
                     Y no habiendo más que hacer constar se termina la presente
@@ -1111,12 +1088,10 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
           style={dynamicPageStyle}
         >
           <View style={styles.coverContainer}>
-            {/* ... (Contenido de página de cierre sin cambios) ... */}
             <Text
               style={{
                 ...styles.coverTitle,
-                marginBottom: 20,
-                textAlign: "center",
+                marginBottom: 30,
               }}
             >
               El Concejo Municipal
@@ -1126,37 +1101,32 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                 ...styles.coverText,
                 lineHeight: settings.lineHeight,
                 textAlign: "justify",
-                marginBottom: 40,
+                marginBottom: 16,
               }}
-              // ❌ ELIMINAR: hyphenationCallback={hyphenationCallback}
             >
               Cierra el presente Libro de Actas Municipales{" "}
-              <Text style={{ fontWeight: 700 }}>{tome.name}</Text> que llevó
-              durante el corriente año, con{" "}
-              <Text style={{ fontWeight: 700 }}>{actCountInWords} Actas</Text>{" "}
-              asentadas.
+              <Text>{tome.name}</Text> que llevó durante el corriente año, con{" "}
+              <Text>{actCountInWords} Actas</Text> asentadas.
             </Text>
-
             <Text
               style={{
-                ...styles.coverDate,
+                ...styles.coverText,
                 lineHeight: settings.lineHeight,
-                textAlign: "left",
+                textAlign: "justify",
+                marginTop: 0,
               }}
             >
-              Alcaldía Municipal Antiguo Cuscatlán, a los{" "}
-              <Text style={{ fontWeight: 700 }}>
-                {closingDayInWords} días del mes de {closingMonthName}
-              </Text>{" "}
-              de <Text style={{ fontWeight: 700 }}>{closingYearInWords}</Text>.
+              Alcaldía Municipal Antiguo Cuscatlán, a los {closingDayInWords}
+              días del mes de {closingMonthName} de {closingYearInWords}.
             </Text>
             <View
               style={{
                 ...styles.signaturesSection,
-                marginTop: 40,
+                marginTop: 20,
                 textAlign: "left",
               }}
             >
+              {/* --- ✅ 2. Firma Alcaldesa (AHORA SÍ APARECE) --- */}
               {alcaldesa && (
                 <View style={{ marginBottom: 25 }}>
                   <Text style={styles.mainSignatureName}>{alcaldesa.name}</Text>
@@ -1165,42 +1135,39 @@ export const BookPdfDocument = ({ tome }: { tome: Tome | null }) => {
                   </Text>
                 </View>
               )}
+
+              {/* --- ✅ 3. Disposición 3x2 (DINÁMICA) --- */}
               <View style={styles.signatureColumnsContainer}>
+                {/* Columna Izquierda (3 primeros firmantes) */}
                 <View style={styles.signatureColumn}>
-                  {signatories
-                    .filter((_, i) => i % 2 === 0)
-                    .map(
-                      (p) =>
-                        p && (
-                          <Text key={p.id} style={styles.signatureName}>
-                            {p.name}
-                          </Text>
-                        )
-                    )}
+                  {signatories.slice(0, 3).map((p) => (
+                    <Text key={p.id} style={styles.signatureName}>
+                      {p.name}
+                    </Text>
+                  ))}
                 </View>
+                {/* Columna Derecha (firmantes 4 y 5) */}
                 <View style={styles.signatureColumn}>
-                  {signatories
-                    .filter((_, i) => i % 2 !== 0)
-                    .map(
-                      (p) =>
-                        p && (
-                          <Text key={p.id} style={styles.signatureName}>
-                            {p.name}
-                          </Text>
-                        )
-                    )}
+                  {signatories.slice(3, 5).map((p) => (
+                    <Text key={p.id} style={styles.signatureName}>
+                      {p.name}
+                    </Text>
+                  ))}
                 </View>
               </View>
+
+              {/* --- ✅ 4. Firma Secretaria (ALINEADA A LA DERECHA) --- */}
               {secretaria && (
                 <View
                   style={{
                     ...styles.secretariaSignature,
                     textAlign: "left",
                     marginHorizontal: 0,
+                    width: "48%",
+                    marginLeft: "52%",
                   }}
                 >
                   <View style={styles.secretariaSignatureLine} />
-                  <Text>{secretaria.name}</Text>
                   <Text>Secretaria Municipal</Text>
                 </View>
               )}

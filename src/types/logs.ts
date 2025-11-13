@@ -1,3 +1,4 @@
+// filepath: src/types/logs.ts
 import { type User } from "./user";
 
 export type LogAction =
@@ -21,22 +22,24 @@ export type LogTargetType = "Book" | "Act" | "Agreement" | "User";
 
 export type ActivityLog = {
   id: string;
-  user: Pick<User, "firstName" | "lastName">;
+  user: Pick<User, "nombre">; // ✅ CORREGIDO
   action: LogAction;
   target: {
     type: LogTargetType;
     name: string;
     url: string;
+    state?: Record<string, unknown>;
   };
   timestamp: string;
 };
 
 export type FullActivityLog = {
   id: string;
-  user: Pick<User, "firstName" | "lastName">;
+  user: Pick<User, "nombre">; // ✅ CORREGIDO
   action: LogAction;
   targetType: LogTargetType;
   targetName: string;
   targetUrl: string;
+  targetState?: Record<string, unknown>;
   timestamp: string;
 };

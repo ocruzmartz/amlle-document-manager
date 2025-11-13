@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowUpDown,
   MoreHorizontal,
-  Printer,
   Edit,
   Trash,
   ArchiveRestore,
@@ -237,14 +236,6 @@ export const getColumns = ({
                   <span>Editar</span>
                 </DropdownMenuItem>
               </Link>
-              <DropdownMenuItem
-                onClick={() =>
-                  alert(`Exportando PDF para el tomo: ${tome.name}`)
-                }
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                <span>Exportar a PDF</span>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               {isBorrador && (
                 <DropdownMenuItem onClick={() => onFinalize(tome)}>

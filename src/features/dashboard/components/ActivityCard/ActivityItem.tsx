@@ -43,12 +43,12 @@ const ActivityItem = ({ log, isLastItem }: ActivityItemProps) => {
   });
 
   const Icon = actionIconMap[log.action as LogAction] || HelpCircle;
-  const actionText = actionTextMap[log.action as LogAction] || log.action.toLowerCase();
+  const actionText =
+    actionTextMap[log.action as LogAction] || log.action.toLowerCase();
 
   return (
     // ✅ 1. Contenedor del item de la timeline
     <div className={cn("relative flex gap-4 pb-4", isLastItem && "pb-0")}>
-      
       {/* ✅ 2. La línea vertical de la timeline (se oculta en el último item) */}
       {!isLastItem && (
         <div className="absolute left-2 top-1 h-full w-px bg-border -translate-x-1/2" />
@@ -64,12 +64,11 @@ const ActivityItem = ({ log, isLastItem }: ActivityItemProps) => {
       {/* ✅ 4. El contenido de texto */}
       <div className="flex-1 min-w-0 -mt-0.5">
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-primary">
-            {log.user.firstName}
-          </span>{" "}
+          <span className="font-semibold text-primary">{log.user.nombre}</span>{" "}
           {actionText}{" "}
           <Link
             to={log.target.url}
+            state={log.target.state}
             className="font-medium text-primary hover:underline"
           >
             "{log.target.name}"

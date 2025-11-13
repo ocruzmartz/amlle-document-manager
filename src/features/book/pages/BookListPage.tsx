@@ -85,9 +85,11 @@ export const BookListPage = () => {
   const handleFinalize = async () => {
     if (!tomeToFinalize) return;
     try {
-      const updatedTome = await volumeService.updateVolume(tomeToFinalize.id, {
-        status: "FINALIZADO",
-      });
+      // ✅ Usamos la nueva función específica
+      const updatedTome = await volumeService.updateVolumeStatus(
+        tomeToFinalize.id,
+        "FINALIZADO"
+      );
       updateLocalTome(updatedTome);
       toast.success(
         `El tomo "${updatedTome.name || "Tomo"}" se ha marcado como FINALIZADO.`
@@ -102,9 +104,11 @@ export const BookListPage = () => {
   const handleArchive = async () => {
     if (!tomeToArchive) return;
     try {
-      const updatedTome = await volumeService.updateVolume(tomeToArchive.id, {
-        status: "ARCHIVADO",
-      });
+      // ✅ Usamos la nueva función específica
+      const updatedTome = await volumeService.updateVolumeStatus(
+        tomeToArchive.id,
+        "ARCHIVADO"
+      );
       updateLocalTome(updatedTome);
       toast.success(
         `El tomo "${updatedTome.name || "Tomo"}" se ha movido a ARCHIVADO.`
@@ -118,9 +122,11 @@ export const BookListPage = () => {
   const handleRestore = async () => {
     if (!tomeToRestore) return;
     try {
-      const updatedTome = await volumeService.updateVolume(tomeToRestore.id, {
-        status: "BORRADOR",
-      });
+      // ✅ Usamos la nueva función específica
+      const updatedTome = await volumeService.updateVolumeStatus(
+        tomeToRestore.id,
+        "BORRADOR"
+      );
       updateLocalTome(updatedTome);
       toast.success(
         `El tomo "${updatedTome.name || "Tomo"}" se ha restaurado a BORRADOR.`
@@ -141,6 +147,7 @@ export const BookListPage = () => {
       toast.error("Error al eliminar el tomo.");
     }
     setTomeToDelete(null);
+    setConfirmationText("");
   };
 
   const columns = getColumns({
@@ -309,6 +316,62 @@ export const BookListPage = () => {
             >
               Sí, eliminar
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!tomeToDelete}
+        // ✅ 2. Actualizamos onOpenChange para que limpie el texto
+        onOpenChange={(open) => {
+          if (!open) {
+            setTomeToDelete(null);
+            setConfirmationText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este tomo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar permanentemente el tomo{" "}
+              <strong>"{tomeToDelete?.name}"</strong>. Esta acción no se puede
+              deshacer.
+              {/* ✅ 3. Añadimos la instrucción */}
+              <br />
+              Para confirmar, por favor escribe <strong>ELIMINAR</strong> en el
+              campo de abajo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* ✅ 4. Añadimos el campo de Input */}
+          <div className="py-2">
+            <Label
+              htmlFor="confirm-text-delete"
+              className="text-muted-foreground"
+            >
+              Escribe "ELIMINAR" para confirmar
+            </Label>
+            <Input
+              id="confirm-text-delete"
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              className="mt-2"
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+
+          {/* ✅ 5. Convertimos AlertDialogAction en Button y añadimos 'disabled' */}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={confirmationText !== "ELIMINAR"}
+            >
+              Sí, eliminar
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
