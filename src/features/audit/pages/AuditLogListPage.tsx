@@ -71,9 +71,9 @@ const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
  */
 const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
-  const createdUser = { nombre: act.createdByName || "Sistema" }; // ✅ CORREGIDO
+  const createdUser = { nombre: act.createdBy || "Sistema" }; // ✅ CORREGIDO
   const modifiedUser = {
-    nombre: act.latestModifierName || act.createdByName || "Sistema", // ✅ CORREGIDO
+    nombre: act.createdBy || act.createdBy || "Sistema", // ✅ CORREGIDO
   };
   const targetType: LogTargetType = "Act";
 
@@ -90,12 +90,12 @@ const mapActToActivityLogs = (act: Act): FullActivityLog[] => {
   });
 
   // 2. Log de Modificación (usando latestModificationDate)
-  if (act.latestModificationDate) {
+  if (act.lastModified) {
     logs.push({
       id: `${act.id}-updated`,
       user: modifiedUser,
       action: "UPDATED",
-      timestamp: act.latestModificationDate,
+      timestamp: act.lastModified,
       targetType: targetType,
       targetName: act.name,
       targetUrl: `/books/${act.volumeId}`,

@@ -8,10 +8,10 @@ import { es } from "date-fns/locale";
 
 export const ActSearchResultItem = ({ item }: { item: Act }) => {
   const timeAgo = formatDistanceToNow(
-    new Date(item.latestModificationDate || item.createdAt),
+    new Date(item.lastModified || item.createdAt),
     { addSuffix: true, locale: es }
   );
-  const modifier = item.latestModifierName || item.createdByName;
+  const modifier = item.modifiedBy || item.createdBy;
   const meetingDate = item.meetingDate
     ? format(parseISO(item.meetingDate), "PPP", { locale: es })
     : "Sin fecha";
@@ -34,7 +34,7 @@ export const ActSearchResultItem = ({ item }: { item: Act }) => {
           </div>
         </div>
         <Badge variant="outline" className="capitalize">
-          {(item.status ?? "Desconocido").toLowerCase()}
+          {(item.sessionType ?? "Desconocido").toLowerCase()}
         </Badge>
       </div>
       <div className="flex items-center gap-4 text-sm text-muted-foreground pt-3 mt-3 border-t">
@@ -44,7 +44,7 @@ export const ActSearchResultItem = ({ item }: { item: Act }) => {
         </div>
         <div className="flex items-center gap-1.5" title="Acuerdos">
           <Handshake className="h-3.5 w-3.5" />
-          <span>{item.agreementCount} Acuerdo(s)</span>
+          <span>{item.agreementsCount} Acuerdo(s)</span>
         </div>
       </div>
     </Link>

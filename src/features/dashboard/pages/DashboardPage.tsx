@@ -88,9 +88,9 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
  */
 const mapActToActivityLogs = (act: Act): ActivityLog[] => {
   const logs: ActivityLog[] = [];
-  const createdUser = { nombre: act.createdByName || "Sistema" };
+  const createdUser = { nombre: act.createdBy || "Sistema" };
   const modifiedUser = {
-    nombre: act.latestModifierName || act.createdByName || "Sistema", // ✅ CORREGIDO
+    nombre: act.modifiedBy || act.createdBy || "Sistema", // ✅ CORREGIDO
   };
   const target = {
     type: "Act" as LogTargetType,
@@ -108,13 +108,13 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
     target: target,
   });
 
-  // 2. Log de Modificación (usando latestModificationDate)
-  if (act.latestModificationDate) {
+  // 2. Log de Modificación (usando lastModified)
+  if (act.lastModified) {
     logs.push({
       id: `${act.id}-updated`,
       user: modifiedUser,
       action: "UPDATED",
-      timestamp: act.latestModificationDate,
+      timestamp: act.lastModified,
       target: target,
     });
   }
