@@ -32,7 +32,7 @@ const roleMap: RoleUIMap = {
 
 export const getColumns = (
   onEdit: (user: User) => void,
-  onDelete: (user: User) => void,
+  //onDelete: (user: User) => void,
   onTerminateSession: (user: User) => void
 ): ColumnDef<User>[] => [
   // ... (Columnas 'nombre', 'rol', 'activo', 'sessionType' sin cambios) ...
