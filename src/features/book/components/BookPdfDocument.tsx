@@ -8,33 +8,6 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
-import type { Style, HyphenationCallback } from "@react-pdf/types";
-import { format, isValid } from "date-fns";
-import { es } from "date-fns/locale";
-import {
-  numberToWords,
-  capitalize,
-  numberToRoman,
-  parseDateSafely,
-} from "@/lib/textUtils";
-import {
-  type Tome,
-  type Act,
-  type CouncilMember,
-  type Agreement,
-} from "@/types";
-import createHyphenator from "hyphen";
-import patternsEs from "hyphen/patterns/es";
-
-const hyphenator = createHyphenator(patternsEs);
-const hyphenationCallback: HyphenationCallback = (word) => {
-  if (word.length < 8) {
-    return [word];
-  }
-  const result = hyphenator(word);
-  return Array.isArray(result) ? result : [word];
-};
 
 Font.register({
   family: "Museo Sans",
@@ -71,59 +44,179 @@ Font.register({
     },
   ],
 });
+import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
+import type { Style, HyphenationCallback } from "@react-pdf/types";
+import { format, isValid } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  numberToWords,
+  capitalize,
+  numberToRoman,
+  parseDateSafely,
+} from "@/lib/textUtils";
+import {
+  type Tome,
+  type Act,
+  type CouncilMember,
+  type Agreement,
+} from "@/types";
+import createHyphenator from "hyphen";
+import patternsEs from "hyphen/patterns/es";
 
+const hyphenator = createHyphenator(patternsEs);
+const hyphenationCallback: HyphenationCallback = (word) => {
+  if (word.length < 8) {
+    return [word];
+  }
+  const result = hyphenator(word);
+  return Array.isArray(result) ? result : [word];
+};
+
+/**
+ * Mejorado parseStyleAttribute:
+ * - reconoce padding (px), padding shorthand
+ * - reconoce border (width, color) en forma simple
+ * - reconoce vertical-align (valign)
+ * - reconoce width en px o %
+ * - background-color y color ya estaban soportados
+ */
 const parseStyleAttribute = (styleString: string | null): Style => {
   if (!styleString) return {};
   const style: Style = {};
   styleString.split(";").forEach((declaration) => {
-    const [property, value] = declaration.split(":");
-    if (property && value) {
-      const prop = property.trim();
-      const val = value.trim();
-      switch (prop) {
-        case "font-size": {
-          const parsedSize = parseFloat(val);
-          style.fontSize = Math.round(parsedSize);
-          break;
+    const pair = declaration.split(":");
+    if (!pair || pair.length < 2) return;
+    const property = pair[0].trim();
+    const value = pair.slice(1).join(":").trim();
+
+    if (!property || !value) return;
+
+    switch (property) {
+      case "font-size": {
+        const s = value.trim();
+        if (s.endsWith("pt")) {
+          const n = parseFloat(s.replace("pt", ""));
+          if (!Number.isNaN(n)) style.fontSize = n;
+        } else if (s.endsWith("px")) {
+          const n = parseFloat(s.replace("px", ""));
+          if (!Number.isNaN(n)) style.fontSize = n;
+        } else if (s.endsWith("in")) {
+          const n = parseFloat(s.replace("in", ""));
+          if (!Number.isNaN(n)) style.fontSize = n * 72; // 1in = 72pt
+        } else {
+          const n = parseFloat(s);
+          if (!Number.isNaN(n)) style.fontSize = n;
         }
-        case "text-align":
-          if (
-            val === "left" ||
-            val === "right" ||
-            val === "center" ||
-            val === "justify"
-          ) {
-            style.textAlign = val;
-          }
-          break;
-        case "font-weight":
-          if (val === "bold" || val === "700") {
-            style.fontWeight = 700;
-          }
-          break;
-        case "font-style":
-          if (val === "italic") {
-            style.fontStyle = "italic";
-          }
-          break;
-        case "text-decoration-line":
-          if (val === "underline") style.textDecoration = "underline";
-          if (val === "line-through") style.textDecoration = "line-through";
-          break;
-        case "color":
-          style.color = val;
-          break;
-        case "background-color":
-          style.backgroundColor = val;
-          break;
-        case "width":
-          style.width = val;
-          break;
-        case "letter-spacing":
-          break;
-        default:
-          break;
+        break;
       }
+
+      case "text-align":
+        if (
+          value === "left" ||
+          value === "right" ||
+          value === "center" ||
+          value === "justify"
+        ) {
+          style.textAlign = value;
+        }
+        break;
+      case "font-weight":
+        if (value === "bold" || value === "700") {
+          style.fontWeight = 700;
+        } else {
+          const v = parseInt(value, 10);
+          if (!Number.isNaN(v)) style.fontWeight = v;
+        }
+        break;
+      case "font-style":
+        if (value === "italic") style.fontStyle = "italic";
+        break;
+      case "text-decoration-line":
+        if (value.includes("underline")) style.textDecoration = "underline";
+        if (value.includes("line-through"))
+          style.textDecoration = "line-through";
+        break;
+      case "font-family":
+        style.fontFamily = value.replace(/['"]+/g, "");
+        break;
+      case "color":
+        style.color = value;
+        break;
+      case "background":
+      case "background-color":
+        style.backgroundColor = value;
+        break;
+      case "width": {
+        // Keep as provided (could be "100px" or "20%")
+        style.width = value;
+        break;
+      }
+      case "padding": {
+        // single value -> all sides
+        const v = value.trim();
+        if (v.endsWith("px")) {
+          const n = parseFloat(v.replace("px", ""));
+          if (!Number.isNaN(n)) style.padding = n;
+        } else {
+          const n = parseFloat(v);
+          if (!Number.isNaN(n)) style.padding = n;
+        }
+        break;
+      }
+      case "padding-left":
+      case "padding-right":
+      case "padding-top":
+      case "padding-bottom": {
+        const v = value.trim();
+        const n = v.endsWith("px")
+          ? parseFloat(v.replace("px", ""))
+          : parseFloat(v);
+        if (!Number.isNaN(n)) {
+          const side = property.split("-")[1];
+          (style as any)[
+            `padding${side.charAt(0).toUpperCase() + side.slice(1)}`
+          ] = n;
+        }
+        break;
+      }
+      case "vertical-align":
+        // map to alignItems for container heuristics
+        if (value === "middle" || value === "center") {
+          (style as any).verticalAlign = "middle";
+        } else if (value === "bottom") {
+          (style as any).verticalAlign = "bottom";
+        } else {
+          (style as any).verticalAlign = "top";
+        }
+        break;
+      case "border":
+      case "border-top":
+      case "border-right":
+      case "border-bottom":
+      case "border-left": {
+        // simple parse: "1px solid #ddd"
+        const parts = value.split(/\s+/).filter(Boolean);
+        let width = undefined;
+        let color = undefined;
+        parts.forEach((p) => {
+          if (p.endsWith("px")) {
+            const n = parseFloat(p.replace("px", ""));
+            if (!Number.isNaN(n)) width = n;
+          } else if (
+            p.startsWith("#") ||
+            p.startsWith("rgb") ||
+            p.startsWith("hsl")
+          ) {
+            color = p;
+          }
+        });
+        if (width !== undefined) (style as any).borderWidth = width;
+        if (color) (style as any).borderColor = color;
+        break;
+      }
+      default:
+        // Ignore other properties to avoid unexpected mappings
+        break;
     }
   });
   return style;
@@ -138,7 +231,7 @@ const renderHtmlNodes = (
   const cleanHtml = html.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
   const regex =
-    /<(strong|em|u|span)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
+    /<(strong|em|u|span|div|p)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
   const nodes = [];
   let key = 0;
@@ -152,6 +245,7 @@ const renderHtmlNodes = (
           key={key++}
           style={{
             ...baseStyle,
+            textAlign: (baseStyle as any).textAlign || "left",
             letterSpacing: 0,
           }}
         >
@@ -168,8 +262,27 @@ const renderHtmlNodes = (
 
     if (tagName) {
       let style: Style = { ...baseStyle, letterSpacing: 0 };
-      const styleAttr = attributes.match(/style="([^"]*)"/);
+      const styleAttr = attributes ? attributes.match(/style="([^"]*)"/) : null;
       const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
+
+      // normalize keys on inlineStyle too
+      if (
+        (inlineStyle as any)["text-align"] &&
+        !(inlineStyle as any).textAlign
+      ) {
+        (inlineStyle as any).textAlign = (inlineStyle as any)["text-align"];
+      }
+      if (
+        (inlineStyle as any)["vertical-align"] &&
+        !(inlineStyle as any).verticalAlign
+      ) {
+        (inlineStyle as any).verticalAlign = (inlineStyle as any)[
+          "vertical-align"
+        ];
+      }
+
+      // merge, prefer inlineStyle for alignment specifics
+      style = { ...style, ...inlineStyle };
 
       switch (tagName.toLowerCase()) {
         case "strong":
@@ -182,17 +295,39 @@ const renderHtmlNodes = (
           style = { ...style, textDecoration: "underline" };
           break;
         case "span":
-          style = { ...style, ...inlineStyle, letterSpacing: 0 };
+        case "div":
+        case "p":
+          // keep merged style
           break;
         default:
           break;
       }
 
-      nodes.push(
-        <Text key={key++} style={style}>
-          {renderHtmlNodes(innerHtml, style)}
-        </Text>
-      );
+      // If innerHtml contains mixed content, call recursively but ensure parent textAlign is applied
+      const childNodes = renderHtmlNodes(innerHtml, style);
+      // If childNodes are Texts, we can wrap them in one Text to make textAlign work better
+      const areAllText = childNodes.every((n) => (n as any).type === Text);
+
+      if (areAllText) {
+        nodes.push(
+          <Text
+            key={key++}
+            style={{ ...style, textAlign: (style as any).textAlign || "left" }}
+          >
+            {childNodes}
+          </Text>
+        );
+      } else {
+        // mixed nodes: render as fragment but ensure wrapping Text children get alignment
+        nodes.push(
+          <Text
+            key={key++}
+            style={{ ...style, textAlign: (style as any).textAlign || "left" }}
+          >
+            {childNodes}
+          </Text>
+        );
+      }
     }
   }
   return nodes;
@@ -312,20 +447,58 @@ const renderCellContent = (
   baseTextStyle: Style
 ): React.ReactElement | React.ReactElement[] => {
   if (!html || html.trim() === "" || html === "&nbsp;") {
-    return <Text style={baseTextStyle}>&nbsp;</Text>;
+    return (
+      <Text
+        style={{
+          ...baseTextStyle,
+          fontFamily: "Museo Sans",
+          textAlign: (baseTextStyle as any).textAlign || "left",
+        }}
+      >
+        &nbsp;
+      </Text>
+    );
   }
 
-  const fontSize =
-    typeof baseTextStyle.fontSize === "number"
-      ? Math.round(baseTextStyle.fontSize) // ✅ Redondear fontSize
-      : 11;
-  const content = renderContentBlocks(html, baseTextStyle, fontSize);
+  // Normalizar tamaño de fuente si viene como "8pt" o "8px"
+  const normalizeFontSizeLocal = (maybe: any): number => {
+    if (!maybe && maybe !== 0)
+      return typeof baseTextStyle.fontSize === "number"
+        ? baseTextStyle.fontSize
+        : 10;
+    if (typeof maybe === "number") return maybe;
+    const s = String(maybe).trim();
+    if (s.endsWith("pt")) {
+      const n = parseFloat(s.replace("pt", ""));
+      if (!Number.isNaN(n)) return n;
+    }
+    if (s.endsWith("px")) {
+      const n = parseFloat(s.replace("px", ""));
+      if (!Number.isNaN(n)) return n;
+    }
+    const n = parseFloat(s);
+    return Number.isNaN(n)
+      ? typeof baseTextStyle.fontSize === "number"
+        ? baseTextStyle.fontSize
+        : 10
+      : n;
+  };
 
-  if (Array.isArray(content) && content.length > 0) {
-    return <>{content}</>;
-  }
+  // Force fontFamily and textAlign on the wrapping Text so React-PDF respects alignment & metrics
+  const forcedStyle: Style = {
+    ...baseTextStyle,
+    fontFamily: "Museo Sans",
+    textAlign: (baseTextStyle as any).textAlign || "left",
+    fontSize: normalizeFontSizeLocal((baseTextStyle as any).fontSize),
+  };
 
-  return <Text style={baseTextStyle}>&nbsp;</Text>;
+  const contentNodes = renderHtmlNodes(html, {
+    ...baseTextStyle,
+    fontFamily: "Museo Sans",
+  });
+
+  // If renderHtmlNodes returned plain React.Text nodes or array — wrap into a single Text so textAlign applies
+  return <Text style={forcedStyle}>{contentNodes}</Text>;
 };
 
 const parseHtmlTable = (
@@ -333,30 +506,48 @@ const parseHtmlTable = (
   baseTextStyle: Style,
   fontSize: number
 ) => {
-  console.log("🔍 HTML de tabla recibido:", tableHtml);
+  // console.debug("🔍 HTML de tabla recibido:", tableHtml);
 
-  const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
+  // 1) detectar colgroup y parsear anchos. Soporta px y %
+  const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
   const columnWidths: (number | null)[] = [];
+  let colIsPercent = true; // si true, values are percentages; otherwise px
 
   if (colgroupMatch) {
     const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
-    console.log("📊 Encontradas", cols.length, "columnas en colgroup");
-    cols.forEach((col, index) => {
-      const styleMatch = col.match(/style="[^"]*width:\s*(\d+(?:\.\d+)?)\s*%/i);
-      if (styleMatch) {
-        const width = parseFloat(styleMatch[1]);
-        columnWidths.push(width);
-        console.log(`  Col ${index}: ${width}%`);
+    cols.forEach((col) => {
+      const styleMatch = col.match(/style="[^"]*width:\s*([^;"]+)/i);
+      const widthAttrMatch = col.match(/width=["']?([^"']+)["']?/i);
+      const raw = styleMatch
+        ? styleMatch[1]
+        : widthAttrMatch
+        ? widthAttrMatch[1]
+        : null;
+      if (!raw) {
+        columnWidths.push(null);
+        return;
+      }
+      if (raw.includes("%")) {
+        const num = parseFloat(raw.replace("%", ""));
+        columnWidths.push(Number.isFinite(num) ? num : null);
+        colIsPercent = true;
+      } else if (raw.endsWith("px")) {
+        const num = parseFloat(raw.replace("px", ""));
+        columnWidths.push(Number.isFinite(num) ? num : null);
+        colIsPercent = false;
       } else {
-        const widthMatch = col.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
-        const width = widthMatch ? parseFloat(widthMatch[1]) : null;
-        columnWidths.push(width);
-        console.log(`  Col ${index}: ${width || "sin ancho"}%`);
+        // number without unit: treat as px
+        const num = parseFloat(raw);
+        columnWidths.push(Number.isFinite(num) ? num : null);
+        colIsPercent = false;
       }
     });
   }
 
-  const rows = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gs) || [];
+  // 2) collect rows
+  const rows = (tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || []).map(
+    (r) => r
+  );
 
   let headerRow: string | null = null;
   const bodyRows: string[] = [];
@@ -371,43 +562,99 @@ const parseHtmlTable = (
   });
 
   const parseCells = (rowHtml: string) => {
-    const cells = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gs) || [];
-    return cells.map((cellHtml, cellIndex) => {
-      const cellTagMatch = cellHtml.match(/<(t[dh])([^>]*)>/);
-      const attributes = cellTagMatch ? cellTagMatch[2] : "";
-
-      const colspanMatch = attributes.match(/colspan="(\d+)"/i);
-      const rowspanMatch = attributes.match(/rowspan="(\d+)"/i);
+    const cells = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gi) || [];
+    return cells.map((cellHtml) => {
+      const tagMatch = cellHtml.match(/<(t[dh])([^>]*)>/i);
+      const attributes = tagMatch ? tagMatch[2] : "";
+      const colspanMatch = attributes.match(/colspan=["']?(\d+)["']?/i);
+      const rowspanMatch =
+        attributes.match(/rowspan["']?=["']?(\d+)["']?/i) ||
+        attributes.match(/rowspan=["']?(\d+)["']?/i);
       const colspan = colspanMatch ? parseInt(colspanMatch[1], 10) : 1;
       const rowspan = rowspanMatch ? parseInt(rowspanMatch[1], 10) : 1;
 
-      const styleAttr = attributes.match(/style="([^"]*)"/);
-      const cellInlineStyle = parseStyleAttribute(
-        styleAttr ? styleAttr[1] : null
-      );
+      const styleAttr = attributes.match(/style="([^"]*)"/i);
+      const cellInlineStyle =
+        parseStyleAttribute(styleAttr ? styleAttr[1] : null) || {};
 
-      let cellWidth: number | null = null;
-      const widthAttrMatch = attributes.match(/width="(\d+(?:\.\d+)?)\s*%"/i);
-      if (widthAttrMatch) {
-        cellWidth = parseFloat(widthAttrMatch[1]);
+      // Normalizar nombres: text-align -> textAlign, vertical-align -> verticalAlign
+      if (
+        (cellInlineStyle as any)["text-align"] &&
+        !(cellInlineStyle as any).textAlign
+      ) {
+        (cellInlineStyle as any).textAlign = (cellInlineStyle as any)[
+          "text-align"
+        ];
       }
-      if (cellInlineStyle.width && typeof cellInlineStyle.width === "string") {
-        const widthValue = cellInlineStyle.width;
-        const percentMatch = widthValue.match(/(\d+(?:\.\d+)?)\s*%/);
-        if (percentMatch) {
-          cellWidth = parseFloat(percentMatch[1]);
+      if (
+        (cellInlineStyle as any)["vertical-align"] &&
+        !(cellInlineStyle as any).verticalAlign
+      ) {
+        (cellInlineStyle as any).verticalAlign = (cellInlineStyle as any)[
+          "vertical-align"
+        ];
+      }
+
+      // Si cell no trae textAlign, intentar extraerlo del primer child <p|div|span> dentro del innerHtml
+      if (!cellInlineStyle.textAlign || !cellInlineStyle.verticalAlign) {
+        const firstInlineMatch =
+          cellHtml.match(/<(p|div|span)[^>]*style="([^"]*)"[^>]*>/i) || [];
+        if (firstInlineMatch && firstInlineMatch.length >= 3) {
+          const foundStyle = firstInlineMatch[2];
+          const found = parseStyleAttribute(foundStyle);
+          if (!cellInlineStyle.textAlign && (found as any).textAlign) {
+            (cellInlineStyle as any).textAlign = (found as any).textAlign;
+          }
+          if (!cellInlineStyle.verticalAlign && (found as any).verticalAlign) {
+            (cellInlineStyle as any).verticalAlign = (
+              found as any
+            ).verticalAlign;
+          }
         }
       }
 
-      console.log(
-        `    Celda ${cellIndex}: width=${
-          cellWidth || "auto"
-        }%, colspan=${colspan}`
-      );
+      if (!(cellInlineStyle as any).verticalAlign) {
+        const valignAttrMatch = attributes.match(
+          /valign=["']?(top|middle|bottom)["']?/i
+        );
+        if (valignAttrMatch && valignAttrMatch[1]) {
+          // Añadimos el valor ('top', 'middle', o 'bottom') al objeto de estilos.
+          (cellInlineStyle as any).verticalAlign = valignAttrMatch[1];
+        }
+      }
+
+      // detect width via width attr or inline style (igual que antes)
+      let cellWidth: number | null = null;
+      const widthAttrMatch = attributes.match(/width=["']?([^"']+)["']?/i);
+      if (widthAttrMatch) {
+        const w = widthAttrMatch[1];
+        if (w.includes("%")) {
+          const n = parseFloat(w.replace("%", ""));
+          if (!Number.isNaN(n)) cellWidth = n;
+        } else if (w.endsWith("px")) {
+          const n = parseFloat(w.replace("px", ""));
+          if (!Number.isNaN(n)) cellWidth = -n;
+        } else {
+          const n = parseFloat(w);
+          if (!Number.isNaN(n)) cellWidth = -n;
+        }
+      }
+
+      if (
+        (cellInlineStyle as any).width &&
+        typeof (cellInlineStyle as any).width === "string"
+      ) {
+        const widthValue = (cellInlineStyle as any).width;
+        if (widthValue.includes("%")) {
+          cellWidth = parseFloat(widthValue.replace("%", ""));
+        } else if (widthValue.endsWith("px")) {
+          cellWidth = -parseFloat(widthValue.replace("px", ""));
+        }
+      }
 
       const innerHtml = cellHtml
-        .replace(/<t[dh][^>]*>/, "")
-        .replace(/<\/t[dh]>$/, "")
+        .replace(/<t[dh][^>]*>/i, "")
+        .replace(/<\/t[dh]>$/i, "")
         .trim();
 
       return {
@@ -422,7 +669,7 @@ const parseHtmlTable = (
 
   const calculateTotalColumns = (rowHtml: string): number => {
     const cells = parseCells(rowHtml);
-    return cells.reduce((total, cell) => total + cell.colspan, 0);
+    return cells.reduce((total, cell) => total + (cell.colspan || 1), 0);
   };
 
   let maxColumns = 0;
@@ -434,10 +681,25 @@ const parseHtmlTable = (
   });
 
   if (maxColumns === 0) {
-    maxColumns = parseCells(headerRow || bodyRows[0] || "").length;
+    maxColumns = parseCells(headerRow || bodyRows[0] || "").length || 1;
   }
 
-  console.log(`📏 Total de columnas: ${maxColumns}`);
+  // If columnWidths are in px, convert to percentage relative to total px
+  let resolvedColumnWidths: (number | null)[] = [];
+  if (columnWidths.length > 0) {
+    if (colIsPercent) {
+      resolvedColumnWidths = columnWidths.slice(0);
+    } else {
+      const pxSum = columnWidths.reduce((s, c) => s + (c || 0), 0);
+      if (pxSum > 0) {
+        resolvedColumnWidths = columnWidths.map((c) =>
+          c ? (c / pxSum) * 100 : null
+        );
+      } else {
+        resolvedColumnWidths = columnWidths.map(() => null);
+      }
+    }
+  }
 
   const adjustedFontSize =
     maxColumns > 8 ? Math.max(fontSize - 2, 8) : fontSize - 1;
@@ -455,35 +717,38 @@ const parseHtmlTable = (
   ): string => {
     const currentCell = cells[cellIndex];
 
+    // 1) If cellWidth explicitly set (positive percent)
     if (currentCell.cellWidth !== null && currentCell.cellWidth !== undefined) {
-      console.log(`    ✅ Usando ancho de celda: ${currentCell.cellWidth}%`);
-      return `${currentCell.cellWidth}%`;
+      if (currentCell.cellWidth > 0) {
+        return `${currentCell.cellWidth}%`;
+      } else if (currentCell.cellWidth < 0) {
+        // negative means px encoded; we can't use px in react-pdf width reliably, so use fallback %
+        // fallback: distribute proportionally
+      }
     }
 
-    if (columnWidths.length > 0) {
+    // 2) Try to use resolvedColumnWidths from colgroup
+    if (resolvedColumnWidths.length > 0) {
       const startCol = cells
         .slice(0, cellIndex)
-        .reduce((sum, c) => sum + c.colspan, 0);
+        .reduce((sum, c) => sum + (c.colspan || 1), 0);
       let totalWidth = 0;
-      let hasAllWidths = true;
-
+      let hasAll = true;
       for (let i = startCol; i < startCol + colspan; i++) {
-        const width = columnWidths[i];
-        if (width === null || width === undefined) {
-          hasAllWidths = false;
+        const w = resolvedColumnWidths[i];
+        if (w === null || w === undefined) {
+          hasAll = false;
           break;
         }
-        totalWidth += width;
+        totalWidth += w;
       }
-
-      if (hasAllWidths && totalWidth > 0) {
-        console.log(`    ✅ Usando ancho de colgroup: ${totalWidth}%`);
+      if (hasAll && totalWidth > 0) {
         return `${totalWidth}%`;
       }
     }
 
+    // 3) fallback: equal distribution across maxColumns
     const fallbackWidth = (colspan / maxColumns) * 100;
-    console.log(`    ⚠️ Fallback equitativo: ${fallbackWidth.toFixed(2)}%`);
     return `${fallbackWidth}%`;
   };
 
@@ -492,7 +757,8 @@ const parseHtmlTable = (
       {headerRow && (
         <PdfTableRow isHeader>
           {parseCells(headerRow).map((cell, idx, arr) => {
-            let cellTextAlign = cell.style.textAlign || "left";
+            let cellTextAlign =
+              (cell.style && (cell.style as any).textAlign) || "left";
             if (cellTextAlign === "justify") {
               cellTextAlign = "left";
             }
@@ -529,7 +795,8 @@ const parseHtmlTable = (
         return (
           <PdfTableRow key={`row-${rowIndex}`}>
             {cells.map((cell, cellIndex, cellsArr) => {
-              let cellTextAlign = cell.style.textAlign || "left";
+              let cellTextAlign =
+                (cell.style && (cell.style as any).textAlign) || "left";
               if (cellTextAlign === "justify") {
                 cellTextAlign = "left";
               }
@@ -630,16 +897,16 @@ const renderContentBlocks = (
       }
 
       if (block.trim().startsWith("<p")) {
-        const tagMatch = block.match(/<p([^>]*)>/);
+        const tagMatch = block.match(/<p([^>]*)>/i);
         const attributes = tagMatch ? tagMatch[1] : "";
-        const styleAttr = attributes.match(/style="([^"]*)"/);
+        const styleAttr = attributes.match(/style="([^"]*)"/i);
         const inlineStyle = parseStyleAttribute(
           styleAttr ? styleAttr[1] : null
         );
 
         const innerHtml = block
-          .replace(/<p[^>]*>/, "")
-          .replace(/<\/p>$/, "")
+          .replace(/<p[^>]*>/i, "")
+          .replace(/<\/p>$/i, "")
           .trim();
 
         if (!innerHtml || innerHtml === "<br>") {
@@ -667,7 +934,7 @@ const renderContentBlocks = (
 
       if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
         const isOrdered = block.trim().startsWith("<ol");
-        const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gs) || [];
+        const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
 
         const isRoman = /style="[^"]*list-style-type:\s*upper-roman/i.test(
           block
@@ -680,11 +947,11 @@ const renderContentBlocks = (
           >
             {items.map((item, itemIndex) => {
               const innerHtmlMatch = item
-                .replace(/<li[^>]*>/, "")
-                .replace(/<\/li>$/, "")
+                .replace(/<li[^>]*>/i, "")
+                .replace(/<\/li>$/i, "")
                 .trim();
 
-              const pMatch = innerHtmlMatch.match(/^<p[^>]*>([\s\S]*?)<\/p>$/);
+              const pMatch = innerHtmlMatch.match(/^<p[^>]*>([\s\S]*?)<\/p>$/i);
               const innerHtml = pMatch ? pMatch[1] : innerHtmlMatch;
 
               let bullet = "•";
@@ -744,7 +1011,7 @@ const renderContentBlocks = (
 };
 
 // =================================================================
-// RESTO DEL ARCHIVO (Sin cambios)
+// RESTO DEL ARCHIVO (Sin cambios) - mantengo tu lógica de portada/índice/firmas
 // =================================================================
 export const BookPdfDocument = ({
   tome,
@@ -818,7 +1085,6 @@ export const BookPdfDocument = ({
   let closingYearInWords = "[Año]";
 
   if (tome.closingDate) {
-    // ✅ 4. Usar parseDateSafely para leer la fecha de cierre
     const closingDate = parseDateSafely(tome.closingDate);
 
     if (closingDate && isValid(closingDate)) {
@@ -831,11 +1097,6 @@ export const BookPdfDocument = ({
   const actCount = tome.acts?.length || 0;
 
   const actCountInWords = numberToWords(actCount).toLowerCase();
-
-  // const alcaldesa = allSigners.find((m) =>
-  //   m.name.includes("Licda. Zoila Milagro Navas")
-  // );
-  // const secretaria = allSigners.find((m) => m.role === "SECRETARY");
 
   const signatories = allSigners.filter(
     (m) =>
@@ -880,10 +1141,7 @@ export const BookPdfDocument = ({
 
   return (
     <Document title={`Libro de Actas - ${tome.name}`}>
-      {/* ========================================
-        PÁGINA 1: PORTADA
-        ========================================
-      */}
+      {/* Portada */}
       <Page
         size={settings.pageSize}
         orientation={settings.orientation}
@@ -931,10 +1189,7 @@ export const BookPdfDocument = ({
         <PageNumberRenderer />
       </Page>
 
-      {/* ========================================
-        PÁGINA 2: ÍNDICE
-        ========================================
-      */}
+      {/* Índice */}
       <Page
         size={settings.pageSize}
         orientation={settings.orientation}
@@ -954,14 +1209,12 @@ export const BookPdfDocument = ({
                 <View style={styles.indexItem}>
                   <Text style={styles.indexItemText}>{act.name}</Text>
                   <View style={styles.indexItemDots} />
-                  {/* TODO: Esta lógica de página +3 es estática, necesita ser dinámica */}
                   <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
                 </View>
                 {act.agreements.map((agreement) => (
                   <View key={agreement.id} style={styles.indexAgreementItem}>
                     <Text style={styles.indexItemText}>{agreement.name}</Text>
                     <View style={styles.indexItemDots} />
-                    {/* TODO: Esta lógica de página +3 es estática, necesita ser dinámica */}
                     <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
                   </View>
                 ))}
@@ -972,10 +1225,7 @@ export const BookPdfDocument = ({
         <PageNumberRenderer />
       </Page>
 
-      {/* ========================================
-        PÁGINAS DE ACTAS
-        ========================================
-      */}
+      {/* Actas */}
       {tome.acts && tome.acts.length > 0 && (
         <Page
           size={settings.pageSize}
@@ -1012,7 +1262,7 @@ export const BookPdfDocument = ({
                     {act.agreements.map((agreement) => (
                       <View key={agreement.id} wrap={true}>
                         {renderContentBlocks(
-                          (agreement as Agreement).content, // Forzamos el tipo completo
+                          (agreement as Agreement).content,
                           dynamicTextStyle,
                           settings.fontSize
                         )}
@@ -1033,6 +1283,7 @@ export const BookPdfDocument = ({
                       Alcaldesa Municipal
                     </Text>
                   </View>
+
                   {(() => {
                     const signatories = [
                       act.attendees?.syndic,
@@ -1069,6 +1320,7 @@ export const BookPdfDocument = ({
                       </View>
                     );
                   })()}
+
                   <View
                     style={{
                       ...styles.secretariaSignature,
@@ -1080,7 +1332,6 @@ export const BookPdfDocument = ({
                   </View>
                 </View>
 
-                {/* ... (Nota aclaratoria sin cambios) ... */}
                 {hasClarifyingNote && (
                   <View style={styles.notaContainer}>
                     <Text hyphenationCallback={hyphenationCallback}>
@@ -1096,10 +1347,7 @@ export const BookPdfDocument = ({
         </Page>
       )}
 
-      {/* ========================================
-        PÁGINA FINAL DE CIERRE
-        ========================================
-      */}
+      {/* Página final */}
       {tome.closingDate && (
         <Page
           size={settings.pageSize}
@@ -1145,7 +1393,6 @@ export const BookPdfDocument = ({
                 textAlign: "left",
               }}
             >
-              {/* --- ✅ 2. Firma Alcaldesa (AHORA SÍ APARECE) --- */}
               <View style={{ marginBottom: 25, textAlign: "center" }}>
                 <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
                 <Text style={styles.mainSignatureRole}>
@@ -1153,9 +1400,7 @@ export const BookPdfDocument = ({
                 </Text>
               </View>
 
-              {/* --- ✅ 3. Disposición 3x2 (DINÁMICA) --- */}
               <View style={styles.signatureColumnsContainer}>
-                {/* Columna Izquierda (3 primeros firmantes) */}
                 <View style={styles.signatureColumn}>
                   {signatories.slice(0, 3).map((p) => (
                     <Text key={p.id} style={styles.signatureName}>
@@ -1163,7 +1408,6 @@ export const BookPdfDocument = ({
                     </Text>
                   ))}
                 </View>
-                {/* Columna Derecha (firmantes 4 y 5) */}
                 <View style={styles.signatureColumn}>
                   {signatories.slice(3, 5).map((p) => (
                     <Text key={p.id} style={styles.signatureName}>

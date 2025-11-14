@@ -253,6 +253,16 @@ body {
   word-break: break-word;
 }
 
+.ProseMirror table td[valign="middle"],
+.ProseMirror table th[valign="middle"] {
+  vertical-align: middle;
+}
+
+.ProseMirror table td[valign="bottom"],
+.ProseMirror table th[valign="bottom"] {
+  vertical-align: bottom;
+}
+
 .ProseMirror table th {
   font-weight: bold;
   text-align: left;

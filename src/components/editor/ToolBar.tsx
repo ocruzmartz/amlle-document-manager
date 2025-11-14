@@ -18,6 +18,9 @@ import {
   Combine,
   SplitSquareHorizontal,
   Hash,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Separator } from "@/components/ui/separator";
@@ -197,6 +200,47 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
       </div>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
+      {isTableActive && (
+        <div className="flex items-center gap-0.5">
+          <Toggle
+            size="sm"
+            className="h-8 w-8 p-0"
+            title="Alinear Arriba"
+            pressed={editor.isActive("tableCell", { valign: "top" })}
+            onPressedChange={() =>
+              editor.chain().focus().setCellAttribute("valign", "top").run()
+            }
+          >
+            <AlignStartVertical className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            size="sm"
+            className="h-8 w-8 p-0"
+            title="Alinear en Medio"
+            pressed={editor.isActive("tableCell", { valign: "middle" })}
+            onPressedChange={() =>
+              editor.chain().focus().setCellAttribute("valign", "middle").run()
+            }
+          >
+            <AlignCenterVertical className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            size="sm"
+            className="h-8 w-8 p-0"
+            title="Alinear Abajo"
+            pressed={editor.isActive("tableCell", { valign: "bottom" })}
+            onPressedChange={() =>
+              editor.chain().focus().setCellAttribute("valign", "bottom").run()
+            }
+          >
+            <AlignEndVertical className="h-4 w-4" />
+          </Toggle>
+        </div>
+      )}
+
+      {isTableActive && (
+        <Separator orientation="vertical" className="h-6 mx-1" />
+      )}
 
       {/* Listas */}
       <div className="flex items-center gap-0.5">
