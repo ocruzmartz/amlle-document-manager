@@ -44,54 +44,60 @@ export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
       </CardHeader>
       {/* ✅ 2. CardContent con p-0 para que la tabla se ajuste */}
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="pl-5">Nombre del Tomo</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right pr-5">
-                Última Modificación
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* Mostrar solo los primeros 5 libros para un look limpio */}
-            {books.slice(0, 5).map((book) => (
-              <TableRow key={book.id}>
-                <TableCell className="pl-5">
-                  <Link
-                    to={book.url}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {book.name}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    Del libro: {book.bookName}
-                  </p>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      book.status === "FINALIZADO"
-                        ? "default"
-                        : book.status === "ARCHIVADO"
-                        ? "secondary"
-                        : "outline"
-                    }
-                  >
-                    {book.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground text-xs pr-5">
-                  {formatDistanceToNow(new Date(book.lastModified), {
-                    addSuffix: true,
-                    locale: es,
-                  })}
-                </TableCell>
+        {books.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            No hay tomos recientes para mostrar.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-5">Nombre del Tomo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right pr-5">
+                  Última Modificación
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {/* Mostrar solo los primeros 5 libros para un look limpio */}
+              {books.slice(0, 5).map((book) => (
+                <TableRow key={book.id}>
+                  <TableCell className="pl-5">
+                    <Link
+                      to={book.url}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {book.name}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      Del libro: {book.bookName}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        book.status === "FINALIZADO"
+                          ? "default"
+                          : book.status === "ARCHIVADO"
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {book.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground text-xs pr-5">
+                    {formatDistanceToNow(new Date(book.lastModified), {
+                      addSuffix: true,
+                      locale: es,
+                    })}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

@@ -9,19 +9,17 @@ import ActivityItem from "./ActivityItem";
 import { type ActivityLog } from "@/types";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react"; // ✅ Icono importado
+import { ArrowRight } from "lucide-react";
 
 interface ActivityCardProps {
   logs: ActivityLog[];
 }
 
 export function ActivityCard({ logs }: ActivityCardProps) {
-  // Solo mostramos las 4 actividades más recientes
   const recentLogs = logs.slice(0, 4);
 
   return (
     <Card className="shadow-none">
-      {/* ✅ 1. Cabecera IDÉNTICA a la de Libros Recientes */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Actividad Reciente</CardTitle>
@@ -49,7 +47,7 @@ export function ActivityCard({ logs }: ActivityCardProps) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground text-center">
             No hay actividad reciente para mostrar.
           </p>
         )}
