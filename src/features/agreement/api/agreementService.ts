@@ -44,9 +44,13 @@ export const agreementService = {
 
   getAllAgreements: async (): Promise<Agreement[]> => {
     console.log("🔍 Cargando TODOS los acuerdos...");
-    const agreements = await apiGetDirect<Agreement[]>("/agreements/get-all");
+    const agreements = await apiGetDirect<Agreement[]>("/agreements/management/find-all");
     console.log(agreements);
     return agreements;
+  },
+
+  getTotalAgreementCount: async (): Promise<number> => {
+    return apiGetDirect<number>("/agreements/count/total");
   },
 
   updateAgreementNameNumber: async (

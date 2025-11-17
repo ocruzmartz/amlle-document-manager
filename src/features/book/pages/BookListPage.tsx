@@ -155,7 +155,7 @@ export const BookListPage = () => {
     onArchive: (tome) => setTomeToArchive(tome),
     onRestore: (tome) => setTomeToRestore(tome),
     onDelete: (tome) => setTomeToDelete(tome),
-    navigate, // Pasamos el hook
+    navigate,
   });
 
   const statusFilters = [

@@ -77,6 +77,10 @@ export const volumeService = {
     return newTome;
   },
 
+  getTotalVolumeCount: async (): Promise<number> => {
+    return apiGetDirect<number>("/volume/count/total");
+  },
+
   getAllVolumes: async (): Promise<Tome[]> => {
     const response = await apiGetDirect<Tome[]>("/volume/find-all");
     console.log("✅ Tomos obtenidos (GET /volume/find-all):", response);

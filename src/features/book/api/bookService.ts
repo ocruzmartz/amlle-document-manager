@@ -25,7 +25,7 @@ export const bookService = {
    * Obtener todos los libros
    */
   getBooks: async (): Promise<Book[]> => {
-    return apiGetDirect<Book[]>("/book/all");
+    return apiGetDirect<Book[]>("/book/management/find-all");
   },
 
   /**

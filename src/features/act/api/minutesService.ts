@@ -204,7 +204,7 @@ export const actService = {
     ] = await Promise.all([
       participantsService.getPropietarios(),
       import("../lib/officials"),
-      apiGetDirect<ActApiResponse[]>("/minutes/find-all"), // Recibimos 'any[]'
+      apiGetDirect<ActApiResponse[]>("/minutes/management/find-all"),
     ]);
 
     const parsedActs = await Promise.all(
@@ -216,6 +216,10 @@ export const actService = {
       )
     );
     return parsedActs;
+  },
+
+  getTotalActCount: async (): Promise<number> => {
+    return apiGetDirect<number>("/minutes/count/total");
   },
 
   updateAct: async (actToSave: Act): Promise<void> => {

@@ -102,15 +102,15 @@ export const getColumns = ({
       return <div className="text-center">{count ?? "—"}</div>;
     },
   },
-  {
-    accessorKey: "pageCount",
-    header: () => <div className="text-center"># Páginas</div>,
-    cell: ({ row }) => {
-      // ✅ 5. Standby: 'pageCount' SÍ viene (es 0)
-      const count = row.getValue("pageCount") as number | undefined;
-      return <div className="text-center">{count ?? "—"}</div>;
-    },
-  },
+  // {
+  //   accessorKey: "pageCount",
+  //   header: () => <div className="text-center"># Páginas</div>,
+  //   cell: ({ row }) => {
+  //     // ✅ 5. Standby: 'pageCount' SÍ viene (es 0)
+  //     const count = row.getValue("pageCount") as number | undefined;
+  //     return <div className="text-center">{count ?? "—"}</div>;
+  //   },
+  // },
   {
     accessorKey: "createdBy.nombre",
     header: "Creado por",
@@ -131,7 +131,6 @@ export const getColumns = ({
       </Button>
     ),
     cell: ({ row }) => {
-      // ✅ 7. Validar fecha (SÍ viene)
       const dateValue = row.getValue("createdAt") as string | undefined;
       if (!dateValue || !isValid(new Date(dateValue))) return "—";
       return (
@@ -144,7 +143,7 @@ export const getColumns = ({
     },
   },
   {
-    accessorKey: "modificiationName",
+    accessorKey: "modificationName",
     header: "Modificado por",
     cell: ({ row }) => {
       const tome = row.original;

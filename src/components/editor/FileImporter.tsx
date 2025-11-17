@@ -125,6 +125,19 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
           // ignore parsing issues
         }
 
+        // text align
+        let textAlign: string | null = null;
+        try {
+          const paragraphs = tc.p ? (Array.isArray(tc.p) ? tc.p : [tc.p]) : [];
+          for (const p of paragraphs) {
+            const pPr = p.pPr || {};
+            if (pPr.jc && pPr.jc["@_val"]) {
+              textAlign = pPr.jc["@_val"]; // left, center, right, both
+              break;
+            }
+          }
+        } catch (e) {}
+
         // return aggregated info
         return {
           width,
@@ -135,6 +148,7 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
           rowspan: 1,
           fontSizePt,
           fontFamily,
+          textAlign,
         };
       });
 
@@ -231,6 +245,12 @@ function mergeDocxStylesIntoHtml(
         if (info.fontFamily) {
           // do not assume availability of the font in PDF; we still inline it
           inlineParts.push(`font-family: '${info.fontFamily}'`);
+        }
+
+        // text-align
+        if (info.textAlign) {
+          const map = { left: "left", center: "center", right: "right", both: "justify" };
+          inlineParts.push(`text-align: ${map[info.textAlign] || "left"}`);
         }
 
         // colspan
@@ -333,7 +353,7 @@ const excelToHtml = (worksheet: XLSX.WorkSheet): string => {
 
       let baseStyle = `padding: 6px; vertical-align: top; width: ${widthPct.toFixed(
         2
-      )}%;`;
+      )};`;
       if (isHeader)
         baseStyle += " font-weight: bold; background-color: #f8f9fa;";
 
@@ -343,6 +363,17 @@ const excelToHtml = (worksheet: XLSX.WorkSheet): string => {
         const cellXf = cell && cell.s; // XLSX doesn't standardize but some readers store style index
         // we won't rely on this reliably; advanced mapping requires reading styles.xml (future)
       } catch (e) {}
+
+      // NUEVO: aplicar estilos básicos de alineación y color de fondo desde CellXf (si disponible)
+      if (cell && cell.s && wb && wb.Styles && wb.Styles.CellXf) {
+        const xf = wb.Styles.CellXf[cell.s];
+        if (xf && xf.alignment && xf.alignment.horizontal) {
+          baseStyle += ` text-align: ${xf.alignment.horizontal};`;
+        }
+        if (xf && xf.fill && xf.fill.fgColor && xf.fill.fgColor.rgb) {
+          baseStyle += ` background-color: #${xf.fill.fgColor.rgb.slice(2)};`;
+        }
+      }
 
       const content = text ? `<p>${text}</p>` : `<p>&nbsp;</p>`;
 

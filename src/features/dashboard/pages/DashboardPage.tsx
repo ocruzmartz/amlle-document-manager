@@ -39,7 +39,7 @@ const mapTomeToActivityLogs = (tome: Tome): ActivityLog[] => {
   };
 
   const target = {
-    type: "Book" as LogTargetType, 
+    type: "Book" as LogTargetType,
     name: tome.name || `Tomo ${numberToRoman(tome.number)}`,
     url: `/books/${tome.id}`,
     state: { initialActId: null },
@@ -69,7 +69,7 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
   const logs: ActivityLog[] = [];
   const createdUser = { nombre: act.createdBy || "Sistema" };
   const modifiedUser = {
-    nombre: act.modifiedBy || act.createdBy || "Sistema", // ✅ CORREGIDO
+    nombre: act.modifiedBy || act.createdBy || "Sistema",
   };
   const target = {
     type: "Act" as LogTargetType,
@@ -101,11 +101,11 @@ const mapActToActivityLogs = (act: Act): ActivityLog[] => {
 const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
   const logs: ActivityLog[] = [];
   const createdUser = {
-    nombre: agreement.createdByName || "Sistema", // ✅ CORREGIDO
+    nombre: agreement.createdByName || "Sistema",
   };
   const modifiedUser = {
     nombre:
-      agreement.latestModifierName || agreement.createdByName || "Sistema", // ✅ CORREGIDO
+      agreement.latestModifierName || agreement.createdByName || "Sistema",
   };
   const target = {
     type: "Agreement" as LogTargetType,
@@ -120,7 +120,6 @@ const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
     },
   };
 
-  // 1. Log de Creación
   logs.push({
     id: `${agreement.id}-created`,
     user: createdUser,
@@ -129,7 +128,6 @@ const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
     target: target,
   });
 
-  // 2. Log de Modificación (usando latestModificationDate)
   if (agreement.latestModificationDate) {
     logs.push({
       id: `${agreement.id}-updated`,
@@ -142,13 +140,9 @@ const mapAgreementToActivityLogs = (agreement: Agreement): ActivityLog[] => {
   return logs;
 };
 
-/**
- * Convierte un Tome al formato esperado por la tabla de libros recientes.
- */
 const mapTomeToRecentTome = (tome: Tome): RecentTome => {
   const tomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
 
-  // Obtener el último modificador del array
   const lastModifier =
     tome.modificationName && tome.modificationName.length > 0
       ? tome.modificationName[tome.modificationName.length - 1]
@@ -157,18 +151,15 @@ const mapTomeToRecentTome = (tome: Tome): RecentTome => {
   return {
     id: tome.id,
     name: tomeName,
-    bookName: tome.bookName || "Libro Desconocido", // bookName viene en el JSON
+    bookName: tome.bookName || "Libro Desconocido",
     status: tome.status,
-    lastModified: tome.updatedAt, // updatedAt es la fecha de mod. más reciente
+    lastModified: tome.updatedAt,
     url: `/books/${tome.id}`,
-    modifiedBy: lastModifier || "Sistema", // Usar el último modificador
+    modifiedBy: lastModifier || "Sistema",
   };
 };
 
-// --- Componente Principal del Dashboard ---
-
 const DashboardPage = () => {
-  // Estados (sin cambios)
   const [stats, setStats] = useState<DashboardStats>({
     tomeCount: 0,
     actCount: 0,
@@ -178,32 +169,39 @@ const DashboardPage = () => {
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect (lógica interna sin cambios, ahora usa los mappers corregidos)
   useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true);
       try {
-        const [tomesResult, actsResult, agreementsResult] =
-          await Promise.allSettled([
-            volumeService.getAllVolumes(),
-            actService.getAllActs(),
-            agreementService.getAllAgreements(),
-          ]);
+        const [
+          tomesResult,
+          actsResult,
+          agreementsResult,
+          actCountResult,
+          agreementCountResult,
+          tomeCountResult,
+        ] = await Promise.allSettled([
+          volumeService.getAllVolumes(), // Para Actividad Reciente y Libros Recientes
+          actService.getAllActs(), // Para Actividad Reciente
+          agreementService.getAllAgreements(), // Para Actividad Reciente
+          actService.getTotalActCount(), // Para Card
+          agreementService.getTotalAgreementCount(), // Para Card
+          volumeService.getTotalVolumeCount(), // Para Card
+        ]);
 
-        // --- Procesar Estadísticas ---
         const newStats: DashboardStats = {
           tomeCount:
-            tomesResult.status === "fulfilled" ? tomesResult.value.length : 0,
+            tomeCountResult.status === "fulfilled" ? tomeCountResult.value : 0,
           actCount:
-            actsResult.status === "fulfilled" ? actsResult.value.length : 0,
+            actCountResult.status === "fulfilled" ? actCountResult.value : 0,
           agreementCount:
-            agreementsResult.status === "fulfilled"
-              ? agreementsResult.value.length
+            agreementCountResult.status === "fulfilled"
+              ? agreementCountResult.value
               : 0,
         };
+
         setStats(newStats);
 
-        // --- Procesar Tomos Recientes ---
         if (tomesResult.status === "fulfilled") {
           const sortedTomes = [...tomesResult.value].sort(
             (a, b) =>
@@ -303,7 +301,9 @@ const DashboardPage = () => {
       {isLoading ? (
         <div className="flex h-64 items-center justify-center rounded-lg border">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Cargando datos del dashboard...</span>
+          <span className="ml-2 text-muted-foreground">
+            Cargando datos del dashboard...
+          </span>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
