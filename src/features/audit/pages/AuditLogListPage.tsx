@@ -98,15 +98,14 @@ const mapAgreementToActivityLogs = (
 ): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
   const createdUser = {
-    nombre: agreement.createdByName || "Sistema", // ✅ CORREGIDO
+    nombre: agreement.createdByName || "Sistema",
   };
   const modifiedUser = {
     nombre:
-      agreement.latestModifierName || agreement.createdByName || "Sistema", // ✅ CORREGIDO
+      agreement.latestModifierName || agreement.createdByName || "Sistema",
   };
   const targetType: LogTargetType = "Agreement";
 
-  // 1. Log de Creación
   logs.push({
     id: `${agreement.id}-created`,
     user: createdUser,
@@ -124,7 +123,6 @@ const mapAgreementToActivityLogs = (
     },
   });
 
-  // 2. Log de Modificación (usando latestModificationDate)
   if (agreement.latestModificationDate) {
     logs.push({
       id: `${agreement.id}-updated`,

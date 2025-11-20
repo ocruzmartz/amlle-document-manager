@@ -1,12 +1,13 @@
+// filepath: src/features/audit/components/AuditLogColumns.tsx
 import { type ColumnDef } from "@tanstack/react-table";
 import { type FullActivityLog, type ActivityLog, type User } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
+// 👇 VERIFICA ESTA IMPORTACIÓN
 import { formatDateTime } from "@/lib/textUtils";
 
-// Mapeo de acciones a colores de Badge
 const actionVariantMap: Partial<
   Record<
     ActivityLog["action"],
@@ -22,7 +23,6 @@ const actionVariantMap: Partial<
   RESTORED: "outline",
 };
 
-// Mapeo de acciones a texto legible
 const actionTextMap: Partial<Record<ActivityLog["action"], string>> = {
   CREATED: "Creado",
   UPDATED: "Modificado",
@@ -46,9 +46,9 @@ export const columns: ColumnDef<FullActivityLog>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      <div className="font-medium">
-        {formatDateTime(row.getValue("createdAt"))}
-      </div>
+      const rawDate = row.original.timestamp;
+
+      return <div className="font-medium">{formatDateTime(rawDate)}</div>;
     },
   },
   {
@@ -56,12 +56,11 @@ export const columns: ColumnDef<FullActivityLog>[] = [
     header: "Usuario",
     cell: ({ row }) => {
       const user = row.getValue("user") as FullActivityLog["user"];
-      return <div className="font-medium">{user.nombre}</div>;
+      return <div className="font-medium">{user?.nombre || "—"}</div>;
     },
-    // Filtro simple (no facetado)
     filterFn: (row, id, value) => {
       const user = row.getValue(id) as Pick<User, "nombre">;
-      const fullName = user.nombre.toLowerCase(); // ✅ CORREGIDO
+      const fullName = user?.nombre?.toLowerCase() || "";
       return fullName.includes(String(value).toLowerCase());
     },
   },

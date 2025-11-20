@@ -11,19 +11,16 @@ import { ProtectedRoute } from "./ProtectedRoute";
 import { RoleProtectedRoute } from "./RoleProtectedRoute";
 import { PublicRoute } from "./PublicRoute";
 import { searchRoutes } from "@/features/search/routes";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 
-// Rutas protegidas - Solo usuarios autenticados
 const protectedShellRoute: RouteObject = {
   element: <ProtectedRoute />,
   children: [
     {
       element: <DashboardLayout />,
       children: [
-        // Dashboard: Todos pueden ver
         ...dashboardRoutes,
         ...searchRoutes,
-
-        // Todas las funcionalidades: Solo Admin
         {
           element: <RoleProtectedRoute allowedRoles={["admin", "regular"]} />,
           children: [
@@ -31,12 +28,19 @@ const protectedShellRoute: RouteObject = {
             ...actRoutes,
             ...agreementRoutes,
             ...auditRoutes,
-            ...userRoutes,
           ],
+        },
+        {
+          element: <RoleProtectedRoute allowedRoles={["admin"]} />,
+          children: [...userRoutes],
+        },
+
+        {
+          path: "*",
+          element: <NotFoundPage />,
         },
       ],
     },
-    // Workspace de libros: Solo Admin
     {
       element: <RoleProtectedRoute allowedRoles={["admin", "regular"]} />,
       children: booksWorkspaceRoutes,
@@ -46,9 +50,13 @@ const protectedShellRoute: RouteObject = {
 
 export const router = createBrowserRouter([
   protectedShellRoute,
-  // Rutas públicas - desenvueltas directamente
   {
     element: <PublicRoute />,
-    children: authRoutes,
+    children: [
+      ...authRoutes,
+      { path: "*", element: <Navigate to="/auth/login" replace /> },
+    ],
   },
 ]);
+
+import { Navigate } from "react-router";

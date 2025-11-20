@@ -1,4 +1,3 @@
-// filepath: src/features/user/components/UserColumns.tsx
 import { type ColumnDef } from "@tanstack/react-table";
 import { type User, type UserRole } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
+import { formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatDateTime } from "@/lib/textUtils";
 
@@ -34,9 +33,9 @@ const roleMap: RoleUIMap = {
 export const getColumns = (
   onEdit: (user: User) => void,
   onDelete: (user: User) => void,
-  onTerminateSession: (user: User) => void
+  onTerminateSession: (user: User) => void,
+  currentUserId: string | undefined
 ): ColumnDef<User>[] => [
-  // ... (Columnas 'nombre', 'rol', 'activo', 'sessionType' sin cambios) ...
   {
     accessorKey: "nombre",
     id: "nombre",
@@ -104,7 +103,6 @@ export const getColumns = (
     },
   },
   {
-    // 1. Columna "Fecha de Creación" (Exacta)
     accessorKey: "createdAt",
     header: ({ column }) => (
       <Button
@@ -115,20 +113,18 @@ export const getColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => {
+    cell: ({ row }) => (
       <div className="font-medium">
-        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
-      </div>;
-    },
+        {formatDateTime(row.getValue("createdAt"))}
+      </div>
+    ),
     sortingFn: "datetime",
   },
   {
-    // 2. Columna "Antigüedad" (Relativa)
-    accessorKey: "createdAt", // Ambas usan el mismo accesor
-    id: "antiguedad", // ✅ PERO esta tiene un ID personalizado
+    accessorKey: "createdAt",
+    id: "antiguedad",
     header: "Antigüedad",
     cell: ({ row }) => {
-      // Usamos 'row.getValue'
       const createdAtISO = row.getValue("createdAt") as string | null;
       if (!createdAtISO) {
         return <div className="text-muted-foreground italic">N/A</div>;
@@ -141,20 +137,20 @@ export const getColumns = (
         addSuffix: true,
         locale: es,
       });
-      return (
-        <div title={format(date, "PPP p", { locale: es })}>{relativeTime}</div>
-      );
+      return <div title={formatDateTime(createdAtISO)}>{relativeTime}</div>;
     },
     sortingFn: "datetime",
   },
 
-  // --- ✅ FIN DE LA CORRECCIÓN ---
-
+  // --- COLUMNA DE ACCIONES MODIFICADA ---
   {
     id: "actions",
     cell: ({ row }) => {
       const user = row.original;
       const isActive = user.activo;
+
+      // ✅ 2. Verificamos si es el mismo usuario
+      const isSelf = user.id === currentUserId;
 
       return (
         <div className="text-center">
@@ -171,20 +167,23 @@ export const getColumns = (
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Editar</span>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => onTerminateSession(user)}
-                disabled={!isActive}
+                disabled={!isActive || isSelf}
               >
                 <Ban className="mr-2 h-4 w-4" />
-                Desactivar (Cerrar Sesión)
+                <span>Desactivar (Cerrar Sesión)</span>
               </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => onDelete(user)}
+                disabled={isSelf}
               >
                 <Trash className="mr-2 h-4 w-4 text-destructive" />
-                <span>Eliminar</span>
+                <span>{isSelf ? "Acción no permitida" : "Eliminar"}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

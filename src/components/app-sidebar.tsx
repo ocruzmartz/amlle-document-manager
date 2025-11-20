@@ -11,14 +11,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { adminNavItems, mainNavItems } from "@/config/navigation";
-
-const data = {
-  navMain: mainNavItems,
-  navAdmin: adminNavItems,
-};
+import { adminNavItems } from "@/config/navigation";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+  const filteredAdminItems = React.useMemo(() => {
+    return adminNavItems.filter((item) => {
+      if (item.url === "/users") {
+        return user?.rol === "admin";
+      }
+      return true;
+    });
+  }, [user]);
+
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
@@ -27,24 +33,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              {/* <a href="#">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Acme Inc</span>
-                  <span className="truncate text-xs">Enterprise</span>
-                </div>
-              </a> */}
-            </SidebarMenuButton>
+            <SidebarMenuButton size="lg" asChild></SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain />
-        <NavAdmin itemsAdmin={data.navAdmin} />
-        {/* <NavSecondary items={data.navSecondary} className="mt-auto" />  */}
+        <NavAdmin itemsAdmin={filteredAdminItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

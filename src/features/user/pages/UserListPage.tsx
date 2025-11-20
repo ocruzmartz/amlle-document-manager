@@ -18,8 +18,10 @@ import { UserForm } from "../components/UserForm";
 import { type User } from "@/types";
 import { toast } from "sonner";
 import type { SortingState } from "@tanstack/react-table";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
 export const UserListPage: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [dataVersion, setDataVersion] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,8 +120,8 @@ export const UserListPage: React.FC = () => {
 
   // --- Definiciones de Columnas y Filtros ---
   const columns = useMemo(
-    () => getColumns(handleEdit, handleDelete, handleTerminateSession),
-    [handleEdit, handleDelete, handleTerminateSession]
+    () => getColumns(handleEdit, handleDelete, handleTerminateSession, currentUser?.id),
+    [handleEdit, handleDelete, handleTerminateSession, currentUser?.id]
   );
 
   // Filtros adaptados al modelo de datos real del backend

@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import type { UserRole } from "@/types";
+import { Lock } from "lucide-react";
 
 interface RoleProtectedRouteProps {
   allowedRoles: UserRole[];
@@ -17,17 +18,15 @@ export const RoleProtectedRoute = ({
 
   const userRole = user.rol;
 
-  // 2. Aplicamos la regla de "elevación": si es 'regular', trátalo como 'admin'
-  const effectiveRole = userRole === "regular" ? "admin" : userRole;
-
-  // 3. Verificamos los permisos usando el rol "efectivo"
-  if (!allowedRoles.includes(effectiveRole)) {
-    // ✅ FIN DE LA MODIFICACIÓN
+  if (!allowedRoles.includes(userRole)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
-        <p className="text-muted-foreground">
-          No tienes permisos para acceder a esta página (Rol: {user.rol})
+      <div className="flex flex-col items-center justify-center text-center pb-32 min-h-screen bg-background">
+        <Lock className="w-16 h-16 text-primary mb-4" />
+        <h2 className="text-2xl font-semibold mb-3 text-foreground">
+          Acceso Denegado
+        </h2>
+        <p className="text-base text-muted-foreground max-w-md">
+          No tienes permisos para ver esta página.
         </p>
       </div>
     );

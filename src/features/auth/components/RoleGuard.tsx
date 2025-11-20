@@ -1,4 +1,3 @@
-// filepath: src/features/auth/components/RoleGuard.tsx
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "@/types";
 
@@ -15,12 +14,9 @@ export const RoleGuard = ({
 }: RoleGuardProps) => {
   const { user } = useAuth();
 
-  // ✅ INICIO DE LA MODIFICACIÓN
   const userRole = user?.rol;
-  const effectiveRole = userRole === "regular" ? "admin" : userRole;
 
-  if (!user || !effectiveRole || !allowedRoles.includes(effectiveRole)) {
-  // ✅ FIN DE LA MODIFICACIÓN
+  if (!user || !userRole || !allowedRoles.includes(userRole)) {
     return <>{fallback}</>;
   }
 
