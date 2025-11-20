@@ -2,11 +2,15 @@ import React from "react";
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 
-
 const BASE_BORDER_COLOR = "#000000";
 const BASE_BORDER_WIDTH = 0.25;
 
-function unitToNumber(val: string | number | undefined) {
+// Tipo auxiliar para manejar estilos dinámicos con claves string
+type DynamicStyle = Record<string, string | number | undefined | null>;
+
+function unitToNumber(
+  val: string | number | undefined | null
+): number | undefined {
   if (val === undefined || val === null) return undefined;
   if (typeof val === "number") return val;
   const s = String(val).trim();
@@ -56,22 +60,22 @@ const styles = StyleSheet.create({
   cellText: {
     fontSize: 10,
     lineHeight: 1.2,
-    fontFamily: "Museo Sans", 
+    fontFamily: "Museo Sans",
   },
 });
 
 /* Helpers */
-function parsePadding(style: any) {
-  const result: any = {};
+function parsePadding(style: DynamicStyle | undefined) {
+  const result: Record<string, number> = {};
   if (!style) return result;
 
-  const padding = style.padding ?? style["padding"] ?? undefined;
-  const getNum = (v: any) => {
+  const padding = style.padding;
+  const getNum = (v: string | number | undefined | null) => {
     const n = unitToNumber(v);
     return n === undefined ? undefined : n;
   };
 
-  if (padding !== undefined) {
+  if (padding !== undefined && padding !== null) {
     const n = getNum(padding);
     if (n !== undefined) {
       result.paddingTop = n;
@@ -95,11 +99,11 @@ function parsePadding(style: any) {
   return result;
 }
 
-function parseBorderStyle(style: any) {
-  const s: any = {};
+function parseBorderStyle(style: DynamicStyle | undefined) {
+  const s: DynamicStyle = {};
   if (!style) return s;
 
-  const parseSingle = (val: any) => {
+  const parseSingle = (val: string | number | undefined | null) => {
     if (!val) return null;
     const str = String(val);
     // color word -> map common names
@@ -108,7 +112,7 @@ function parseBorderStyle(style: any) {
     if (colorMatch) color = `#${colorMatch[1]}`;
     else if (/windowtext/i.test(str)) color = "#000000";
     else {
-      // try rgb(...) -> convert to hex-ish simple fallback (let browser handle if not)
+      // try rgb(...) -> convert to hex-ish simple fallback
       const rgb = str.match(/rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)/);
       if (rgb) {
         const r = parseInt(rgb[1], 10);
@@ -154,7 +158,9 @@ function parseBorderStyle(style: any) {
   return s;
 }
 
-function mapVerticalAlignToJustify(v?: string) {
+function mapVerticalAlignToJustify(
+  v?: string | number | null
+): "flex-start" | "center" | "flex-end" {
   if (!v) return "flex-start";
   const val = String(v).toLowerCase();
   if (val === "middle" || val === "center") return "center";
@@ -162,7 +168,9 @@ function mapVerticalAlignToJustify(v?: string) {
   return "flex-start";
 }
 
-function normalizeWidth(width: any, totalColumns?: number) {
+function normalizeWidth(
+  width: string | number | undefined
+) {
   if (typeof width === "string") {
     const w = width.trim();
     if (w.endsWith("%")) return w;
@@ -181,7 +189,10 @@ function normalizeWidth(width: any, totalColumns?: number) {
 }
 
 /* Convert font-size values like "12pt" or numeric into number for react-pdf */
-function normalizeFontSize(fontSizeRaw: any, fallback = 10) {
+function normalizeFontSize(
+  fontSizeRaw: string | number | undefined | null,
+  fallback = 10
+) {
   if (!fontSizeRaw && fontSizeRaw !== 0) return fallback;
   if (typeof fontSizeRaw === "number") return fontSizeRaw;
   const s = String(fontSizeRaw).trim();
@@ -202,64 +213,67 @@ interface PdfTableProps {
   children: React.ReactNode;
   totalColumns?: number;
 }
+
 export const PdfTable: React.FC<PdfTableProps> = ({ children }) => {
   return <View style={styles.tableWrapper}>{children}</View>;
 };
 
-// --- INICIO DE LA MODIFICACIÓN ---
 interface PdfTableRowProps {
   children: React.ReactNode;
   style?: Style;
-  isHeader?: boolean; // isHeader ya estaba implícito, mejor hacerlo explícito
-  wrap?: boolean; // Añadir la propiedad 'wrap'
+  isHeader?: boolean;
+  wrap?: boolean;
 }
 
 export const PdfTableRow: React.FC<PdfTableRowProps> = ({
   children,
   style,
-  wrap = true, // Por defecto, React-PDF parte las filas (true)
+  wrap = true,
 }) => {
   return (
-    <View style={[styles.row, style]} wrap={wrap}>
+    <View style={[styles.row, style || {}]} wrap={wrap}>
       {children}
     </View>
   );
 };
-// --- FIN DE LA MODIFICACIÓN ---
 
 interface PdfTableCellProps {
   children?: React.ReactNode;
   colSpan?: number;
   rowSpan?: number;
-  style?: any;
+  style?: Style | DynamicStyle;
   width?: string | number;
   isHeader?: boolean;
   totalColumns?: number;
 }
+
 export const PdfTableCell: React.FC<PdfTableCellProps> = ({
   children,
   colSpan = 1,
-  rowSpan = 1,
   style = {},
   width,
-  isHeader = false,
   totalColumns = 1,
 }) => {
-  let resolvedWidth: any = normalizeWidth(width, totalColumns);
+  let resolvedWidth: string | number | undefined = normalizeWidth(
+    width
+  );
   if (!resolvedWidth) {
     const pct = (colSpan / (totalColumns || 1)) * 100;
     resolvedWidth = `${pct}%`;
   }
 
-  const paddingParts = parsePadding(style);
-  const borderParts = parseBorderStyle(style);
+  // Cast seguro a DynamicStyle para los helpers de parsing
+  const styleObj = style as DynamicStyle;
+  const paddingParts = parsePadding(styleObj);
+  const borderParts = parseBorderStyle(styleObj);
 
   const justifyContent = mapVerticalAlignToJustify(
-    style && (style.verticalAlign ?? style["vertical-align"])
+    styleObj && (styleObj.verticalAlign ?? styleObj["vertical-align"])
   );
 
   const textAlignVal =
-    (style && (style.textAlign ?? style["text-align"])) || undefined;
+    (styleObj && (styleObj.textAlign ?? styleObj["text-align"])) || undefined;
+
   const isPlainText =
     typeof children === "string" ||
     typeof children === "number" ||
@@ -267,7 +281,7 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
       children.every((c) => typeof c === "string" || typeof c === "number"));
 
   const alignItems = !isPlainText
-    ? textAlignVal
+    ? textAlignVal && typeof textAlignVal === "string"
       ? textAlignVal.toLowerCase() === "center"
         ? "center"
         : textAlignVal.toLowerCase() === "right"
@@ -277,53 +291,66 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
     : undefined;
 
   const fontSizeFromStyle = normalizeFontSize(
-    style && (style.fontSize ?? style["font-size"]),
+    styleObj && (styleObj.fontSize ?? styleObj["font-size"]),
     10
   );
 
-  const cellStyle: any = {
+  // ---------------------------------------------------------------------------
+  // CORRECCIÓN: Manejo seguro de backgroundColor para evitar fondo negro
+  // ---------------------------------------------------------------------------
+  const rawBg = styleObj && (styleObj.backgroundColor ?? styleObj["background-color"]);
+  const backgroundColor = rawBg ? String(rawBg) : undefined;
+
+  const cellStyle: Style = {
     ...styles.cellBase,
     width: resolvedWidth,
-    backgroundColor:
-      style && (style.backgroundColor ?? style["background-color"]),
+    backgroundColor, // Ahora es string | undefined
     paddingTop: paddingParts.paddingTop ?? styles.cellBase.paddingTop,
     paddingBottom: paddingParts.paddingBottom ?? styles.cellBase.paddingBottom,
     paddingLeft: paddingParts.paddingLeft ?? styles.cellBase.paddingLeft,
     paddingRight: paddingParts.paddingRight ?? styles.cellBase.paddingRight,
-    justifyContent,
-    borderTopWidth:
+    justifyContent: justifyContent,
+    borderTopWidth: Number(
       borderParts.borderTopWidth ??
-      borderParts.borderWidth ??
-      BASE_BORDER_WIDTH,
-    borderTopColor:
+        borderParts.borderWidth ??
+        BASE_BORDER_WIDTH
+    ),
+    borderTopColor: String(
       borderParts.borderTopColor ??
-      borderParts.borderColor ??
-      BASE_BORDER_COLOR,
-    borderRightWidth:
+        borderParts.borderColor ??
+        BASE_BORDER_COLOR
+    ),
+    borderRightWidth: Number(
       borderParts.borderRightWidth ??
-      borderParts.borderWidth ??
-      BASE_BORDER_WIDTH,
-    borderRightColor:
+        borderParts.borderWidth ??
+        BASE_BORDER_WIDTH
+    ),
+    borderRightColor: String(
       borderParts.borderRightColor ??
-      borderParts.borderColor ??
-      BASE_BORDER_COLOR,
-    borderBottomWidth:
+        borderParts.borderColor ??
+        BASE_BORDER_COLOR
+    ),
+    borderBottomWidth: Number(
       borderParts.borderBottomWidth ??
-      borderParts.borderWidth ??
-      BASE_BORDER_WIDTH,
-    borderBottomColor:
+        borderParts.borderWidth ??
+        BASE_BORDER_WIDTH
+    ),
+    borderBottomColor: String(
       borderParts.borderBottomColor ??
-      borderParts.borderColor ??
-      BASE_BORDER_COLOR,
-    borderLeftWidth:
+        borderParts.borderColor ??
+        BASE_BORDER_COLOR
+    ),
+    borderLeftWidth: Number(
       borderParts.borderLeftWidth ??
-      borderParts.borderWidth ??
-      BASE_BORDER_WIDTH,
-    borderLeftColor:
+        borderParts.borderWidth ??
+        BASE_BORDER_WIDTH
+    ),
+    borderLeftColor: String(
       borderParts.borderLeftColor ??
-      borderParts.borderColor ??
-      BASE_BORDER_COLOR,
-    alignItems: alignItems ?? "flex-start",
+        borderParts.borderColor ??
+        BASE_BORDER_COLOR
+    ),
+    alignItems: alignItems as "flex-start" | "flex-end" | "center" | "stretch" | "baseline" | undefined,
   };
 
   const renderChildren = () => {
@@ -333,7 +360,10 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
         <Text
           style={[
             styles.cellText,
-            { textAlign: textAlignVal as any, fontSize: fontSizeFromStyle },
+            {
+              textAlign: textAlignVal as "left" | "right" | "center" | "justify",
+              fontSize: fontSizeFromStyle,
+            },
           ]}
         >
           {String(children)}
@@ -341,7 +371,6 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
       );
     }
 
-    // For React nodes, wrap plain string children in Text and enforce Museo Sans + fontSize
     return React.Children.map(children, (child, idx) => {
       if (typeof child === "string" || typeof child === "number") {
         return (
@@ -349,44 +378,52 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
             key={idx}
             style={[
               styles.cellText,
-              { textAlign: textAlignVal as any, fontSize: fontSizeFromStyle },
+              {
+                textAlign: textAlignVal as
+                  | "left"
+                  | "right"
+                  | "center"
+                  | "justify",
+                fontSize: fontSizeFromStyle,
+              },
             ]}
           >
             {String(child)}
           </Text>
         );
       }
-      // if child is element (e.g. Text already), attempt to clone and inject fontFamily/fontSize if missing
+
       try {
         if (React.isValidElement(child)) {
-          const childStyle = (child.props && child.props.style) || {};
-          const mergedStyle = {
+          // Tipado fuerte para el elemento hijo y sus props de estilo
+          const childElement = child as React.ReactElement<{ style?: Style }>;
+          // Define a type that extends Style with optional justifyContent
+          type ExtendedStyle = Style & { justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around" | "space-evenly" };
+          const childStyle: ExtendedStyle = (childElement.props.style || {}) as ExtendedStyle;
+
+          const mergedStyle: Style = {
             fontFamily: childStyle.fontFamily ?? "Museo Sans",
             fontSize: childStyle.fontSize ?? fontSizeFromStyle,
-            textAlign: childStyle.textAlign ?? textAlignVal,
-
-            justifyContent:
-              (childStyle as any).justifyContent ?? justifyContent,
+            textAlign: childStyle.textAlign ?? (textAlignVal as "left" | "right" | "center" | "justify" | undefined),
+            // Use the extended type for justifyContent
+            justifyContent: childStyle.justifyContent ?? justifyContent,
           };
-          return React.cloneElement(child as React.ReactElement, {
+
+          return React.cloneElement(childElement, {
             key: idx,
             style: mergedStyle,
           });
         }
-      } catch {}
+      } catch (error) {
+        // Ignorar errores de clonación
+        console.warn("Error cloning child in PdfTable", error);
+      }
       return child;
     });
   };
 
   return (
-    <View
-      style={cellStyle}
-      wrap
-      // @ts-ignore
-      data-colspan={colSpan}
-      // @ts-ignore
-      data-rowspan={rowSpan}
-    >
+    <View style={cellStyle} wrap>
       {renderChildren()}
     </View>
   );

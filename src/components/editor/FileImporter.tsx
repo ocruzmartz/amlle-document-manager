@@ -1,8 +1,8 @@
-// src/components/editor/FileImporter.tsx
+// filepath: src/components/editor/FileImporter.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UploadCloud } from "lucide-react";
-import mammoth, { images } from "mammoth";
+import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
@@ -13,6 +13,70 @@ interface FileImporterProps {
   onImport: (htmlContent: string) => void;
   acceptedFormats?: string;
   disabled?: boolean;
+}
+
+// --- Interfaces para el tipado de la estructura XML de DOCX ---
+interface DocxBorder {
+  "@_val"?: string;
+  "@_sz"?: string;
+  "@_color"?: string;
+}
+
+interface DocxNode {
+  tbl?: DocxNode | DocxNode[];
+  tr?: DocxNode | DocxNode[];
+  tc?: DocxNode | DocxNode[];
+  tcPr?: {
+    tcW?: { "@_w"?: string; "@_type"?: string };
+    shd?: { "@_fill"?: string };
+    vAlign?: { "@_val"?: string };
+    tcBorders?: {
+      top?: DocxBorder;
+      left?: DocxBorder;
+      bottom?: DocxBorder;
+      right?: DocxBorder;
+      [key: string]: DocxBorder | undefined;
+    };
+    gridSpan?: { "@_val"?: string };
+  };
+  p?: DocxNode | DocxNode[];
+  r?: DocxNode | DocxNode[];
+  rPr?: {
+    sz?: { "@_val"?: string };
+    rFonts?: { "@_ascii"?: string };
+  };
+  pPr?: {
+    jc?: { "@_val"?: string };
+  };
+  [key: string]: unknown;
+}
+
+interface TableCellStyle {
+  width: { value: number; type: string } | null;
+  shading: string | null;
+  vAlign: string | null;
+  borders: Record<string, { val: string; sz: number; color: string }>;
+  colspan: number;
+  rowspan: number;
+  fontSizePt: number | null;
+  fontFamily: string | null;
+  textAlign: string | null;
+}
+
+// Interfaz extendida para Excel si se usan estilos internos
+interface ExtendedWorkBook extends XLSX.WorkBook {
+  Styles?: {
+    CellXf?: Array<{
+      alignment?: { horizontal?: string };
+      fill?: { fgColor?: { rgb?: string } };
+    }>;
+  };
+}
+
+// Interfaz para el elemento de imagen de Mammoth
+interface MammothImageElement {
+  read: (encoding: string) => Promise<string>;
+  contentType?: string;
 }
 
 /* ===========================
@@ -33,14 +97,17 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
   const body = json.document?.body;
   if (!body) return null;
 
-  const findTbls = (node: any): any[] => {
-    const out: any[] = [];
+  const findTbls = (node: unknown): DocxNode[] => {
+    const out: DocxNode[] = [];
     if (!node || typeof node !== "object") return out;
-    for (const key of Object.keys(node)) {
-      const val = node[key];
+    
+    const typedNode = node as DocxNode;
+
+    for (const key of Object.keys(typedNode)) {
+      const val = typedNode[key];
       if (key === "tbl") {
-        if (Array.isArray(val)) out.push(...val);
-        else out.push(val);
+        if (Array.isArray(val)) out.push(...(val as DocxNode[]));
+        else out.push(val as DocxNode);
       } else if (Array.isArray(val)) {
         val.forEach((el) => out.push(...findTbls(el)));
       } else if (typeof val === "object") {
@@ -51,15 +118,15 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
   };
 
   const tbls = findTbls(body);
-  const tablesStyles: any[] = [];
+  const tablesStyles: TableCellStyle[][][] = [];
 
-  tbls.forEach((tbl: any) => {
+  tbls.forEach((tbl) => {
     const rows = tbl.tr ? (Array.isArray(tbl.tr) ? tbl.tr : [tbl.tr]) : [];
-    const table = [];
+    const table: TableCellStyle[][] = [];
 
-    rows.forEach((tr: any) => {
+    rows.forEach((tr) => {
       const tcs = tr.tc ? (Array.isArray(tr.tc) ? tr.tc : [tr.tc]) : [];
-      const rowArr = tcs.map((tc: any) => {
+      const rowArr = tcs.map((tc) => {
         const tcPr = tc.tcPr || {};
         // width
         let width = null;
@@ -77,7 +144,7 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
         let vAlign = null;
         if (tcPr.vAlign && tcPr.vAlign["@_val"]) vAlign = tcPr.vAlign["@_val"];
         // borders (detailed)
-        const borders: any = {};
+        const borders: Record<string, { val: string; sz: number; color: string }> = {};
         if (tcPr.tcBorders) {
           const b = tcPr.tcBorders;
           ["top", "left", "bottom", "right"].forEach((side) => {
@@ -121,7 +188,7 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
               break;
             }
           }
-        } catch (e) {
+        } catch {
           // ignore parsing issues
         }
 
@@ -136,7 +203,9 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
               break;
             }
           }
-        } catch (e) {}
+        } catch {
+          // ignore parsing issues
+        }
 
         // return aggregated info
         return {
@@ -163,12 +232,10 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
 
 /* ===========================
  * UTIL: mergear estilos DOCX en HTML producido por Mammoth
- * - añade inline style a <th>/<td> en el HTML resultante
- * - matching por índice de tabla/filas/celdas (mammoth mantiene orden)
  * =========================== */
 function mergeDocxStylesIntoHtml(
   mammothHtml: string,
-  tablesStyles: any[] | null
+  tablesStyles: TableCellStyle[][][] | null
 ) {
   if (!tablesStyles || tablesStyles.length === 0) return mammothHtml;
 
@@ -216,7 +283,7 @@ function mergeDocxStylesIntoHtml(
 
         // vertical align
         if (info.vAlign) {
-          const map = { top: "top", center: "middle", bottom: "bottom" };
+          const map: Record<string, string> = { top: "top", center: "middle", bottom: "bottom" };
           const va = map[info.vAlign] || "top";
           inlineParts.push(`vertical-align: ${va}`);
         }
@@ -249,7 +316,7 @@ function mergeDocxStylesIntoHtml(
 
         // text-align
         if (info.textAlign) {
-          const map = { left: "left", center: "center", right: "right", both: "justify" };
+          const map: Record<string, string> = { left: "left", center: "center", right: "right", both: "justify" };
           inlineParts.push(`text-align: ${map[info.textAlign] || "left"}`);
         }
 
@@ -271,9 +338,9 @@ function mergeDocxStylesIntoHtml(
 }
 
 /* ============================================================
- * EXCEL converter (sin cambios estructurales, pero con guardias)
+ * EXCEL converter
  * ============================================================ */
-const excelToHtml = (worksheet: XLSX.WorkSheet): string => {
+const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string => {
   const ref = worksheet["!ref"] || "A1";
   const range = XLSX.utils.decode_range(ref);
 
@@ -292,7 +359,7 @@ const excelToHtml = (worksheet: XLSX.WorkSheet): string => {
     { colspan: number; rowspan: number; skip: boolean }
   >();
 
-  merges.forEach((m: any) => {
+  merges.forEach((m) => {
     const startAddr = XLSX.utils.encode_cell({ r: m.s.r, c: m.s.c });
     const colspan = m.e.c - m.s.c + 1;
     const rowspan = m.e.r - m.s.r + 1;
@@ -359,19 +426,18 @@ const excelToHtml = (worksheet: XLSX.WorkSheet): string => {
 
       baseStyle += " border: 1px solid #ddd;";
 
-      try {
-        const cellXf = cell && cell.s; // XLSX doesn't standardize but some readers store style index
-        // we won't rely on this reliably; advanced mapping requires reading styles.xml (future)
-      } catch (e) {}
-
       // NUEVO: aplicar estilos básicos de alineación y color de fondo desde CellXf (si disponible)
       if (cell && cell.s && wb && wb.Styles && wb.Styles.CellXf) {
-        const xf = wb.Styles.CellXf[cell.s];
-        if (xf && xf.alignment && xf.alignment.horizontal) {
-          baseStyle += ` text-align: ${xf.alignment.horizontal};`;
-        }
-        if (xf && xf.fill && xf.fill.fgColor && xf.fill.fgColor.rgb) {
-          baseStyle += ` background-color: #${xf.fill.fgColor.rgb.slice(2)};`;
+        // cell.s puede ser un número o string dependiendo de la versión
+        const styleIndex = typeof cell.s === 'number' ? cell.s : parseInt(cell.s as string, 10);
+        if (!isNaN(styleIndex)) {
+           const xf = wb.Styles.CellXf[styleIndex];
+           if (xf && xf.alignment && xf.alignment.horizontal) {
+             baseStyle += ` text-align: ${xf.alignment.horizontal};`;
+           }
+           if (xf && xf.fill && xf.fill.fgColor && xf.fill.fgColor.rgb) {
+             baseStyle += ` background-color: #${xf.fill.fgColor.rgb.slice(2)};`;
+           }
         }
       }
 
@@ -394,7 +460,6 @@ const normalizeHtml = (html: string): string => {
   let out = html.replace(/<\/?\w+:[^>]*>/g, "");
   out = out.replace(/<o:p>\s*<\/o:p>/gi, "");
   out = out.replace(/<o:p>[\s\S]*?<\/o:p>/gi, "");
-  out = out.replace(/<!--[\s\S]*?-->/g, "");
   out = out.replace(/<meta[^>]*>/gi, "");
   return out;
 };
@@ -426,8 +491,9 @@ export const FileImporter = ({
           { arrayBuffer },
           {
             styleMap: ["b => strong", "i => em", "u => u"],
-            convertImage: images.inline((element: any) => {
-              return element.read("base64").then((imageBuffer: string) => {
+            // CORRECCIÓN: Usar mammoth.images.imgElement para crear el convertidor correcto
+            convertImage: mammoth.images.imgElement(function(element: MammothImageElement) {
+              return element.read("base64").then(function(imageBuffer: string) {
                 const contentType = element.contentType || "image/png";
                 return { src: `data:${contentType};base64,${imageBuffer}` };
               });
@@ -449,9 +515,10 @@ export const FileImporter = ({
         );
       } else if (file.name.match(/\.(xlsx|xls)$/i)) {
         const arrayBuffer = await file.arrayBuffer();
-        const wb = XLSX.read(arrayBuffer);
+        const wb = XLSX.read(arrayBuffer) as ExtendedWorkBook;
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        html = excelToHtml(sheet);
+        // Corregido: Ahora pasamos 'wb' a excelToHtml
+        html = excelToHtml(sheet, wb);
       } else {
         setError(`Formato no soportado. Usa: ${acceptedFormats}`);
         setIsLoading(false);
