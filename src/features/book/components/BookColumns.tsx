@@ -19,10 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, type useNavigate } from "react-router";
-import { format, isValid } from "date-fns";
-import { es } from "date-fns/locale";
 import type { Tome } from "@/types";
-import { numberToRoman } from "@/lib/textUtils"; // ✅ Importar helper
+import { numberToRoman, formatDateTime } from "@/lib/textUtils";
 
 interface GetColumnsProps {
   onFinalize: (tome: Tome) => void;
@@ -130,17 +128,11 @@ export const getColumns = ({
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => {
-      const dateValue = row.getValue("createdAt") as string | undefined;
-      if (!dateValue || !isValid(new Date(dateValue))) return "—";
-      return (
-        <div className="font-medium">
-          {format(new Date(dateValue), "dd/MM/yyyy 'a las' HH:mm", {
-            locale: es,
-          })}
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <div className="font-medium">
+        {formatDateTime(row.getValue("createdAt"))}
+      </div>
+    ),
   },
   {
     accessorKey: "modificationName",
@@ -165,24 +157,16 @@ export const getColumns = ({
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => {
-      // ✅ 7. Validar fecha (SÍ viene)
-      const dateValue = row.getValue("updatedAt") as string | undefined;
-      if (!dateValue || !isValid(new Date(dateValue))) return "—";
-      return (
-        <div className="font-medium">
-          {format(new Date(dateValue), "dd/MM/yyyy 'a las' HH:mm", {
-            locale: es,
-          })}
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <div className="font-medium">
+        {formatDateTime(row.getValue("updatedAt"))} 
+      </div>
+    ),
   },
   {
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      // ✅ 7. SÍ viene
       const status = row.getValue("status") as Tome["status"];
       return (
         <Badge
@@ -203,7 +187,6 @@ export const getColumns = ({
   {
     id: "actions",
     cell: ({ row }) => {
-      // ... (El menú de acciones funcionará sin cambios)
       const tome = row.original;
       const isBorrador = tome.status === "BORRADOR";
       const isFinalizado = tome.status === "FINALIZADO";

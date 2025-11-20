@@ -1,42 +1,48 @@
+// filepath: src/lib/textUtils.ts
 import { isValid, format } from "date-fns";
 import { es } from "date-fns/locale";
 
+// Función auxiliar para capitalizar (ya la tenías, la usamos abajo)
+export const capitalize = (s: string): string =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+
 export const numberToWords = (num: number): string => {
+  // 1. Cambiamos todo a minúsculas para evitar "VeintiUno"
   const units = [
     "",
-    "Uno",
-    "Dos",
-    "Tres",
-    "Cuatro",
-    "Cinco",
-    "Seis",
-    "Siete",
-    "Ocho",
-    "Nueve",
+    "uno",
+    "dos",
+    "tres",
+    "cuatro",
+    "cinco",
+    "seis",
+    "siete",
+    "ocho",
+    "nueve",
   ];
   const tens = [
     "",
-    "Diez",
-    "Veinte",
-    "Treinta",
-    "Cuarenta",
-    "Cincuenta",
-    "Sesenta",
-    "Setenta",
-    "Ochenta",
-    "Noventa",
+    "diez",
+    "veinte",
+    "treinta",
+    "cuarenta",
+    "cincuenta",
+    "sesenta",
+    "setenta",
+    "ochenta",
+    "noventa",
   ];
   const hundreds = [
     "",
-    "Ciento",
-    "Doscientos",
-    "Trescientos",
-    "Cuatrocientos",
-    "Quinientos",
-    "Seiscientos",
-    "Setecientos",
-    "Ochocientos",
-    "Novecientos",
+    "ciento",
+    "doscientos",
+    "trescientos",
+    "cuatrocientos",
+    "quinientos",
+    "seiscientos",
+    "setecientos",
+    "ochocientos",
+    "novecientos",
   ];
   const specials: { [key: number]: string } = {
     10: "diez",
@@ -45,7 +51,7 @@ export const numberToWords = (num: number): string => {
     13: "trece",
     14: "catorce",
     15: "quince",
-    16: "dieciséis",
+    16: "dieciséis", // Corregido con tilde
     17: "diecisiete",
     18: "dieciocho",
     19: "diecinueve",
@@ -53,34 +59,41 @@ export const numberToWords = (num: number): string => {
     30: "treinta",
   };
 
-  if (specials[num]) return specials[num];
-  if (num > 15 && num < 20) return "Dieci" + units[num - 10];
-  if (num > 20 && num < 30) return "Veinti" + units[num % 10];
-  if (num >= 2000 && num < 3000) {
-    const remainder = num - 2000;
-    return "dos mil" + (remainder > 0 ? " " + numberToWords(remainder) : "");
-  }
-  if (num >= 100) {
-    const exactHundred = Math.floor(num / 100);
-    const remainder = num % 100;
-    if (num === 100) return "Cien";
-    return (
-      hundreds[exactHundred] +
-      (remainder > 0 ? " " + numberToWords(remainder) : "")
-    );
-  }
+  // Helper interno para formatear sin capitalizar aún
+  const resolveNumber = (n: number): string => {
+    if (specials[n]) return specials[n];
 
-  const ten = Math.floor(num / 10);
-  const one = num % 10;
-  let str = "";
-  if (ten > 0) str += tens[ten] + (one > 0 ? " y " : "");
-  if (one > 0) str += units[one];
+    if (n > 15 && n < 20) return "dieci" + units[n - 10];
+    if (n > 20 && n < 30) return "veinti" + units[n % 10];
 
-  return str || num.toString();
+    if (n >= 2000 && n < 3000) {
+      const remainder = n - 2000;
+      return "dos mil" + (remainder > 0 ? " " + resolveNumber(remainder) : "");
+    }
+
+    if (n >= 100) {
+      const exactHundred = Math.floor(n / 100);
+      const remainder = n % 100;
+      if (n === 100) return "cien";
+      return (
+        hundreds[exactHundred] +
+        (remainder > 0 ? " " + resolveNumber(remainder) : "")
+      );
+    }
+
+    const ten = Math.floor(n / 10);
+    const one = n % 10;
+    let str = "";
+    if (ten > 0) str += tens[ten] + (one > 0 ? " y " : "");
+    if (one > 0) str += units[one];
+
+    return str || n.toString();
+  };
+
+  // 2. Obtenemos el texto en minúscula y capitalizamos solo la primera letra
+  const result = resolveNumber(num);
+  return capitalize(result);
 };
-
-export const capitalize = (s: string): string =>
-  s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
 export const numberToRoman = (num: number): string => {
   if (isNaN(num) || num <= 0) return String(num);
@@ -114,8 +127,8 @@ export const numberToRoman = (num: number): string => {
 
 export const formatDateToISO = (date: Date): string => {
   const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0"); // getUTCMonth es 0-11
-  const day = String(date.getUTCDate()).padStart(2, "0"); // <-- Usar getUTCDate
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -133,37 +146,49 @@ export const parseDateSafely = (
   dateString: string | undefined
 ): Date | undefined => {
   if (!dateString) return undefined;
-
-  // Busca el patrón YYYY-MM-DD al inicio del string.
-  // Esto funciona para "2025-11-13" Y para "2025-11-13T00:00:00.000Z"
   const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-
   if (match) {
     const year = parseInt(match[1], 10);
-    const month = parseInt(match[2], 10) - 1; // Meses en JS son 0-indexados
+    const month = parseInt(match[2], 10) - 1;
     const day = parseInt(match[3], 10);
-    
-    // Crea una fecha local a medianoche (ignorando la hora UTC)
     return new Date(year, month, day);
   }
-
-  // Fallback para otros formatos (menos confiable)
   const date = new Date(dateString);
   if (isValid(date)) return date;
-
   return undefined;
 };
 
 export const formatUIDate = (dateString: string | undefined): string => {
   if (!dateString) return "Sin fecha";
-
   const date = parseDateSafely(dateString);
   if (!date || !isValid(date)) return "Fecha inválida";
-
   return format(date, "dd 'de' MMM, yyyy", { locale: es });
 };
 
 export const removeEmptyParagraphsAtStart = (html: string): string => {
   if (!html) return "";
   return html.replace(/^(<p><\/p>|<p>\s*<\/p>|<p>&nbsp;<\/p>)+/i, "");
+};
+
+export const formatDateTime = (
+  dateInput: string | Date | undefined | null
+): string => {
+  if (!dateInput) return "—";
+
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (!isValid(date)) return "Fecha inválida";
+
+  const utcTime = date.getTime();
+
+  const OFFSET_HOURS = 7;
+  const svTime = new Date(utcTime - OFFSET_HOURS * 60 * 60 * 1000);
+
+  const day = String(svTime.getUTCDate()).padStart(2, "0");
+  const month = String(svTime.getUTCMonth() + 1).padStart(2, "0");
+  const year = svTime.getUTCFullYear();
+
+  const hours = String(svTime.getUTCHours()).padStart(2, "0");
+  const minutes = String(svTime.getUTCMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year}, ${hours}:${minutes}`;
 };

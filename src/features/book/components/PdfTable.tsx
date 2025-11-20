@@ -228,7 +228,7 @@ interface PdfTableRowProps {
 export const PdfTableRow: React.FC<PdfTableRowProps> = ({
   children,
   style,
-  wrap = true,
+  wrap = false,
 }) => {
   return (
     <View style={[styles.row, style || {}]} wrap={wrap}>

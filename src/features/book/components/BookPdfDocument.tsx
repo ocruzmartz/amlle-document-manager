@@ -1,4 +1,3 @@
-// filepath: src/features/book/components/BookPdfDocument.tsx
 import React from "react";
 import {
   Page,
@@ -1153,8 +1152,8 @@ export const BookPdfDocument = ({
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
               y Acuerdos Municipales <Text>{tome.name}</Text>, de las Sesiones
-              que celebre durante el año <Text>{authYearInWords}</Text> numeradas
-              correlativamente.
+              que celebre durante el año <Text>{authYearInWords}</Text>{" "}
+              numeradas correlativamente.
             </Text>
             <Text
               style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
@@ -1384,7 +1383,7 @@ export const BookPdfDocument = ({
                 marginTop: 0,
               }}
             >
-              Alcaldía Municipal Antiguo Cuscatlán, a los {closingDayInWords}
+              Alcaldía Municipal Antiguo Cuscatlán, a los {closingDayInWords}{" "}
               días del mes de {closingMonthName} de {closingYearInWords}.
             </Text>
             <View

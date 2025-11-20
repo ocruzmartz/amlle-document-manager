@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatDateTime } from "@/lib/textUtils";
 
 type RoleUIMap = Record<
   UserRole,
@@ -105,8 +106,6 @@ export const getColumns = (
   {
     // 1. Columna "Fecha de Creación" (Exacta)
     accessorKey: "createdAt",
-    // ❗️ Esta columna usará 'createdAt' como su ID por defecto,
-    // lo cual coincide con el 'initialSorting' de la página.
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -117,16 +116,9 @@ export const getColumns = (
       </Button>
     ),
     cell: ({ row }) => {
-      const createdAtISO = row.getValue("createdAt") as string | null;
-      if (!createdAtISO) {
-        return <div className="text-muted-foreground italic">N/A</div>;
-      }
-      const date = parseISO(createdAtISO);
-      if (!isValid(date)) {
-        return <div className="text-destructive">Fecha inválida</div>;
-      }
-      const exactTime = format(date, "dd/MM/yyyy HH:mm", { locale: es });
-      return <div className="font-medium">{exactTime}</div>;
+      <div className="font-medium">
+        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
+      </div>;
     },
     sortingFn: "datetime",
   },

@@ -4,8 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatDateTime } from "@/lib/textUtils";
 
 // Mapeo de acciones a colores de Badge
 const actionVariantMap: Partial<
@@ -47,12 +46,9 @@ export const columns: ColumnDef<FullActivityLog>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("timestamp"));
-      return (
-        <div className="font-medium">
-          {format(date, "dd/MM/yyyy HH:mm:ss", { locale: es })}
-        </div>
-      );
+      <div className="font-medium">
+        {formatDateTime(row.getValue("createdAt"))}
+      </div>
     },
   },
   {
@@ -102,7 +98,6 @@ export const columns: ColumnDef<FullActivityLog>[] = [
     header: "Objeto Modificado",
     cell: ({ row }) => {
       const log = row.original;
-      // No crear enlace si la URL es '#' (para objetos eliminados)
       if (log.targetUrl === "#") {
         return <div className="font-medium">{log.targetName}</div>;
       }

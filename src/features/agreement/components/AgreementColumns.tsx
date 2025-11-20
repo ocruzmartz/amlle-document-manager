@@ -1,11 +1,9 @@
-// filepath: src/features/agreement/components/AgreementDataColumns.tsx
 import { type ColumnDef } from "@tanstack/react-table";
 import { type Agreement } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatDateTime } from "@/lib/textUtils";
 
 export const columns: ColumnDef<Agreement>[] = [
   {
@@ -51,7 +49,7 @@ export const columns: ColumnDef<Agreement>[] = [
     header: "Tomo de Origen",
     cell: ({ row }) => {
       const agreement = row.original;
-      
+
       return (
         <Link
           to={`/books/${agreement.tomeId}`}
@@ -68,7 +66,7 @@ export const columns: ColumnDef<Agreement>[] = [
     cell: ({ row }) => {
       const createdBy = row.getValue("createdByName") as string;
       return <div className="font-medium">{createdBy || "-"}</div>;
-    }
+    },
   },
   {
     accessorKey: "createdAt",
@@ -82,15 +80,9 @@ export const columns: ColumnDef<Agreement>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const dateValue = row.getValue("createdAt");
-      if (!dateValue)
-        return <div className="font-medium text-muted-foreground">-</div>;
-      const date = new Date(dateValue as string);
-      return (
-        <div className="font-medium">
-          {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
-        </div>
-      );
+      <div className="font-medium">
+        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
+      </div>;
     },
   },
   {
@@ -99,21 +91,15 @@ export const columns: ColumnDef<Agreement>[] = [
     cell: ({ row }) => {
       const latestModifier = row.getValue("latestModifierName") as string;
       return <div className="font-medium">{latestModifier || "-"}</div>;
-    }
+    },
   },
   {
     accessorKey: "latestModificationDate",
     header: "Última Modificación",
     cell: ({ row }) => {
-      const dateValue = row.getValue("latestModificationDate");
-      if (!dateValue)
-        return <div className="font-medium text-muted-foreground">-</div>;
-      const date = new Date(dateValue as string);
-      return (
-        <div className="font-medium">
-          {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
-        </div>
-      );
+      <div className="font-medium">
+        {formatDateTime(row.getValue("latestModificationDate"))}
+      </div>;
     },
   },
 ];

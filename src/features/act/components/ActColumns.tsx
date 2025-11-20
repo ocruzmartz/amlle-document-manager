@@ -3,8 +3,7 @@ import { type Act } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
-import { format, isValid } from "date-fns"; // ✅ Importar isValid
-import { es } from "date-fns/locale";
+import { formatDateTime } from "@/lib/textUtils";
 
 export const columns: ColumnDef<Act>[] = [
   {
@@ -77,23 +76,9 @@ export const columns: ColumnDef<Act>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      // ✅ --- INICIO DE LA CORRECCIÓN ---
-      const dateValue = row.getValue("createdAt") as string;
-      if (!dateValue) {
-        return <div className="font-medium text-muted-foreground">-</div>;
-      }
-      const date = new Date(dateValue);
-      if (!isValid(date)) {
-        return (
-          <div className="font-medium text-destructive">Fecha inválida</div>
-        );
-      }
-      // ✅ --- FIN DE LA CORRECCIÓN ---
-      return (
-        <div className="font-medium">
-          {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
-        </div>
-      );
+      <div className="font-medium">
+        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
+      </div>;
     },
   },
   {
@@ -110,23 +95,9 @@ export const columns: ColumnDef<Act>[] = [
     accessorKey: "latestModificationDate",
     header: "Última Modificación",
     cell: ({ row }) => {
-      // ✅ --- INICIO DE LA CORRECCIÓN ---
-      const dateValue = row.getValue("latestModificationDate") as string;
-      if (!dateValue) {
-        return <div className="font-medium text-muted-foreground">-</div>;
-      }
-      const date = new Date(dateValue);
-      if (!isValid(date)) {
-        return (
-          <div className="font-medium text-destructive">Fecha inválida</div>
-        );
-      }
-      // ✅ --- FIN DE LA CORRECCIÓN ---
-      return (
-        <div className="font-medium">
-          {format(date, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
-        </div>
-      );
+      <div className="font-medium">
+        {formatDateTime(row.getValue("latestModificationDate"))}{" "}
+      </div>;
     },
   },
 ];
