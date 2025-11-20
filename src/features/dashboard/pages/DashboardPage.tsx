@@ -16,6 +16,7 @@ import {
 } from "@/types";
 import { numberToRoman } from "@/lib/textUtils";
 import { toast } from "sonner";
+import { bookService } from "@/features/book/api/bookService";
 
 interface DashboardStats {
   tomeCount: number;
@@ -168,6 +169,23 @@ const DashboardPage = () => {
   const [recentTomes, setRecentTomes] = useState<RecentTome[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const response = bookService.getAllAgreementsContent(
+        "b0d19cc4-0744-406d-b9ee-face42fec994"
+      );
+      console.log(
+        "[DashboardPage] Contenido de todos los acuerdos para el libro b0d19cc4-0744-406d-b9ee-face42fec994:",
+        response
+      );
+    } catch (error) {
+      console.error(
+        "Error al obtener el contenido de todos los acuerdos:",
+        error
+      );
+    }
+  }, []);
 
   useEffect(() => {
     const loadDashboardData = async () => {

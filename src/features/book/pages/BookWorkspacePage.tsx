@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import {
   ChevronLeft,
   PanelRightOpen,
@@ -92,8 +92,7 @@ const recalculateNumbers = (tomeState: Tome): Tome => {
 export const BookWorkspacePage = () => {
   const navigate = useNavigate();
   const { bookId: tomeId } = useParams<{ bookId: string }>();
-  const location = useLocation();
-
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tome, setTome] = useState<Tome | null>(null);
   const [parentBook, setParentBook] = useState<Book | null>(null);
   const [allVolumes, setAllVolumes] = useState<Tome[]>([]);
@@ -101,10 +100,10 @@ export const BookWorkspacePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isEditorSaving, setIsEditorSaving] = useState(false);
 
   type SaveHandler = () => Promise<boolean>;
   const activeSaveHandlerRef = useRef<SaveHandler | null>(null);
-
   const [isRenameBookDialogOpen, setIsRenameBookDialogOpen] = useState(false);
   const [newBookName, setNewBookName] = useState("");
   const [tomeToDelete, setTomeToDelete] = useState<Tome | null>(null);
@@ -127,20 +126,31 @@ export const BookWorkspacePage = () => {
     : "";
 
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
-    const initialActId = location.state?.initialActId;
-    const initialDetailView = location.state?.initialDetailView;
-    const initialAgreementId =
-      initialDetailView?.type === "agreement-editor"
-        ? initialDetailView.agreementId
-        : null;
-    if (initialActId) {
+    const view = searchParams.get("view") || "cover";
+    const actId = searchParams.get("actId") || null;
+    const detailView = searchParams.get("detailView") || "none";
+    const agreementId = searchParams.get("agreementId") || null;
+
+    if (view === "act-edit" && actId) {
       return {
-        main: { type: "act-edit", actId: initialActId },
-        detail: initialDetailView || { type: "agreement-list" },
-        activeActId: initialActId,
-        activeAgreementId: initialAgreementId,
+        main: { type: "act-edit", actId: actId },
+        detail:
+          detailView === "agreement-editor" && agreementId
+            ? { type: "agreement-editor", agreementId: agreementId }
+            : { type: "agreement-list" },
+        activeActId: actId,
+        activeAgreementId: agreementId,
       };
     }
+    if (view === "pdf-settings") {
+      return {
+        main: { type: "pdf-settings" },
+        detail: { type: "none" },
+        activeActId: null,
+        activeAgreementId: null,
+      };
+    }
+    // Default to cover
     return {
       main: { type: "cover" },
       detail: { type: "none" },
@@ -149,9 +159,40 @@ export const BookWorkspacePage = () => {
     };
   });
 
+  const setViewAndUrl = useCallback(
+    (view: WorkspaceView) => {
+      // 1. Actualizar el estado local
+      setCurrentView(view);
+
+      // 2. Actualizar la URL con searchParams
+      const params = new URLSearchParams();
+      params.set("view", view.main.type);
+      if (view.activeActId) {
+        params.set("actId", view.activeActId);
+      }
+      if (view.detail.type) {
+        params.set("detailView", view.detail.type);
+      }
+      if (view.activeAgreementId) {
+        params.set("agreementId", view.activeAgreementId);
+      }
+      // Usar 'replace: true' para no contaminar el historial del navegador
+      setSearchParams(params, { replace: true });
+    },
+    [setSearchParams]
+  );
+
   const onRegisterSaveHandler = useCallback((handler: SaveHandler | null) => {
     activeSaveHandlerRef.current = handler;
   }, []);
+
+  const handleEditorStateChange = useCallback(
+    (state: { dirty: boolean; saving: boolean }) => {
+      setHasUnsavedChanges(state.dirty);
+      setIsEditorSaving(state.saving);
+    },
+    []
+  );
 
   useEffect(() => {
     const loadWorkspace = async () => {
@@ -283,6 +324,7 @@ export const BookWorkspacePage = () => {
         }
 
         setHasUnsavedChanges(false);
+        setIsEditorSaving(false);
         toast.success("Cambios guardados exitosamente", { id: toastId });
       } catch (error: unknown) {
         console.error("❌ Error al actualizar tomo:", error);
@@ -406,7 +448,7 @@ export const BookWorkspacePage = () => {
         } catch (error: unknown) {
           console.error("❌ Error al cargar acta por ID:", error);
           toast.error("No se pudo cargar el acta para edición.");
-          setCurrentView({
+          setViewAndUrl({
             main: { type: "act-list" },
             detail: { type: "none" },
             activeActId: null,
@@ -419,7 +461,7 @@ export const BookWorkspacePage = () => {
     };
 
     loadActForEditing();
-  }, [currentView.main.type, currentView.activeActId, setTome]);
+  }, [currentView.main.type, currentView.activeActId, setTome, setViewAndUrl]);
 
   const handleActUpdate = useCallback(
     async (updatedAct: Act) => {
@@ -457,7 +499,7 @@ export const BookWorkspacePage = () => {
         numberToWords(newActNumber)
       )}`;
 
-     const payload = {
+      const payload = {
         volumeId: tomeId,
         name: newActName,
         actNumber: newActNumber,
@@ -475,7 +517,8 @@ export const BookWorkspacePage = () => {
         };
       });
 
-      setCurrentView({
+      setViewAndUrl({
+        // <-- Usar la nueva función
         main: { type: "act-edit", actId: newActFromBackend.id },
         detail: { type: "agreement-list" },
         activeActId: newActFromBackend.id,
@@ -564,6 +607,21 @@ export const BookWorkspacePage = () => {
               ? error.message
               : "No se pudo recargar el acta."
           );
+
+          interface ErrorWithResponse extends Error {
+            response?: { status?: number };
+          }
+          if (
+            error instanceof Error &&
+            (error as ErrorWithResponse).response?.status === 404
+          ) {
+            setViewAndUrl({
+              main: { type: "act-list" },
+              detail: { type: "none" },
+              activeActId: null,
+              activeAgreementId: null,
+            });
+          }
         } finally {
           if (showLoadingScreen) {
             setIsActLoading(false);
@@ -571,7 +629,7 @@ export const BookWorkspacePage = () => {
         }
       }
     },
-    [currentView.activeActId, currentView.main.type]
+    [currentView.activeActId, currentView.main.type, setViewAndUrl]
   );
 
   useEffect(() => {
@@ -750,19 +808,23 @@ export const BookWorkspacePage = () => {
             •
           </span>
         )}
-        {isReadOnly && (
+        {isEditorSaving && (
           <span
-            className="text-purple-600 font-semibold text-xs ml-2"
-            title="Finalizado"
+            className="text-blue-500 font-semibold text-xs ml-2 animate-pulse"
+            title="Guardando..."
           >
-            (FINALIZADO - SOLO LECTURA)
+            (Guardando...)
           </span>
         )}
       </div>
 
       <Sheet>
         <SheetTrigger asChild className="gap-0!">
-          <Button variant="outline" className="shadow-none">
+          <Button
+            variant="outline"
+            className="shadow-none"
+            disabled={isEditorSaving}
+          >
             <PanelRightOpen className="mr-2 h-4 w-4" />
             Vista Previa (PDF)
           </Button>
@@ -779,13 +841,11 @@ export const BookWorkspacePage = () => {
               Recargar
             </Button>
           </SheetHeader>
-          <div className="flex-1 overflow-hidden">
-            <BookPdfPreview
-              key={previewKey}
-              tome={tome}
-              allSigners={allSigners}
-            />
-          </div>
+          <BookPdfPreview
+            key={previewKey}
+            tome={tome}
+            allSigners={allSigners}
+          />
         </SheetContent>
       </Sheet>
     </div>
@@ -821,18 +881,18 @@ export const BookWorkspacePage = () => {
           <BookSidebarNav
             acts={tome.acts || []}
             currentView={currentView}
-            onViewChange={setCurrentView}
+            onViewChange={setViewAndUrl}
           />
         </div>
         <div className="flex-1 flex min-w-0">
           <BookEditor
             tome={tome}
             currentView={currentView}
-            setCurrentView={setCurrentView}
+            setCurrentView={setViewAndUrl}
             onUpdateTome={handleTomeUpdate}
             onUpdateAct={handleActUpdate}
             onCreateActa={handleCreateAct}
-            setHasUnsavedChanges={setHasUnsavedChanges}
+            onStateChange={handleEditorStateChange}
             onDeleteAgreement={handleDeleteAgreementClick}
             onRefetchAct={refetchActiveAct}
             onReorderAct={handleReorderAct}

@@ -1,8 +1,4 @@
-import {
-  apiPostDirect,
-  apiGetDirect,
-  apiPatchDirect,
-} from "@/lib/apiHelpers";
+import { apiPostDirect, apiGetDirect, apiPatchDirect } from "@/lib/apiHelpers";
 import { type Book } from "@/types";
 
 /**
@@ -45,6 +41,20 @@ export const bookService = {
     );
 
     return updatedBook;
+  },
+
+  getAllAgreementsContent: async (bookId: string): Promise<any[]> => {
+    const endpoint = `/book/build/all-agreements-content/${bookId}`;
+
+    const data = await apiGetDirect<any>(endpoint);
+
+    // ✅ ¡Aquí está el console.log que solicitaste!
+    console.log(
+      `[bookService.getAllAgreementsContent] Respuesta del backend para el libro ${bookId}:`,
+      data
+    );
+
+    return data;
   },
 
   /**

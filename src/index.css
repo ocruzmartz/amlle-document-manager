@@ -238,13 +238,12 @@ body {
   width: 100%;
   margin: 1rem 0;
   overflow: hidden;
-  border: 1px solid #ddd;
 }
 
 .ProseMirror table td,
 .ProseMirror table th {
   min-width: 1em;
-  border: 1px solid #ddd;
+  border: 1px solid #000000;
   padding: 8px 12px;
   vertical-align: top;
   box-sizing: border-box;
@@ -307,7 +306,6 @@ body {
 .ProseMirror p {
   margin: 0 !important;
   padding: 0 !important;
-  line-height: 1.5;
 }
 
 /* ✅ Párrafos vacíos también tienen espaciado */

@@ -36,6 +36,7 @@ interface BookPdfSettingsFormProps {
   onUpdateSettings: (settings: Tome["pdfSettings"]) => void;
   isReadOnly?: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
+  onStateChange: (state: { dirty: boolean; saving: boolean }) => void;
 }
 
 export const BookPdfSettingsForm = ({
@@ -43,6 +44,7 @@ export const BookPdfSettingsForm = ({
   onUpdateSettings,
   isReadOnly = false,
   onRegisterSaveHandler,
+  onStateChange,
 }: BookPdfSettingsFormProps) => {
   const form = useForm<PdfSettingsFormValues>({
     resolver: zodResolver(
@@ -116,6 +118,7 @@ export const BookPdfSettingsForm = ({
       loadingMessage: "Guardando configuración...",
       successMessage: "Configuración guardada.",
       errorMessage: "Error al guardar la configuración.",
+      onStateChange: onStateChange,
     });
 
   useEffect(() => {
@@ -421,7 +424,9 @@ export const BookPdfSettingsForm = ({
                                   value={field.value ?? ""}
                                   onChange={(e) => {
                                     const value = e.target.value;
-                                    field.onChange(value === "" ? undefined : Number(value));
+                                    field.onChange(
+                                      value === "" ? undefined : Number(value)
+                                    );
                                   }}
                                 />
                               </FormControl>

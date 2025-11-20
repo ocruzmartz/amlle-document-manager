@@ -37,6 +37,7 @@ interface BookCoverFormProps {
   onSkip: () => void;
   isReadOnly?: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
+  onStateChange: (state: { dirty: boolean; saving: boolean }) => void;
 }
 
 export const BookCoverForm = ({
@@ -45,6 +46,7 @@ export const BookCoverForm = ({
   onSkip,
   isReadOnly = false,
   onRegisterSaveHandler,
+  onStateChange,
 }: BookCoverFormProps) => {
   // ✅ 2. Lógica para generar el nombre por defecto si es 'null'
   const defaultTomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
@@ -108,6 +110,7 @@ export const BookCoverForm = ({
     loadingMessage: "Guardando portada...",
     successMessage: "Portada guardada exitosamente.",
     errorMessage: "Error al guardar la portada.",
+    onStateChange: onStateChange,
   });
 
   useEffect(() => {

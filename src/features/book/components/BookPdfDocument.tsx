@@ -72,14 +72,6 @@ const hyphenationCallback: HyphenationCallback = (word) => {
   return Array.isArray(result) ? result : [word];
 };
 
-/**
- * Mejorado parseStyleAttribute:
- * - reconoce padding (px), padding shorthand
- * - reconoce border (width, color) en forma simple
- * - reconoce vertical-align (valign)
- * - reconoce width en px o %
- * - background-color y color ya estaban soportados
- */
 const parseStyleAttribute = (styleString: string | null): Style => {
   if (!styleString) return {};
   const style: Style = {};
@@ -684,16 +676,16 @@ const parseHtmlTable = (
     maxColumns = parseCells(headerRow || bodyRows[0] || "").length || 1;
   }
 
-  // If columnWidths are in px, convert to percentage relative to total px
   let resolvedColumnWidths: (number | null)[] = [];
   if (columnWidths.length > 0) {
     if (colIsPercent) {
       resolvedColumnWidths = columnWidths.slice(0);
     } else {
-      const pxSum = columnWidths.reduce((s, c) => s + (c || 0), 0);
-      if (pxSum > 0) {
+      const pxSum = columnWidths.reduce((s, c) => (s ?? 0) + (c ?? 0), 0);
+      const safePxSum = pxSum ?? 0;
+      if (safePxSum > 0) {
         resolvedColumnWidths = columnWidths.map((c) =>
-          c ? (c / pxSum) * 100 : null
+          c ? (c / safePxSum) * 100 : null
         );
       } else {
         resolvedColumnWidths = columnWidths.map(() => null);
@@ -758,7 +750,9 @@ const parseHtmlTable = (
         <PdfTableRow isHeader>
           {parseCells(headerRow).map((cell, idx, arr) => {
             let cellTextAlign =
-              (cell.style && (cell.style as any).textAlign) || "left";
+              (cell.style &&
+                (cell.style as { textAlign?: string }).textAlign) ||
+              "left";
             if (cellTextAlign === "justify") {
               cellTextAlign = "left";
             }
@@ -793,7 +787,7 @@ const parseHtmlTable = (
         const cells = parseCells(rowContent);
 
         return (
-          <PdfTableRow key={`row-${rowIndex}`}>
+          <PdfTableRow key={`row-${rowIndex}`} wrap={false}>
             {cells.map((cell, cellIndex, cellsArr) => {
               let cellTextAlign =
                 (cell.style && (cell.style as any).textAlign) || "left";
@@ -1036,6 +1030,7 @@ export const BookPdfDocument = ({
     margins: { top: 50, bottom: 50, left: 60, right: 60 },
     lineHeight: 1.5,
     fontSize: 11,
+    enablePageIndex: false,
     enablePageNumbering: false,
     pageNumberingOffset: 0,
     pageNumberingPosition: "center",
@@ -1158,7 +1153,7 @@ export const BookPdfDocument = ({
               Autoriza el presente Libro para que el Concejo Municipal de
               Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
               y Acuerdos Municipales <Text>{tome.name}</Text>, de las Sesiones
-              que celebre durante el año<Text>{authYearInWords}</Text> numeradas
+              que celebre durante el año <Text>{authYearInWords}</Text> numeradas
               correlativamente.
             </Text>
             <Text
@@ -1190,40 +1185,46 @@ export const BookPdfDocument = ({
       </Page>
 
       {/* Índice */}
-      <Page
-        size={settings.pageSize}
-        orientation={settings.orientation}
-        style={dynamicPageStyle}
-      >
-        <Text style={styles.indexTitle}>Índice</Text>
-        {!tome.acts || tome.acts.length === 0 ? (
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
-            <Text>No hay actas creadas aún</Text>
-          </View>
-        ) : (
-          <View>
-            {tome.acts.map((act, actIndex) => (
-              <React.Fragment key={act.id}>
-                <View style={styles.indexItem}>
-                  <Text style={styles.indexItemText}>{act.name}</Text>
-                  <View style={styles.indexItemDots} />
-                  <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
-                </View>
-                {act.agreements.map((agreement) => (
-                  <View key={agreement.id} style={styles.indexAgreementItem}>
-                    <Text style={styles.indexItemText}>{agreement.name}</Text>
+      {/* {settings.enablePageIndex && (
+        <Page
+          size={settings.pageSize}
+          orientation={settings.orientation}
+          style={dynamicPageStyle}
+        >
+          <Text style={styles.indexTitle}>Índice</Text>
+          {!tome.acts || tome.acts.length === 0 ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text>No hay actas creadas aún</Text>
+            </View>
+          ) : (
+            <View>
+              {tome.acts.map((act, actIndex) => (
+                <React.Fragment key={act.id}>
+                  <View style={styles.indexItem}>
+                    <Text style={styles.indexItemText}>{act.name}</Text>
                     <View style={styles.indexItemDots} />
                     <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
                   </View>
-                ))}
-              </React.Fragment>
-            ))}
-          </View>
-        )}
-        <PageNumberRenderer />
-      </Page>
+                  {act.agreements.map((agreement) => (
+                    <View key={agreement.id} style={styles.indexAgreementItem}>
+                      <Text style={styles.indexItemText}>{agreement.name}</Text>
+                      <View style={styles.indexItemDots} />
+                      <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
+                    </View>
+                  ))}
+                </React.Fragment>
+              ))}
+            </View>
+          )}
+          <PageNumberRenderer />
+        </Page>
+      )} */}
 
       {/* Actas */}
       {tome.acts && tome.acts.length > 0 && (

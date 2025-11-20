@@ -28,7 +28,7 @@ interface ActEditorProps {
   onToggleAgreements?: () => void;
   onBackToList: () => void;
   isAgreementsPanelVisible?: boolean;
-  setHasUnsavedChanges: (hasChanges: boolean) => void;
+  onStateChange: (state: { dirty: boolean; saving: boolean }) => void;
   isReadOnly?: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
@@ -39,7 +39,7 @@ export const ActEditor = ({
   onToggleAgreements,
   onBackToList,
   isAgreementsPanelVisible = true,
-  setHasUnsavedChanges,
+  onStateChange,
   isReadOnly = false,
   onRegisterSaveHandler,
 }: ActEditorProps) => {
@@ -73,7 +73,7 @@ export const ActEditor = ({
     initialData: act,
     currentData: currentCombinedData,
     onSave: onSaveCallback,
-    setHasUnsavedChanges: setHasUnsavedChanges,
+    onStateChange: onStateChange,
     loadingMessage: "Guardando acta...",
     successMessage: "Acta guardada exitosamente.",
     errorMessage: "Error al guardar el acta.",

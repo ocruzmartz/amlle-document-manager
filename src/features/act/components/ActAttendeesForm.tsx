@@ -70,15 +70,38 @@ export const ActAttendeesForm = ({
             <span className="text-xs text-muted-foreground">
               Síndico Municipal
             </span>
+           
             <span className="text-sm font-medium">{OFFICIAL_SYNDIC.name}</span>
+             {
+              /* Muestra un badge de asistencia basado en el 'attendees' del getActById */
+              attendees?.syndic ? (
+                <Badge variant="outline" className="text-xs mb-1">
+                  Presente
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="text-xs mb-1">
+                  Ausente
+                </Badge>
+              )
+            }
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">
               Secretaria Municipal
             </span>
+            
             <span className="text-sm font-medium">
               {OFFICIAL_SECRETARY.name}
             </span>
+            {attendees?.secretary ? (
+              <Badge variant="outline" className="text-xs mb-1">
+                Presente
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="text-xs mb-1">
+                Ausente
+              </Badge>
+            )}
             {/* Muestra un badge de asistencia basado en el 'attendees' del getActById */}
           </div>
         </div>
@@ -121,7 +144,6 @@ export const ActAttendeesForm = ({
                   {isSubstitute && originalOwner && (
                     <Badge variant="outline" className="text-xs">
                       Sustituye a{" "}
-                      {/* Usar el nombre del Propietario original cargado */}
                       {originalOwner.name.split(" ").slice(0, 2).join(" ")}
                     </Badge>
                   )}

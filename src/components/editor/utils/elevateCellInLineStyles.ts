@@ -35,7 +35,7 @@ function normalizeColor(raw: string | undefined) {
   return raw;
 }
 
-function parseInlineStyle(styleText: string | null) {
+export function parseInlineStyle(styleText: string | null) {
   const out: Record<string, string> = {};
   if (!styleText) return out;
   const parts = styleText.split(";");

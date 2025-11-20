@@ -40,7 +40,6 @@ interface BookEditorProps {
   onUpdateTome: (updatedTomeData: Partial<Tome>) => void;
   onCreateActa: () => void;
   onUpdateAct: (updatedAct: Act) => void;
-  setHasUnsavedChanges: (hasChanges: boolean) => void;
   onReorderAct: (actId: string, direction: "up" | "down") => void;
   onDeleteAct: (actId: string) => void;
   onDeleteAgreement: (agreementId: string) => void;
@@ -48,6 +47,7 @@ interface BookEditorProps {
   isReadOnly: boolean;
   isReordering: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
+  onStateChange: (state: { dirty: boolean; saving: boolean }) => void;
 }
 
 export const BookEditor = ({
@@ -56,7 +56,6 @@ export const BookEditor = ({
   setCurrentView,
   onUpdateTome,
   onCreateActa,
-  setHasUnsavedChanges,
   onReorderAct,
   isReadOnly,
   onRefetchAct,
@@ -65,6 +64,7 @@ export const BookEditor = ({
   onRegisterSaveHandler,
   onDeleteAct,
   onDeleteAgreement,
+  onStateChange,
 }: BookEditorProps) => {
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(true);
   const [isCreatingAgreement, setIsCreatingAgreement] = useState(false);
@@ -251,6 +251,7 @@ export const BookEditor = ({
             onSaveCover={handleSaveCover}
             onSkip={handleSkipCover}
             isReadOnly={isReadOnly}
+            onStateChange={onStateChange}
             onRegisterSaveHandler={onRegisterSaveHandler}
           />
         );
@@ -276,7 +277,7 @@ export const BookEditor = ({
               });
             }}
             isAgreementsPanelVisible={isDetailPanelVisible}
-            setHasUnsavedChanges={setHasUnsavedChanges}
+            onStateChange={onStateChange}
             onRegisterSaveHandler={onRegisterSaveHandler}
             isReadOnly={isReadOnly}
           />
@@ -299,6 +300,7 @@ export const BookEditor = ({
             }}
             onRegisterSaveHandler={onRegisterSaveHandler}
             isReadOnly={isReadOnly}
+            onStateChange={onStateChange}
           />
         );
 
@@ -381,7 +383,7 @@ export const BookEditor = ({
                 detail: { type: "agreement-list" },
               })
             }
-            setHasUnsavedChanges={setHasUnsavedChanges}
+            onStateChange={onStateChange}
             onRegisterSaveHandler={onRegisterSaveHandler}
             isReadOnly={isReadOnly}
           />

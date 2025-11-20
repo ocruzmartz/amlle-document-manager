@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { toast } from 'sonner';
-import { isEqual } from 'lodash';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { isEqual } from "lodash";
 
 interface UseSaveActionProps<TData> {
   initialData: TData;
@@ -8,6 +8,7 @@ interface UseSaveActionProps<TData> {
   onSave: (dataToSave: TData) => Promise<void> | void;
   onSuccess?: (savedData: TData) => void;
   setHasUnsavedChanges?: (hasChanges: boolean) => void;
+  onStateChange?: (state: { dirty: boolean; saving: boolean }) => void;
   loadingMessage?: string;
   successMessage?: string;
   errorMessage?: string;
@@ -18,10 +19,10 @@ export const useSaveAction = <TData>({
   currentData,
   onSave,
   onSuccess,
-  setHasUnsavedChanges,
-  loadingMessage = 'Guardando...',
-  successMessage = 'Guardado exitosamente.',
-  errorMessage = 'Error al guardar.',
+  onStateChange,
+  loadingMessage = "Guardando...",
+  successMessage = "Guardado exitosamente.",
+  errorMessage = "Error al guardar.",
 }: UseSaveActionProps<TData>) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -46,8 +47,8 @@ export const useSaveAction = <TData>({
     initialDataRef.current = initialData;
     const hasChanged = !isEqual(currentData, initialDataRef.current);
     setIsDirty(hasChanged);
-    if (setHasUnsavedChanges) {
-      setHasUnsavedChanges(hasChanged);
+   if (onStateChange) {
+      onStateChange({ dirty: hasChanged, saving: isSavingRef.current });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
@@ -55,23 +56,26 @@ export const useSaveAction = <TData>({
   useEffect(() => {
     const hasChanged = !isEqual(currentData, initialDataRef.current);
     setIsDirty(hasChanged);
-    if (setHasUnsavedChanges) {
-      setHasUnsavedChanges(hasChanged);
+    if (onStateChange) {
+      onStateChange({ dirty: hasChanged, saving: isSavingRef.current });
     }
-  }, [currentData, setHasUnsavedChanges]);
+  }, [currentData, onStateChange]);
 
   useEffect(() => {
     return () => {
-      if (setHasUnsavedChanges) {
-        setHasUnsavedChanges(false);
+      if (onStateChange) {
+        onStateChange({ dirty: false, saving: false });
       }
     };
-  }, [setHasUnsavedChanges]);
+  }, [onStateChange]);
 
   const handleSave = useCallback(async (): Promise<boolean> => {
     if (!isDirtyRef.current || isSavingRef.current) return false;
 
     setIsSaving(true);
+    if (onStateChange) {
+      onStateChange({ dirty: isDirtyRef.current, saving: true });
+    }
     const toastId = toast.loading(loadingMessage);
 
     try {
@@ -79,8 +83,8 @@ export const useSaveAction = <TData>({
 
       initialDataRef.current = currentDataRef.current;
       setIsDirty(false);
-      if (setHasUnsavedChanges) {
-        setHasUnsavedChanges(false);
+      if (onStateChange) {
+        onStateChange({ dirty: false, saving: false });
       }
       toast.success(successMessage, { id: toastId });
       setIsSaving(false);
@@ -89,7 +93,7 @@ export const useSaveAction = <TData>({
       }
       return true;
     } catch (error) {
-      console.error('Error en useSaveAction:', error);
+      console.error("Error en useSaveAction:", error);
       toast.error(errorMessage, { id: toastId });
       setIsSaving(false);
       return false;
@@ -97,7 +101,7 @@ export const useSaveAction = <TData>({
   }, [
     onSave,
     onSuccess,
-    setHasUnsavedChanges,
+    onStateChange,
     loadingMessage,
     successMessage,
     errorMessage,

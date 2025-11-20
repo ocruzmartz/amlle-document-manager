@@ -17,7 +17,7 @@ interface AgreementEditorProps {
   agreementNumber: number;
   onUpdate: (updatedAgreement: Agreement) => void;
   onBack: () => void;
-  setHasUnsavedChanges: (hasChanges: boolean) => void;
+  onStateChange: (state: { dirty: boolean; saving: boolean }) => void;
   isReadOnly?: boolean;
   onRegisterSaveHandler: (handler: SaveHandler | null) => void;
 }
@@ -27,7 +27,7 @@ export const AgreementEditor = ({
   agreementNumber,
   onUpdate,
   onBack,
-  setHasUnsavedChanges,
+  onStateChange,
   isReadOnly = false,
   onRegisterSaveHandler,
 }: AgreementEditorProps) => {
@@ -54,7 +54,7 @@ export const AgreementEditor = ({
     initialData: agreement,
     currentData: currentCombinedData,
     onSave: onSaveCallback,
-    setHasUnsavedChanges: setHasUnsavedChanges,
+    onStateChange: onStateChange,
     loadingMessage: "Guardando acuerdo...",
     successMessage: "Acuerdo guardado exitosamente.",
     errorMessage: "Error al guardar el acuerdo.",

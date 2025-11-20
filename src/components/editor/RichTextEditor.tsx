@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { TextStyle } from "@tiptap/extension-text-style";
+import { Color, TextStyle } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import TableHeader from "@tiptap/extension-table-header";
@@ -39,6 +39,7 @@ export const RichTextEditor = ({
         orderedList: {},
       }),
       TextStyle,
+      Color,
       Underline,
       TextAlign.configure({
         types: ["heading", "paragraph", "tableCell", "tableHeader"],
@@ -67,7 +68,7 @@ export const RichTextEditor = ({
       attributes: {
         class:
           "prose mx-auto focus:outline-none min-h-[500px] px-4 py-2 [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:outline-none [&_.ProseMirror-focused]:outline-none [&_.ProseMirror]:hyphens-none [&_.ProseMirror]:word-spacing-normal [&_.ProseMirror]:text-align-justify",
-        style: "font-size: 11px;",
+        style: "font-family: 'MuseoModerno', sans-serif; font-size: 11pt;",
       },
       transformPastedHTML: (html) => {
         let cleaned = cleanPastedHtml(html);

@@ -15,6 +15,7 @@ export type Tome = {
   status: BookStatus;
   book: Book;
   tomeNumber: number;
+
   pdfSettings?: {
     pageSize: "A4" | "LETTER";
     orientation: "portrait" | "landscape";
@@ -26,6 +27,7 @@ export type Tome = {
     };
     lineHeight: number;
     fontSize: number;
+    
     enablePageNumbering?: boolean;
     pageNumberingOffset?: number;
     pageNumberingPosition?: "left" | "center" | "right";

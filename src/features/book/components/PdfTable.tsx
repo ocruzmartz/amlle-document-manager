@@ -2,15 +2,9 @@ import React from "react";
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 
-/**
- * PdfTable (final): fuerza Museo Sans y respeta fontSize numérico.
- * - BASE_BORDER_WIDTH = 0.5 (borders más delgados)
- * - Aplica fontFamily: "Museo Sans" a texto de celdas
- * - Convierte font sizes en pt (si vienen en '12pt' o en número) a numbers
- */
 
-const BASE_BORDER_COLOR = "#ddd";
-const BASE_BORDER_WIDTH = 0.5;
+const BASE_BORDER_COLOR = "#000000";
+const BASE_BORDER_WIDTH = 0.25;
 
 function unitToNumber(val: string | number | undefined) {
   if (val === undefined || val === null) return undefined;
@@ -62,7 +56,7 @@ const styles = StyleSheet.create({
   cellText: {
     fontSize: 10,
     lineHeight: 1.2,
-    fontFamily: "Museo Sans", // <-- forzamos la familia aquí
+    fontFamily: "Museo Sans", 
   },
 });
 
@@ -212,16 +206,26 @@ export const PdfTable: React.FC<PdfTableProps> = ({ children }) => {
   return <View style={styles.tableWrapper}>{children}</View>;
 };
 
+// --- INICIO DE LA MODIFICACIÓN ---
 interface PdfTableRowProps {
   children: React.ReactNode;
   style?: Style;
+  isHeader?: boolean; // isHeader ya estaba implícito, mejor hacerlo explícito
+  wrap?: boolean; // Añadir la propiedad 'wrap'
 }
+
 export const PdfTableRow: React.FC<PdfTableRowProps> = ({
   children,
   style,
+  wrap = true, // Por defecto, React-PDF parte las filas (true)
 }) => {
-  return <View style={[styles.row, style]}>{children}</View>;
+  return (
+    <View style={[styles.row, style]} wrap={wrap}>
+      {children}
+    </View>
+  );
 };
+// --- FIN DE LA MODIFICACIÓN ---
 
 interface PdfTableCellProps {
   children?: React.ReactNode;
