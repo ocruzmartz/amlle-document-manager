@@ -12,9 +12,8 @@ export function unitToNumber(val: string | number | undefined) {
   }
   if (s.endsWith("in")) {
     const n = parseFloat(s.replace("in", ""));
-    return Number.isNaN(n) ? undefined : n * 72; // 1in = 72pt
+    return Number.isNaN(n) ? undefined : n * 72;
   }
-  // fallback numeric
   const n = parseFloat(s);
   return Number.isNaN(n) ? undefined : n;
 }
@@ -22,7 +21,7 @@ export function unitToNumber(val: string | number | undefined) {
 function normalizeColor(raw: string | undefined) {
   if (!raw) return undefined;
   if (/windowtext/i.test(raw)) return "#000000";
-  // basic hex or rgb pass-through (react-pdf accepts #rrggbb)
+  if (/auto/i.test(raw)) return "#000000";
   const h = raw.match(/#([0-9a-fA-F]{3,6})/);
   if (h) return `#${h[1]}`;
   const rgb = raw.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
@@ -60,11 +59,8 @@ export function elevateCellInlineStyles(html: string) {
   for (const table of tables) {
     const cells = Array.from(table.querySelectorAll("td, th"));
     for (const cell of cells) {
-      // parse cell style attr (existing)
       const cellStyleRaw = cell.getAttribute("style") || "";
       const cellStyle = parseInlineStyle(cellStyleRaw);
-
-      // find first child p/span/div that may contain text-alignment/font-size
       const candidate = Array.from(cell.querySelectorAll("p, div, span")).find(
         (el) => {
           const s = el.getAttribute("style");
@@ -108,34 +104,90 @@ export function elevateCellInlineStyles(html: string) {
         ) {
           cellStyle["padding"] = cand["padding"];
         }
+        // Promote color (text color)
+        if (!cellStyle["color"] && cand["color"]) {
+          cellStyle["color"] = cand["color"];
+        }
+        // Promote width
+        if (!cellStyle["width"] && cand["width"]) {
+          cellStyle["width"] = cand["width"];
+        }
+        // Promote individual border properties
+        const borderSides = ["top", "right", "bottom", "left"];
+        for (const side of borderSides) {
+          const borderProp = `border-${side}`;
+          if (!cellStyle[borderProp] && cand[borderProp]) {
+            cellStyle[borderProp] = cand[borderProp];
+          }
+        }
       }
 
-      // Normalize unit values: convert 'width: 198.15pt' etc into a consistent format
       if (cellStyle["width"] && cellStyle["width"].includes("pt")) {
         const n = unitToNumber(cellStyle["width"]);
         if (n !== undefined) cellStyle["width"] = `${n}pt`;
       }
 
-      // Normalize border colors like "windowtext"
       if (cellStyle["border"]) {
-        // e.g. "1pt solid windowtext"
         const parts = cellStyle["border"].split(/\s+/);
         const colorPart = parts[parts.length - 1];
         const colorNorm = normalizeColor(colorPart);
         if (colorNorm) {
-          // replace color token with hex
           parts[parts.length - 1] = colorNorm;
           cellStyle["border"] = parts.join(" ");
         }
       }
 
-      // Rebuild style string and set it on the cell
+      const borderSides = [
+        "border-top",
+        "border-right",
+        "border-bottom",
+        "border-left",
+      ];
+      for (const borderProp of borderSides) {
+        if (cellStyle[borderProp]) {
+          const parts = cellStyle[borderProp].split(/\s+/);
+          const colorPart = parts[parts.length - 1];
+          const colorNorm = normalizeColor(colorPart);
+          if (colorNorm) {
+            parts[parts.length - 1] = colorNorm;
+            cellStyle[borderProp] = parts.join(" ");
+          }
+        }
+      }
+
       const newStyleParts: string[] = [];
       for (const k of Object.keys(cellStyle)) {
         newStyleParts.push(`${k}: ${cellStyle[k]}`);
       }
       const newStyle = newStyleParts.join("; ");
       if (newStyle) cell.setAttribute("style", newStyle);
+
+      if (cellStyle["width"]) {
+        cell.setAttribute("width", cellStyle["width"]);
+      }
+      if (cellStyle["font-size"] || cellStyle["font-family"]) {
+        const contentElements = Array.from(
+          cell.querySelectorAll("p, div, span")
+        );
+        contentElements.forEach((el) => {
+          const elStyleRaw = el.getAttribute("style") || "";
+          const elStyle = parseInlineStyle(elStyleRaw);
+
+          if (cellStyle["font-size"] && !elStyle["font-size"]) {
+            elStyle["font-size"] = cellStyle["font-size"];
+          }
+          if (cellStyle["font-family"] && !elStyle["font-family"]) {
+            elStyle["font-family"] = cellStyle["font-family"];
+          }
+
+          const elNewStyleParts: string[] = [];
+          for (const k of Object.keys(elStyle)) {
+            elNewStyleParts.push(`${k}: ${elStyle[k]}`);
+          }
+          const elNewStyle = elNewStyleParts.join("; ");
+          if (elNewStyle) el.setAttribute("style", elNewStyle);
+        });
+      }
     }
   }
 

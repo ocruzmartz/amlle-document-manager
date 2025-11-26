@@ -9,7 +9,7 @@ const unitToNumberPt = (
   val: string | number | undefined
 ): number | undefined => {
   if (val === undefined || val === null) return undefined;
-  if (typeof val === "number") return val; // Asumir que ya está en pt
+  if (typeof val === "number") return val;
 
   const s = String(val).trim();
 
@@ -20,14 +20,12 @@ const unitToNumberPt = (
   if (s.endsWith("px")) {
     const n = parseFloat(s.replace("px", ""));
     if (Number.isNaN(n)) return undefined;
-    return n * 0.75; // Convertir px a pt (ej: 16px * 0.75 = 12pt)
+    return n * 0.75;
   }
   if (s.endsWith("in")) {
     const n = parseFloat(s.replace("in", ""));
-    return Number.isNaN(n) ? undefined : n * 72; // 1in = 72pt
+    return Number.isNaN(n) ? undefined : n * 72;
   }
-
-  // fallback numeric (asumir 'pt' si no tiene unidad)
   const n = parseFloat(s);
   return Number.isNaN(n) ? undefined : n;
 };
@@ -35,13 +33,7 @@ const unitToNumberPt = (
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     fontSize: {
-      /**
-       * Set the font size
-       */
       setFontSize: (fontSize: string) => ReturnType;
-      /**
-       * Unset the font size
-       */
       unsetFontSize: () => ReturnType;
     };
   }
@@ -67,11 +59,10 @@ export const FontSize = Extension.create<FontSizeOptions>({
               const rawSize = element.style.fontSize?.replace(/['"]+/g, "");
               if (!rawSize) return null;
 
-              const sizeInPt = unitToNumberPt(rawSize); // Convierte "16px" a 12
+              const sizeInPt = unitToNumberPt(rawSize);
               if (sizeInPt === undefined) return null;
 
-              // Almacenar siempre como string 'pt'
-              return `${sizeInPt}pt`; // ej: "12pt"
+              return `${sizeInPt}pt`;
             },
             renderHTML: (attributes) => {
               if (!attributes.fontSize) {

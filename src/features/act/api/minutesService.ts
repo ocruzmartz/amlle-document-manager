@@ -26,9 +26,6 @@ interface UpdateMinutesNameNumberDto {
   actNumber: number;
 }
 
-/**
- * 1. DTO de la LISTA DE ASISTENCIA (para el array attendanceList)
- */
 interface AttendanceListItemDto {
   syndic: string | null;
   secretary: string | null;
@@ -37,9 +34,6 @@ interface AttendanceListItemDto {
   substitutoAsistenteId: string | null;
 }
 
-/**
- * 2. DTO de ACTUALIZACIÓN COMPLETO (Basado en el payload del backend)
- */
 interface UpdateMinutesDto {
   actNumber?: number; // Lo enviamos como number
   meetingDate?: string; // ISO 8601
@@ -69,7 +63,6 @@ async function _parseActFromApi(
   if (attendanceList && attendanceList.length > 0) {
     const firstRecord = attendanceList[0];
 
-    // Asistencia de Oficiales
     if (firstRecord.syndic && firstRecord.syndic === OFFICIAL_SYNDIC.name) {
       syndic = OFFICIAL_SYNDIC;
     }
@@ -80,7 +73,6 @@ async function _parseActFromApi(
       secretary = OFFICIAL_SECRETARY;
     }
 
-    // Asistencia de Propietarios
     attendanceList.forEach((record) => {
       const propietarioId =
         record.propietarioConvocado?.id || record.propietarioId;
@@ -110,7 +102,6 @@ async function _parseActFromApi(
     });
   }
 
-  // Ordenar acuerdos (AHORA SON COMPLETOS)
   const agreements = (actResponse.agreements || []).sort(
     (a: Agreement, b: Agreement) => {
       if (a.agreementNumber != null && b.agreementNumber != null) {
@@ -120,9 +111,8 @@ async function _parseActFromApi(
     }
   );
 
-  // Mapear al tipo 'Act' limpio
   const finalAct: Act = {
-    ...actResponse, // Copiamos la mayoría de los campos
+    ...actResponse,
     tomeId: actResponse.volume?.id ?? actResponse.volumeId!,
     tomeName: actResponse.volume?.name ?? actResponse.volumeName!,
     volumeId: actResponse.volume?.id ?? actResponse.volumeId!,
@@ -157,8 +147,6 @@ export const actService = {
       ActApiResponse
     >("/minutes/create", payload);
 
-    console.log("✅ Acta creada desde el backend:", newActResponse);
-
     const [allPropietarios, { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY }] =
       await Promise.all([
         participantsService.getPropietarios(),
@@ -172,10 +160,6 @@ export const actService = {
   },
 
   getActById: async (id: string): Promise<Act> => {
-    console.log(
-      `🔍 Llamando a GET /api/minutes/find/${id} para cargar acta...`
-    );
-
     const [
       allPropietarios,
       { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },
@@ -183,10 +167,8 @@ export const actService = {
     ] = await Promise.all([
       participantsService.getPropietarios(),
       import("../lib/officials"),
-      apiGetDirect<ActApiResponse>(`/minutes/find/${id}`), // Recibimos 'any'
+      apiGetDirect<ActApiResponse>(`/minutes/find/${id}`),
     ]);
-
-    console.log("✅ Acta recibida del backend:", actResponse);
 
     return _parseActFromApi(actResponse, allPropietarios, {
       OFFICIAL_SYNDIC,
@@ -195,8 +177,6 @@ export const actService = {
   },
 
   getAllActs: async (): Promise<Act[]> => {
-    console.log("🔍 Cargando TODAS las actas...");
-
     const [
       allPropietarios,
       { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },
@@ -257,9 +237,7 @@ export const actService = {
       };
     });
 
-    // ✅ Payload simplificado
     const payload: UpdateMinutesDto = {
-      //actNumber: actToSave.actNumber,
       meetingDate: actToSave.meetingDate,
       meetingTime: actToSave.meetingTime,
       bodyContent: actToSave.bodyContent,
@@ -271,13 +249,9 @@ export const actService = {
       `/minutes/update/${actToSave.id}`,
       payload
     );
-
-    console.log(`✅ Acta ${actToSave.id} actualizada.`);
   },
 
   getActsByVolumeId: async (volumeId: string): Promise<Act[]> => {
-    console.log(`🔍 Cargando actas para el tomo ${volumeId}...`);
-
     const [
       allPropietarios,
       { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY },

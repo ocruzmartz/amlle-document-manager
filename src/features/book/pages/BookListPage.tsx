@@ -38,8 +38,8 @@ export const BookListPage = () => {
     const fetchTomes = async () => {
       setIsLoading(true);
       try {
-        const data = await volumeService.getAllVolumes(); // Llama a /api/volume/find-all
-        setTomes(data); // Establece los datos del backend
+        const data = await volumeService.getAllVolumes();
+        setTomes(data);
       } catch (error) {
         console.error("Error al cargar tomos:", error);
         toast.error("No se pudieron cargar los tomos.");
@@ -85,7 +85,6 @@ export const BookListPage = () => {
   const handleFinalize = async () => {
     if (!tomeToFinalize) return;
     try {
-      // ✅ Usamos la nueva función específica
       const updatedTome = await volumeService.updateVolumeStatus(
         tomeToFinalize.id,
         "FINALIZADO"
@@ -104,7 +103,6 @@ export const BookListPage = () => {
   const handleArchive = async () => {
     if (!tomeToArchive) return;
     try {
-      // ✅ Usamos la nueva función específica
       const updatedTome = await volumeService.updateVolumeStatus(
         tomeToArchive.id,
         "ARCHIVADO"
@@ -122,7 +120,6 @@ export const BookListPage = () => {
   const handleRestore = async () => {
     if (!tomeToRestore) return;
     try {
-      // ✅ Usamos la nueva función específica
       const updatedTome = await volumeService.updateVolumeStatus(
         tomeToRestore.id,
         "BORRADOR"
@@ -204,8 +201,6 @@ export const BookListPage = () => {
           initialSorting={initialSorting}
         />
       )}
-
-      {/* ... (Modales de diálogo no cambian) ... */}
       <AlertDialog
         open={!!tomeToFinalize}
         onOpenChange={(open) => {
@@ -322,7 +317,6 @@ export const BookListPage = () => {
 
       <AlertDialog
         open={!!tomeToDelete}
-        // ✅ 2. Actualizamos onOpenChange para que limpie el texto
         onOpenChange={(open) => {
           if (!open) {
             setTomeToDelete(null);
@@ -337,14 +331,11 @@ export const BookListPage = () => {
               Vas a eliminar permanentemente el tomo{" "}
               <strong>"{tomeToDelete?.name}"</strong>. Esta acción no se puede
               deshacer.
-              {/* ✅ 3. Añadimos la instrucción */}
               <br />
               Para confirmar, por favor escribe <strong>ELIMINAR</strong> en el
               campo de abajo.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          {/* ✅ 4. Añadimos el campo de Input */}
           <div className="py-2">
             <Label
               htmlFor="confirm-text-delete"
@@ -362,7 +353,6 @@ export const BookListPage = () => {
             />
           </div>
 
-          {/* ✅ 5. Convertimos AlertDialogAction en Button y añadimos 'disabled' */}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <Button

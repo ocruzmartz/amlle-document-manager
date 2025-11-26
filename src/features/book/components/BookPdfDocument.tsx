@@ -93,14 +93,27 @@ const parseStyleAttribute = (styleString: string | null): Style => {
           if (!Number.isNaN(n)) style.fontSize = n;
         } else if (s.endsWith("in")) {
           const n = parseFloat(s.replace("in", ""));
-          if (!Number.isNaN(n)) style.fontSize = n * 72; // 1in = 72pt
+          if (!Number.isNaN(n)) style.fontSize = n * 72;
         } else {
           const n = parseFloat(s);
           if (!Number.isNaN(n)) style.fontSize = n;
         }
         break;
       }
-
+      case "height": {
+        const val = value.trim();
+        if (val.endsWith("px")) {
+          const n = parseFloat(val.replace("px", ""));
+          if (!Number.isNaN(n)) style.height = n;
+        } else if (val.endsWith("pt")) {
+          const n = parseFloat(val.replace("pt", ""));
+          if (!Number.isNaN(n)) style.height = n;
+        } else {
+          const n = parseFloat(val);
+          if (!Number.isNaN(n)) style.height = n;
+        }
+        break;
+      }
       case "text-align":
         if (
           value === "left" ||
@@ -138,12 +151,10 @@ const parseStyleAttribute = (styleString: string | null): Style => {
         style.backgroundColor = value;
         break;
       case "width": {
-        // Keep as provided (could be "100px" or "20%")
         style.width = value;
         break;
       }
       case "padding": {
-        // single value -> all sides
         const v = value.trim();
         if (v.endsWith("px")) {
           const n = parseFloat(v.replace("px", ""));
@@ -171,7 +182,6 @@ const parseStyleAttribute = (styleString: string | null): Style => {
         break;
       }
       case "vertical-align":
-        // map to alignItems for container heuristics
         if (value === "middle" || value === "center") {
           (style as any).verticalAlign = "middle";
         } else if (value === "bottom") {
@@ -185,13 +195,15 @@ const parseStyleAttribute = (styleString: string | null): Style => {
       case "border-right":
       case "border-bottom":
       case "border-left": {
-        // simple parse: "1px solid #ddd"
         const parts = value.split(/\s+/).filter(Boolean);
         let width = undefined;
         let color = undefined;
         parts.forEach((p) => {
           if (p.endsWith("px")) {
             const n = parseFloat(p.replace("px", ""));
+            if (!Number.isNaN(n)) width = n;
+          } else if (p.endsWith("pt")) {
+            const n = parseFloat(p.replace("pt", ""));
             if (!Number.isNaN(n)) width = n;
           } else if (
             p.startsWith("#") ||
@@ -201,12 +213,49 @@ const parseStyleAttribute = (styleString: string | null): Style => {
             color = p;
           }
         });
-        if (width !== undefined) (style as any).borderWidth = width;
-        if (color) (style as any).borderColor = color;
+
+        if (property === "border") {
+          if (width !== undefined) (style as any).borderWidth = width;
+          if (color) (style as any).borderColor = color;
+        } else {
+          const side = property.replace("border-", "");
+          const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
+          if (width !== undefined)
+            (style as any)[`border${sideCapitalized}Width`] = width;
+          if (color) (style as any)[`border${sideCapitalized}Color`] = color;
+        }
+        break;
+      }
+      case "border-top-width":
+      case "border-right-width":
+      case "border-bottom-width":
+      case "border-left-width": {
+        const v = value.trim();
+        let n = undefined;
+        if (v.endsWith("px")) {
+          n = parseFloat(v.replace("px", ""));
+        } else if (v.endsWith("pt")) {
+          n = parseFloat(v.replace("pt", ""));
+        } else {
+          n = parseFloat(v);
+        }
+        if (!Number.isNaN(n)) {
+          const side = property.split("-")[1];
+          const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
+          (style as any)[`border${sideCapitalized}Width`] = n;
+        }
+        break;
+      }
+      case "border-top-color":
+      case "border-right-color":
+      case "border-bottom-color":
+      case "border-left-color": {
+        const side = property.split("-")[1];
+        const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
+        (style as any)[`border${sideCapitalized}Color`] = value;
         break;
       }
       default:
-        // Ignore other properties to avoid unexpected mappings
         break;
     }
   });
@@ -222,7 +271,7 @@ const renderHtmlNodes = (
   const cleanHtml = html.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
   const regex =
-    /<(strong|em|u|span|div|p)([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
+    /<(strong|b|em|i|u|span|div|p|h[1-6])([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
   const nodes = [];
   let key = 0;
@@ -256,7 +305,6 @@ const renderHtmlNodes = (
       const styleAttr = attributes ? attributes.match(/style="([^"]*)"/) : null;
       const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
 
-      // normalize keys on inlineStyle too
       if (
         (inlineStyle as any)["text-align"] &&
         !(inlineStyle as any).textAlign
@@ -272,31 +320,41 @@ const renderHtmlNodes = (
         ];
       }
 
-      // merge, prefer inlineStyle for alignment specifics
       style = { ...style, ...inlineStyle };
 
       switch (tagName.toLowerCase()) {
         case "strong":
+        case "b":
           style = { ...style, fontWeight: 700 };
           break;
         case "em":
+        case "i":
           style = { ...style, fontStyle: "italic" };
           break;
         case "u":
           style = { ...style, textDecoration: "underline" };
           break;
-        case "span":
-        case "div":
-        case "p":
-          // keep merged style
+        case "h1":
+          style = { ...style, fontSize: 18, fontWeight: 700, marginBottom: 4 };
+          break;
+        case "h2":
+          style = { ...style, fontSize: 16, fontWeight: 700, marginBottom: 4 };
+          break;
+        case "h3":
+          style = { ...style, fontSize: 14, fontWeight: 700, marginBottom: 4 };
+          break;
+        case "h4":
+          style = { ...style, fontSize: 12, fontWeight: 700, marginBottom: 4 };
+          break;
+        case "h5":
+        case "h6":
+          style = { ...style, fontWeight: 700, marginBottom: 4 };
           break;
         default:
           break;
       }
 
-      // If innerHtml contains mixed content, call recursively but ensure parent textAlign is applied
       const childNodes = renderHtmlNodes(innerHtml, style);
-      // If childNodes are Texts, we can wrap them in one Text to make textAlign work better
       const areAllText = childNodes.every((n) => (n as any).type === Text);
 
       if (areAllText) {
@@ -309,7 +367,6 @@ const renderHtmlNodes = (
           </Text>
         );
       } else {
-        // mixed nodes: render as fragment but ensure wrapping Text children get alignment
         nodes.push(
           <Text
             key={key++}
@@ -345,47 +402,7 @@ const getStyles = (
     },
     coverText: { fontSize: fontSize, textAlign: "justify", marginBottom: 12 },
     coverDate: { fontSize: fontSize, marginTop: 40 },
-    indexTitle: {
-      fontSize: fontSize + 5,
-      fontFamily: "Museo Sans",
-      fontWeight: 700,
-      textAlign: "center",
-      marginBottom: 30,
-      textTransform: "uppercase",
-    },
-    indexItem: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-end",
-      marginBottom: 8,
-    },
-    indexAgreementItem: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-end",
-      marginBottom: 8,
-      paddingLeft: 20,
-    },
-    indexItemText: { flexShrink: 1, textAlign: "left" },
-    indexItemDots: {
-      flexGrow: 1,
-      borderBottomWidth: 1,
-      borderBottomColor: "#ccc",
-      borderBottomStyle: "dotted",
-      marginHorizontal: 5,
-      marginBottom: 4,
-    },
-    indexItemPage: { flexShrink: 0, textAlign: "right" },
     actaContainer: { marginBottom: 40 },
-    emptyParagraph: { height: 8 },
-    listContainer: { paddingLeft: 15, marginBottom: 5 },
-    listItem: { flexDirection: "row", marginBottom: 3 },
-    listItemBullet: { width: 15, fontSize: fontSize - 1 },
-    listItemContent: { flex: 1 },
-    table: {},
-    tableRow: {},
-    tableCell: {},
-    tableCellText: {},
     signaturesSection: {
       marginTop: 40,
       fontSize: fontSize,
@@ -405,11 +422,6 @@ const getStyles = (
       marginHorizontal: "auto",
       width: "50%",
     },
-    secretariaSignatureLine: {
-      borderBottomWidth: 0.5,
-      borderBottomColor: "#000",
-      marginBottom: 5,
-    },
     notaContainer: {
       marginTop: 30,
       fontSize: fontSize - 2,
@@ -426,10 +438,6 @@ const getStyles = (
       right: margins.right,
       textAlign: pageNumberPosition,
       color: "#333",
-    },
-    justifiedText: {
-      textAlign: "justify",
-      wordBreak: "keep-all",
     },
   });
 
@@ -451,7 +459,6 @@ const renderCellContent = (
     );
   }
 
-  // Normalizar tamaño de fuente si viene como "8pt" o "8px"
   const normalizeFontSizeLocal = (maybe: any): number => {
     if (!maybe && maybe !== 0)
       return typeof baseTextStyle.fontSize === "number"
@@ -475,7 +482,6 @@ const renderCellContent = (
       : n;
   };
 
-  // Force fontFamily and textAlign on the wrapping Text so React-PDF respects alignment & metrics
   const forcedStyle: Style = {
     ...baseTextStyle,
     fontFamily: "Museo Sans",
@@ -488,79 +494,88 @@ const renderCellContent = (
     fontFamily: "Museo Sans",
   });
 
-  // If renderHtmlNodes returned plain React.Text nodes or array — wrap into a single Text so textAlign applies
   return <Text style={forcedStyle}>{contentNodes}</Text>;
 };
+
+// --- INTERFACES Y TIPOS PARA LA TABLA ---
+interface ParsedCell {
+  innerHtml: string;
+  style: Style;
+  colspan: number;
+  rowspan: number;
+  cellWidth: number | null;
+}
+
+interface ParsedRow {
+  cells: ParsedCell[];
+  height: number | undefined;
+}
 
 const parseHtmlTable = (
   tableHtml: string,
   baseTextStyle: Style,
   fontSize: number
 ) => {
-  // console.debug("🔍 HTML de tabla recibido:", tableHtml);
-
-  // 1) detectar colgroup y parsear anchos. Soporta px y %
+  // 1. Intentar leer colgroup
   const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
   const columnWidths: (number | null)[] = [];
-  let colIsPercent = true; // si true, values are percentages; otherwise px
+  let colIsPercent = true;
 
   if (colgroupMatch) {
     const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
     cols.forEach((col) => {
-      const styleMatch = col.match(/style="[^"]*width:\s*([^;"]+)/i);
       const widthAttrMatch = col.match(/width=["']?([^"']+)["']?/i);
+      const styleMatch = col.match(/style="[^"]*width:\s*([^;"]+)/i);
       const raw = styleMatch
         ? styleMatch[1]
         : widthAttrMatch
         ? widthAttrMatch[1]
         : null;
+
       if (!raw) {
         columnWidths.push(null);
         return;
       }
       if (raw.includes("%")) {
-        const num = parseFloat(raw.replace("%", ""));
-        columnWidths.push(Number.isFinite(num) ? num : null);
+        columnWidths.push(parseFloat(raw.replace("%", "")));
         colIsPercent = true;
-      } else if (raw.endsWith("px")) {
-        const num = parseFloat(raw.replace("px", ""));
-        columnWidths.push(Number.isFinite(num) ? num : null);
-        colIsPercent = false;
       } else {
-        // number without unit: treat as px
-        const num = parseFloat(raw);
-        columnWidths.push(Number.isFinite(num) ? num : null);
+        columnWidths.push(parseFloat(raw.replace("px", "")));
         colIsPercent = false;
       }
     });
   }
 
-  // 2) collect rows
-  const rows = (tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || []).map(
-    (r) => r
-  );
+  // 2. Parsear TODAS las filas
+  const rowsHtml = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
 
-  let headerRow: string | null = null;
-  const bodyRows: string[] = [];
+  const parsedRows: ParsedRow[] = rowsHtml.map((rowHtml) => {
+    const trTagMatch = rowHtml.match(/<tr([^>]*)>/i);
+    const trAttributes = trTagMatch ? trTagMatch[1] : "";
 
-  rows.forEach((row) => {
-    const hasThTag = /<th[^>]*>/i.test(row);
-    if (hasThTag && !headerRow) {
-      headerRow = row;
-    } else {
-      bodyRows.push(row);
+    // Detectar altura de la fila
+    let rowHeight: number | undefined = undefined;
+    const styleAttr = trAttributes.match(/style="([^"]*)"/i);
+    if (styleAttr) {
+      const styleObj = parseStyleAttribute(styleAttr[1]);
+      // Forzamos el tipo a number si viene como string en Style
+      if (styleObj.height) rowHeight = Number(styleObj.height);
     }
-  });
+    if (!rowHeight) {
+      const heightAttr = trAttributes.match(/height=["']?([\d\.]+)["']?/i);
+      if (heightAttr) {
+        const h = parseFloat(heightAttr[1]);
+        if (!isNaN(h)) rowHeight = h;
+      }
+    }
 
-  const parseCells = (rowHtml: string) => {
-    const cells = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gi) || [];
-    return cells.map((cellHtml) => {
+    const cellsHtml = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gi) || [];
+    const cells: ParsedCell[] = cellsHtml.map((cellHtml) => {
       const tagMatch = cellHtml.match(/<(t[dh])([^>]*)>/i);
       const attributes = tagMatch ? tagMatch[2] : "";
+
       const colspanMatch = attributes.match(/colspan=["']?(\d+)["']?/i);
-      const rowspanMatch =
-        attributes.match(/rowspan["']?=["']?(\d+)["']?/i) ||
-        attributes.match(/rowspan=["']?(\d+)["']?/i);
+      const rowspanMatch = attributes.match(/rowspan=["']?(\d+)["']?/i);
       const colspan = colspanMatch ? parseInt(colspanMatch[1], 10) : 1;
       const rowspan = rowspanMatch ? parseInt(rowspanMatch[1], 10) : 1;
 
@@ -568,7 +583,6 @@ const parseHtmlTable = (
       const cellInlineStyle =
         parseStyleAttribute(styleAttr ? styleAttr[1] : null) || {};
 
-      // Normalizar nombres: text-align -> textAlign, vertical-align -> verticalAlign
       if (
         (cellInlineStyle as any)["text-align"] &&
         !(cellInlineStyle as any).textAlign
@@ -586,61 +600,46 @@ const parseHtmlTable = (
         ];
       }
 
-      // Si cell no trae textAlign, intentar extraerlo del primer child <p|div|span> dentro del innerHtml
-      if (!cellInlineStyle.textAlign || !cellInlineStyle.verticalAlign) {
-        const firstInlineMatch =
-          cellHtml.match(/<(p|div|span)[^>]*style="([^"]*)"[^>]*>/i) || [];
-        if (firstInlineMatch && firstInlineMatch.length >= 3) {
-          const foundStyle = firstInlineMatch[2];
-          const found = parseStyleAttribute(foundStyle);
-          if (!cellInlineStyle.textAlign && (found as any).textAlign) {
-            (cellInlineStyle as any).textAlign = (found as any).textAlign;
+      // FIX: Font Size inherit
+      if (!(cellInlineStyle as any).fontSize) {
+        const innerStyleMatch = cellHtml.match(/<[^>]+style="([^"]*)"/i);
+        if (innerStyleMatch) {
+          const innerStyle = parseStyleAttribute(innerStyleMatch[1]);
+          if ((innerStyle as any).fontSize) {
+            (cellInlineStyle as any).fontSize = (innerStyle as any).fontSize;
           }
-          if (!cellInlineStyle.verticalAlign && (found as any).verticalAlign) {
-            (cellInlineStyle as any).verticalAlign = (
-              found as any
-            ).verticalAlign;
+          if (innerStyle.fontWeight) {
+            cellInlineStyle.fontWeight = innerStyle.fontWeight;
           }
+        }
+        if (/<(strong|b|h[1-6])/i.test(cellHtml)) {
+          if (!cellInlineStyle.fontWeight) cellInlineStyle.fontWeight = 700;
         }
       }
 
-      if (!(cellInlineStyle as any).verticalAlign) {
-        const valignAttrMatch = attributes.match(
-          /valign=["']?(top|middle|bottom)["']?/i
-        );
-        if (valignAttrMatch && valignAttrMatch[1]) {
-          // Añadimos el valor ('top', 'middle', o 'bottom') al objeto de estilos.
-          (cellInlineStyle as any).verticalAlign = valignAttrMatch[1];
-        }
-      }
-
-      // detect width via width attr or inline style (igual que antes)
       let cellWidth: number | null = null;
-      const widthAttrMatch = attributes.match(/width=["']?([^"']+)["']?/i);
-      if (widthAttrMatch) {
-        const w = widthAttrMatch[1];
-        if (w.includes("%")) {
-          const n = parseFloat(w.replace("%", ""));
-          if (!Number.isNaN(n)) cellWidth = n;
-        } else if (w.endsWith("px")) {
-          const n = parseFloat(w.replace("px", ""));
-          if (!Number.isNaN(n)) cellWidth = -n;
-        } else {
-          const n = parseFloat(w);
-          if (!Number.isNaN(n)) cellWidth = -n;
-        }
-      }
+      const dataColWidthMatch = attributes.match(
+        /data-colwidth=["']?([^"']+)["']?/i
+      );
+      const styleWidthMatch = attributes.match(/width:\s*([\d\.]+)(px|%|pt)?/i);
+      const widthAttrMatch = attributes.match(/width=["']?([\d\.]+)["']?/i);
 
-      if (
-        (cellInlineStyle as any).width &&
-        typeof (cellInlineStyle as any).width === "string"
-      ) {
-        const widthValue = (cellInlineStyle as any).width;
-        if (widthValue.includes("%")) {
-          cellWidth = parseFloat(widthValue.replace("%", ""));
-        } else if (widthValue.endsWith("px")) {
-          cellWidth = -parseFloat(widthValue.replace("px", ""));
+      if (dataColWidthMatch) {
+        const rawArr = dataColWidthMatch[1].replace(/[\[\]]/g, "").split(",");
+        const totalW = rawArr.reduce(
+          (acc, val) => acc + (parseFloat(val) || 0),
+          0
+        );
+        if (totalW > 0) {
+          cellWidth = totalW;
+          colIsPercent = false;
         }
+      } else if (styleWidthMatch) {
+        cellWidth = parseFloat(styleWidthMatch[1]);
+        if (styleWidthMatch[2] === "%") colIsPercent = true;
+        else colIsPercent = false;
+      } else if (widthAttrMatch) {
+        cellWidth = parseFloat(widthAttrMatch[1]);
       }
 
       const innerHtml = cellHtml
@@ -648,43 +647,54 @@ const parseHtmlTable = (
         .replace(/<\/t[dh]>$/i, "")
         .trim();
 
-      return {
-        innerHtml,
-        style: cellInlineStyle,
-        colspan,
-        rowspan,
-        cellWidth,
-      };
+      return { innerHtml, style: cellInlineStyle, colspan, rowspan, cellWidth };
     });
-  };
 
-  const calculateTotalColumns = (rowHtml: string): number => {
-    const cells = parseCells(rowHtml);
-    return cells.reduce((total, cell) => total + (cell.colspan || 1), 0);
-  };
-
-  let maxColumns = 0;
-  if (headerRow) {
-    maxColumns = Math.max(maxColumns, calculateTotalColumns(headerRow));
-  }
-  bodyRows.forEach((row) => {
-    maxColumns = Math.max(maxColumns, calculateTotalColumns(row));
+    return { cells, height: rowHeight };
   });
 
-  if (maxColumns === 0) {
-    maxColumns = parseCells(headerRow || bodyRows[0] || "").length || 1;
+  if (columnWidths.length === 0 && parsedRows.length > 0) {
+    let maxCols = 0;
+    parsedRows.forEach((row) => {
+      const rowCols = row.cells.reduce((acc, cell) => acc + cell.colspan, 0);
+      if (rowCols > maxCols) maxCols = rowCols;
+    });
+
+    const inferredWidths: (number | null)[] = new Array(maxCols).fill(null);
+
+    parsedRows.forEach((row) => {
+      let colIndex = 0;
+      row.cells.forEach((cell) => {
+        if (cell.cellWidth !== null) {
+          if (cell.colspan === 1) {
+            if (inferredWidths[colIndex] === null) {
+              inferredWidths[colIndex] = cell.cellWidth;
+            }
+          } else {
+            const widthPerCol = cell.cellWidth / cell.colspan;
+            for (let i = 0; i < cell.colspan; i++) {
+              if (inferredWidths[colIndex + i] === null) {
+                inferredWidths[colIndex + i] = widthPerCol;
+              }
+            }
+          }
+        }
+        colIndex += cell.colspan;
+      });
+    });
+
+    inferredWidths.forEach((w) => columnWidths.push(w));
   }
 
   let resolvedColumnWidths: (number | null)[] = [];
   if (columnWidths.length > 0) {
     if (colIsPercent) {
-      resolvedColumnWidths = columnWidths.slice(0);
+      resolvedColumnWidths = columnWidths;
     } else {
-      const pxSum = columnWidths.reduce((s, c) => (s ?? 0) + (c ?? 0), 0);
-      const safePxSum = pxSum ?? 0;
-      if (safePxSum > 0) {
-        resolvedColumnWidths = columnWidths.map((c) =>
-          c ? (c / safePxSum) * 100 : null
+      const totalPx = columnWidths.reduce((acc: number, val) => acc + (val ?? 0), 0);
+      if (totalPx !== null && totalPx > 0) {
+        resolvedColumnWidths = columnWidths.map((w) =>
+          w ? (w / totalPx) * 100 : null
         );
       } else {
         resolvedColumnWidths = columnWidths.map(() => null);
@@ -692,128 +702,69 @@ const parseHtmlTable = (
     }
   }
 
+  let maxColumns = 0;
+  parsedRows.forEach((row) => {
+    const cols = row.cells.reduce((acc, cell) => acc + cell.colspan, 0);
+    if (cols > maxColumns) maxColumns = cols;
+  });
+
   const adjustedFontSize =
     maxColumns > 8 ? Math.max(fontSize - 2, 8) : fontSize - 1;
-
   const baseCellStyle: Style = {
     fontSize: Math.round(adjustedFontSize),
     textAlign: "left",
     letterSpacing: 0,
   };
 
-  const calculateCellWidth = (
-    cellIndex: number,
-    colspan: number,
-    cells: Array<{ colspan: number; cellWidth: number | null }>
-  ): string => {
-    const currentCell = cells[cellIndex];
-
-    // 1) If cellWidth explicitly set (positive percent)
-    if (currentCell.cellWidth !== null && currentCell.cellWidth !== undefined) {
-      if (currentCell.cellWidth > 0) {
-        return `${currentCell.cellWidth}%`;
-      } else if (currentCell.cellWidth < 0) {
-        // negative means px encoded; we can't use px in react-pdf width reliably, so use fallback %
-        // fallback: distribute proportionally
+  const getWidthForCell = (startColIndex: number, colspan: number) => {
+    if (resolvedColumnWidths.length === 0) {
+      return `${(colspan / maxColumns) * 100}%`;
+    }
+    let widthSum = 0;
+    let hasInfo = false;
+    for (let i = 0; i < colspan; i++) {
+      const idx = startColIndex + i;
+      if (
+        resolvedColumnWidths[idx] !== null &&
+        resolvedColumnWidths[idx] !== undefined
+      ) {
+        widthSum += resolvedColumnWidths[idx]!;
+        hasInfo = true;
       }
     }
-
-    // 2) Try to use resolvedColumnWidths from colgroup
-    if (resolvedColumnWidths.length > 0) {
-      const startCol = cells
-        .slice(0, cellIndex)
-        .reduce((sum, c) => sum + (c.colspan || 1), 0);
-      let totalWidth = 0;
-      let hasAll = true;
-      for (let i = startCol; i < startCol + colspan; i++) {
-        const w = resolvedColumnWidths[i];
-        if (w === null || w === undefined) {
-          hasAll = false;
-          break;
-        }
-        totalWidth += w;
-      }
-      if (hasAll && totalWidth > 0) {
-        return `${totalWidth}%`;
-      }
-    }
-
-    // 3) fallback: equal distribution across maxColumns
-    const fallbackWidth = (colspan / maxColumns) * 100;
-    return `${fallbackWidth}%`;
+    if (hasInfo && widthSum > 0) return `${widthSum}%`;
+    return `${(colspan / maxColumns) * 100}%`;
   };
 
   return (
     <PdfTable totalColumns={maxColumns}>
-      {headerRow && (
-        <PdfTableRow isHeader>
-          {parseCells(headerRow).map((cell, idx, arr) => {
-            let cellTextAlign =
-              (cell.style &&
-                (cell.style as { textAlign?: string }).textAlign) ||
-              "left";
-            if (cellTextAlign === "justify") {
-              cellTextAlign = "left";
-            }
-
-            const cellWidth = calculateCellWidth(idx, cell.colspan, arr);
-
-            return (
-              <PdfTableCell
-                key={`hcell-${idx}`}
-                isHeader
-                colSpan={cell.colspan}
-                rowSpan={cell.rowspan}
-                width={cellWidth}
-                style={{
-                  ...cell.style,
-                }}
-              >
-                {renderCellContent(cell.innerHtml, {
-                  ...baseTextStyle,
-                  ...baseCellStyle,
-                  textAlign: cellTextAlign as "left" | "right" | "center",
-                  fontWeight: 700,
-                  letterSpacing: 0,
-                })}
-              </PdfTableCell>
-            );
-          })}
-        </PdfTableRow>
-      )}
-
-      {bodyRows.map((rowContent, rowIndex) => {
-        const cells = parseCells(rowContent);
+      {parsedRows.map((rowData, rowIndex) => {
+        let currentColumnIndex = 0;
+        const rowStyle: Style = rowData.height
+          ? { height: rowData.height }
+          : {};
 
         return (
-          <PdfTableRow key={`row-${rowIndex}`} wrap={false}>
-            {cells.map((cell, cellIndex, cellsArr) => {
-              let cellTextAlign =
-                (cell.style && (cell.style as any).textAlign) || "left";
-              if (cellTextAlign === "justify") {
-                cellTextAlign = "left";
-              }
-
-              const cellWidth = calculateCellWidth(
-                cellIndex,
-                cell.colspan,
-                cellsArr
+          <PdfTableRow key={`row-${rowIndex}`} wrap={false} style={rowStyle}>
+            {rowData.cells.map((cell, cellIndex) => {
+              const widthPct = getWidthForCell(
+                currentColumnIndex,
+                cell.colspan
               );
+              currentColumnIndex += cell.colspan;
 
               return (
                 <PdfTableCell
-                  key={`cell-${cellIndex}`}
+                  key={`cell-${rowIndex}-${cellIndex}`}
                   colSpan={cell.colspan}
                   rowSpan={cell.rowspan}
-                  width={cellWidth}
-                  style={{
-                    ...cell.style,
-                  }}
+                  width={widthPct}
+                  style={{ ...cell.style }}
                 >
                   {renderCellContent(cell.innerHtml, {
                     ...baseTextStyle,
                     ...baseCellStyle,
-                    textAlign: cellTextAlign as "left" | "right" | "center",
+                    ...(cell.style as any),
                     letterSpacing: 0,
                   })}
                 </PdfTableCell>
@@ -1003,9 +954,6 @@ const renderContentBlocks = (
     );
 };
 
-// =================================================================
-// RESTO DEL ARCHIVO (Sin cambios) - mantengo tu lógica de portada/índice/firmas
-// =================================================================
 export const BookPdfDocument = ({
   tome,
   allSigners,
@@ -1135,7 +1083,6 @@ export const BookPdfDocument = ({
 
   return (
     <Document title={`Libro de Actas - ${tome.name}`}>
-      {/* Portada */}
       <Page
         size={settings.pageSize}
         orientation={settings.orientation}
@@ -1183,49 +1130,6 @@ export const BookPdfDocument = ({
         <PageNumberRenderer />
       </Page>
 
-      {/* Índice */}
-      {/* {settings.enablePageIndex && (
-        <Page
-          size={settings.pageSize}
-          orientation={settings.orientation}
-          style={dynamicPageStyle}
-        >
-          <Text style={styles.indexTitle}>Índice</Text>
-          {!tome.acts || tome.acts.length === 0 ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text>No hay actas creadas aún</Text>
-            </View>
-          ) : (
-            <View>
-              {tome.acts.map((act, actIndex) => (
-                <React.Fragment key={act.id}>
-                  <View style={styles.indexItem}>
-                    <Text style={styles.indexItemText}>{act.name}</Text>
-                    <View style={styles.indexItemDots} />
-                    <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
-                  </View>
-                  {act.agreements.map((agreement) => (
-                    <View key={agreement.id} style={styles.indexAgreementItem}>
-                      <Text style={styles.indexItemText}>{agreement.name}</Text>
-                      <View style={styles.indexItemDots} />
-                      <Text style={styles.indexItemPage}>{actIndex + 3}</Text>
-                    </View>
-                  ))}
-                </React.Fragment>
-              ))}
-            </View>
-          )}
-          <PageNumberRenderer />
-        </Page>
-      )} */}
-
-      {/* Actas */}
       {tome.acts && tome.acts.length > 0 && (
         <Page
           size={settings.pageSize}
@@ -1347,7 +1251,6 @@ export const BookPdfDocument = ({
         </Page>
       )}
 
-      {/* Página final */}
       {tome.closingDate && (
         <Page
           size={settings.pageSize}

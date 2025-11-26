@@ -6,14 +6,14 @@ import { Outlet } from "react-router";
 export default function DashboardLayout() {
   return (
     <div className="[--header-height:calc(--spacing(14))]">
-      <SidebarProvider className="flex flex-col h-screen"> {/* ✅ Agregar h-screen */}
+      <SidebarProvider className="flex flex-col h-screen">
         <SiteHeader />
-        <div className="flex flex-1 min-h-0"> {/* ✅ Agregar min-h-0 */}
+        <div className="flex flex-1 min-h-0">
           <AppSidebar />
-          <SidebarInset className="flex-1 min-h-0"> {/* ✅ Agregar min-h-0 */}
-            <div className="flex flex-1 flex-col h-full"> {/* ✅ Cambiar a h-full */}
-              <div className="@container/main flex flex-1 flex-col h-full"> {/* ✅ Cambiar a h-full */}
-                <div className="flex flex-col h-full"> {/* ✅ Quitar padding y gap, agregar h-full */}
+          <SidebarInset className="flex-1 min-h-0">
+            <div className="flex flex-1 flex-col h-full">
+              <div className="@container/main flex flex-1 flex-col h-full">
+                <div className="flex flex-col h-full">
                   <Outlet />
                 </div>
               </div>

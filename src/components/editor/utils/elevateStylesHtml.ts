@@ -1,4 +1,3 @@
-// src/editor/utils/elevateStylesHtml.ts
 export function parseInlineStyle(styleText: string | null) {
   const out: Record<string, string> = {};
   if (!styleText) return out;

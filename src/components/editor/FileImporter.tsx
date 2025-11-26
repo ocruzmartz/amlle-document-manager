@@ -1,4 +1,3 @@
-// filepath: src/components/editor/FileImporter.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UploadCloud } from "lucide-react";
@@ -9,13 +8,6 @@ import { XMLParser } from "fast-xml-parser";
 import { removeWordEndOfCellMarkers } from "./utils/removeWordEndOfCellMarkers";
 import { elevateCellInlineStyles } from "./utils/elevateCellInLineStyles";
 
-interface FileImporterProps {
-  onImport: (htmlContent: string) => void;
-  acceptedFormats?: string;
-  disabled?: boolean;
-}
-
-// --- Interfaces para el tipado de la estructura XML de DOCX ---
 interface DocxBorder {
   "@_val"?: string;
   "@_sz"?: string;
@@ -63,7 +55,6 @@ interface TableCellStyle {
   textAlign: string | null;
 }
 
-// Interfaz extendida para Excel si se usan estilos internos
 interface ExtendedWorkBook extends XLSX.WorkBook {
   Styles?: {
     CellXf?: Array<{
@@ -73,15 +64,12 @@ interface ExtendedWorkBook extends XLSX.WorkBook {
   };
 }
 
-// Interfaz para el elemento de imagen de Mammoth
 interface MammothImageElement {
   read: (encoding: string) => Promise<string>;
   contentType?: string;
 }
 
-/* ===========================
- * UTIL: extraer estilos de tablas desde document.xml
- * =========================== */
+// ... (extractDocxTableStyles se mantiene igual)
 async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
   const zip = await JSZip.loadAsync(arrayBuffer);
   const docXml = await zip.file("word/document.xml")?.async("text");
@@ -100,9 +88,7 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
   const findTbls = (node: unknown): DocxNode[] => {
     const out: DocxNode[] = [];
     if (!node || typeof node !== "object") return out;
-    
     const typedNode = node as DocxNode;
-
     for (const key of Object.keys(typedNode)) {
       const val = typedNode[key];
       if (key === "tbl") {
@@ -128,23 +114,23 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
       const tcs = tr.tc ? (Array.isArray(tr.tc) ? tr.tc : [tr.tc]) : [];
       const rowArr = tcs.map((tc) => {
         const tcPr = tc.tcPr || {};
-        // width
         let width = null;
         if (tcPr.tcW && tcPr.tcW["@_w"]) {
           const w = tcPr.tcW["@_w"];
           const type = tcPr.tcW["@_type"] || "dxa";
-          width = { value: parseFloat(w), type }; // dxa or pct
+          width = { value: parseFloat(w), type };
         }
-        // shading (background)
         let shading = null;
         if (tcPr.shd && tcPr.shd["@_fill"]) {
           shading = tcPr.shd["@_fill"];
         }
-        // vertical align
         let vAlign = null;
         if (tcPr.vAlign && tcPr.vAlign["@_val"]) vAlign = tcPr.vAlign["@_val"];
-        // borders (detailed)
-        const borders: Record<string, { val: string; sz: number; color: string }> = {};
+
+        const borders: Record<
+          string,
+          { val: string; sz: number; color: string }
+        > = {};
         if (tcPr.tcBorders) {
           const b = tcPr.tcBorders;
           ["top", "left", "bottom", "right"].forEach((side) => {
@@ -159,12 +145,10 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
           });
         }
 
-        // colspan
         let colspan = 1;
         if (tcPr.gridSpan && tcPr.gridSpan["@_val"])
           colspan = parseInt(tcPr.gridSpan["@_val"], 10);
 
-        // attempt to read font-size from first run inside this cell (tc->p->r->rPr->sz)
         let fontSizePt: number | null = null;
         let fontFamily: string | null = null;
         try {
@@ -175,39 +159,28 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
               const firstRun = runs[0];
               const rPr = firstRun.rPr || {};
               if (rPr.sz && rPr.sz["@_val"]) {
-                // Word stores size in half-points (e.g. 24 -> 12pt)
                 const val = parseFloat(rPr.sz["@_val"]);
-                if (!Number.isNaN(val) && val > 0) {
-                  fontSizePt = val / 2; // convert half-points to pt
-                }
+                if (!Number.isNaN(val) && val > 0) fontSizePt = val / 2;
               }
-              if (rPr.rFonts && rPr.rFonts["@_ascii"]) {
+              if (rPr.rFonts && rPr.rFonts["@_ascii"])
                 fontFamily = rPr.rFonts["@_ascii"];
-              }
-              // break after first run found
               break;
             }
           }
-        } catch {
-          // ignore parsing issues
-        }
+        } catch {}
 
-        // text align
         let textAlign: string | null = null;
         try {
           const paragraphs = tc.p ? (Array.isArray(tc.p) ? tc.p : [tc.p]) : [];
           for (const p of paragraphs) {
             const pPr = p.pPr || {};
             if (pPr.jc && pPr.jc["@_val"]) {
-              textAlign = pPr.jc["@_val"]; // left, center, right, both
+              textAlign = pPr.jc["@_val"];
               break;
             }
           }
-        } catch {
-          // ignore parsing issues
-        }
+        } catch {}
 
-        // return aggregated info
         return {
           width,
           shading,
@@ -220,33 +193,46 @@ async function extractDocxTableStyles(arrayBuffer: ArrayBuffer) {
           textAlign,
         };
       });
-
       table.push(rowArr);
     });
-
     tablesStyles.push(table);
   });
-
   return tablesStyles;
 }
 
-/* ===========================
- * UTIL: mergear estilos DOCX en HTML producido por Mammoth
- * =========================== */
 function mergeDocxStylesIntoHtml(
   mammothHtml: string,
   tablesStyles: TableCellStyle[][][] | null
 ) {
   if (!tablesStyles || tablesStyles.length === 0) return mammothHtml;
 
-  // browser DOMParser (FileImporter corre en frontend)
   const parser = new DOMParser();
   const doc = parser.parseFromString(mammothHtml, "text/html");
 
   const htmlTables = Array.from(doc.querySelectorAll("table"));
+
   for (let t = 0; t < Math.min(htmlTables.length, tablesStyles.length); t++) {
     const tableEl = htmlTables[t];
-    const stylesTable = tablesStyles[t]; // filas -> celdas
+    const stylesTable = tablesStyles[t];
+
+    // 🔥 FORZAR ANCHO 100%: Esto es crucial para que ocupe toda la ventana
+    const currentTableStyle = tableEl.getAttribute("style") || "";
+    tableEl.setAttribute(
+      "style",
+      currentTableStyle + "; width: 100%; border-collapse: collapse;"
+    );
+
+    // Calcular ancho total para convertir píxeles de Word a Porcentajes
+    let maxTableWidthTwips = 0;
+    for (const row of stylesTable) {
+      const rowWidth = row.reduce(
+        (acc, cell) => acc + (cell.width?.value || 0),
+        0
+      );
+      if (rowWidth > maxTableWidthTwips) maxTableWidthTwips = rowWidth;
+    }
+    if (maxTableWidthTwips === 0) maxTableWidthTwips = 1;
+
     const trEls = Array.from(tableEl.querySelectorAll("tr"));
 
     for (let r = 0; r < Math.min(trEls.length, stylesTable.length); r++) {
@@ -261,7 +247,14 @@ function mergeDocxStylesIntoHtml(
 
         const inlineParts: string[] = [];
 
-        // shading/background
+        // 1. Font Size (y Span Wrapper abajo)
+        let fontSizeString = "";
+        if (info.fontSizePt) {
+          fontSizeString = `${info.fontSizePt}pt`;
+          inlineParts.push(`font-size: ${fontSizeString}`);
+        }
+
+        // 2. Shading
         if (info.shading) {
           const hex = info.shading.startsWith("#")
             ? info.shading
@@ -269,26 +262,27 @@ function mergeDocxStylesIntoHtml(
           inlineParts.push(`background-color: ${hex}`);
         }
 
-        // width handling
+        // 3. Width
         if (info.width) {
           if (info.width.type === "pct") {
             inlineParts.push(`width: ${info.width.value}%`);
           } else {
-            const twips = info.width.value;
-            const points = twips / 20;
-            const px = Math.round(points * 1.3333);
-            inlineParts.push(`width: ${px}px`);
+            const percent = (info.width.value / maxTableWidthTwips) * 100;
+            inlineParts.push(`width: ${percent.toFixed(2)}%`);
           }
         }
 
-        // vertical align
+        // 4. Vertical Align
         if (info.vAlign) {
-          const map: Record<string, string> = { top: "top", center: "middle", bottom: "bottom" };
-          const va = map[info.vAlign] || "top";
-          inlineParts.push(`vertical-align: ${va}`);
+          const map: Record<string, string> = {
+            top: "top",
+            center: "middle",
+            bottom: "bottom",
+          };
+          inlineParts.push(`vertical-align: ${map[info.vAlign] || "top"}`);
         }
 
-        // borders: map sides if present, otherwise apply subtle border fallback
+        // 5. Borders
         const sides = ["top", "right", "bottom", "left"];
         let hasAnyBorder = false;
         sides.forEach((side) => {
@@ -300,50 +294,81 @@ function mergeDocxStylesIntoHtml(
             inlineParts.push(`border-${side}: ${size}px solid ${color}`);
           }
         });
-        if (!hasAnyBorder) {
-          // fallback to a light border so table grid looks consistent
-          inlineParts.push(`border: 1px solid #ddd`);
-        }
+        if (!hasAnyBorder) inlineParts.push(`border: 1px solid #ddd`);
 
-        // font-size and family
-        if (info.fontSizePt) {
-          inlineParts.push(`font-size: ${info.fontSizePt}pt`);
-        }
-        if (info.fontFamily) {
-          // do not assume availability of the font in PDF; we still inline it
-          inlineParts.push(`font-family: '${info.fontFamily}'`);
-        }
-
-        // text-align
+        // 6. Align
         if (info.textAlign) {
-          const map: Record<string, string> = { left: "left", center: "center", right: "right", both: "justify" };
+          const map: Record<string, string> = {
+            left: "left",
+            center: "center",
+            right: "right",
+            both: "justify",
+          };
           inlineParts.push(`text-align: ${map[info.textAlign] || "left"}`);
         }
 
-        // colspan
         if (info.colspan && info.colspan > 1) {
           cellEl.setAttribute("colspan", String(info.colspan));
         }
-
-        // merge with existing style attribute (preserve existing mammoth styles)
         const existing = cellEl.getAttribute("style") || "";
         const newStyle =
           (existing ? existing + ";" : "") + inlineParts.join(";");
         if (newStyle.trim()) cellEl.setAttribute("style", newStyle);
+
+        if (fontSizeString) {
+          const childParagraphs = Array.from(cellEl.querySelectorAll("p"));
+          childParagraphs.forEach((p) => {
+            const span = doc.createElement("span");
+            span.setAttribute("style", `font-size: ${fontSizeString}`);
+            while (p.firstChild) span.appendChild(p.firstChild);
+            p.appendChild(span);
+          });
+        }
+      }
+    }
+
+    let colgroup = tableEl.querySelector("colgroup");
+    if (!colgroup && stylesTable.length > 0) {
+      colgroup = doc.createElement("colgroup");
+      tableEl.insertBefore(colgroup, tableEl.firstChild);
+    }
+
+    if (colgroup && stylesTable.length > 0) {
+      const firstRowStyles = stylesTable[0];
+      colgroup.innerHTML = "";
+      for (let c = 0; c < firstRowStyles.length; c++) {
+        const cellInfo = firstRowStyles[c];
+        const colspan = cellInfo.colspan || 1;
+        let widthValue = "auto";
+        if (cellInfo.width) {
+          const divisor = colspan > 1 ? colspan : 1;
+          let percent = 0;
+          if (cellInfo.width.type === "pct") {
+            percent = cellInfo.width.value / divisor;
+          } else {
+            percent =
+              ((cellInfo.width.value / maxTableWidthTwips) * 100) / divisor;
+          }
+          widthValue = `${percent.toFixed(2)}%`;
+        }
+
+        for (let span = 0; span < colspan; span++) {
+          const col = doc.createElement("col");
+          col.setAttribute("style", `width: ${widthValue};`);
+          colgroup.appendChild(col);
+        }
       }
     }
   }
-
   return doc.body.innerHTML;
 }
 
-/* ============================================================
- * EXCEL converter
- * ============================================================ */
-const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string => {
+const excelToHtml = (
+  worksheet: XLSX.WorkSheet,
+  wb?: ExtendedWorkBook
+): string => {
   const ref = worksheet["!ref"] || "A1";
   const range = XLSX.utils.decode_range(ref);
-
   const cols = worksheet["!cols"] || [];
   const colPxWidths = [];
   for (let c = range.s.c; c <= range.e.c; c++) {
@@ -352,7 +377,6 @@ const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string =
   }
   const totalPx =
     colPxWidths.reduce((a, b) => a + b, 0) || colPxWidths.length * 80;
-
   const merges = worksheet["!merges"] || [];
   const mergeMap = new Map<
     string,
@@ -364,7 +388,6 @@ const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string =
     const colspan = m.e.c - m.s.c + 1;
     const rowspan = m.e.r - m.s.r + 1;
     mergeMap.set(startAddr, { colspan, rowspan, skip: false });
-
     for (let r = m.s.r; r <= m.e.r; r++) {
       for (let c = m.s.c; c <= m.e.c; c++) {
         const addr = XLSX.utils.encode_cell({ r, c });
@@ -375,8 +398,6 @@ const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string =
   });
 
   let html = `<table style="border-collapse: collapse; width: 100%;">`;
-
-  // colgroup conservando proporciones, pero limitando al número de columnas reales
   html += `<colgroup>`;
   for (let i = 0; i < colPxWidths.length; i++) {
     const px = colPxWidths[i] || 80;
@@ -405,8 +426,6 @@ const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string =
 
       const colspan = mInfo?.colspan || 1;
       const rowspan = mInfo?.rowspan || 1;
-
-      // compute width for this cell by summing involved col widths
       let widthPct = 0;
       for (let i = c; i < c + colspan; i++) {
         const idx = i - range.s.c;
@@ -420,41 +439,32 @@ const excelToHtml = (worksheet: XLSX.WorkSheet, wb?: ExtendedWorkBook): string =
 
       let baseStyle = `padding: 6px; vertical-align: top; width: ${widthPct.toFixed(
         2
-      )};`;
+      )}%;`;
       if (isHeader)
         baseStyle += " font-weight: bold; background-color: #f8f9fa;";
-
       baseStyle += " border: 1px solid #ddd;";
 
-      // NUEVO: aplicar estilos básicos de alineación y color de fondo desde CellXf (si disponible)
       if (cell && cell.s && wb && wb.Styles && wb.Styles.CellXf) {
-        // cell.s puede ser un número o string dependiendo de la versión
-        const styleIndex = typeof cell.s === 'number' ? cell.s : parseInt(cell.s as string, 10);
+        const styleIndex =
+          typeof cell.s === "number" ? cell.s : parseInt(cell.s as string, 10);
         if (!isNaN(styleIndex)) {
-           const xf = wb.Styles.CellXf[styleIndex];
-           if (xf && xf.alignment && xf.alignment.horizontal) {
-             baseStyle += ` text-align: ${xf.alignment.horizontal};`;
-           }
-           if (xf && xf.fill && xf.fill.fgColor && xf.fill.fgColor.rgb) {
-             baseStyle += ` background-color: #${xf.fill.fgColor.rgb.slice(2)};`;
-           }
+          const xf = wb.Styles.CellXf[styleIndex];
+          if (xf && xf.alignment && xf.alignment.horizontal)
+            baseStyle += ` text-align: ${xf.alignment.horizontal};`;
+          if (xf && xf.fill && xf.fill.fgColor && xf.fill.fgColor.rgb)
+            baseStyle += ` background-color: #${xf.fill.fgColor.rgb.slice(2)};`;
         }
       }
 
       const content = text ? `<p>${text}</p>` : `<p>&nbsp;</p>`;
-
       html += `<${tag}${colspanAttr}${rowspanAttr} style="${baseStyle}">${content}</${tag}>`;
     }
     html += `</tr>`;
   }
-
   html += `</table>`;
   return html;
 };
 
-/* ============================================================
- * Normalize HTML (solo limpia tags XML basura)
- * ============================================================ */
 const normalizeHtml = (html: string): string => {
   if (!html) return html;
   let out = html.replace(/<\/?\w+:[^>]*>/g, "");
@@ -464,14 +474,15 @@ const normalizeHtml = (html: string): string => {
   return out;
 };
 
-/* ============================================================
- * Componente FileImporter (principal)
- * ============================================================ */
 export const FileImporter = ({
   onImport,
   acceptedFormats = ".docx, .xlsx, .xls",
   disabled = false,
-}: FileImporterProps) => {
+}: {
+  onImport: (html: string) => void;
+  acceptedFormats?: string;
+  disabled?: boolean;
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -483,32 +494,30 @@ export const FileImporter = ({
 
     try {
       let html = "";
-
       if (file.name.match(/\.docx$/i)) {
         const arrayBuffer = await file.arrayBuffer();
-        // 1) Mammoth -> HTML
         const mammothHtml = await mammoth.convertToHtml(
           { arrayBuffer },
           {
             styleMap: ["b => strong", "i => em", "u => u"],
-            // CORRECCIÓN: Usar mammoth.images.imgElement para crear el convertidor correcto
-            convertImage: mammoth.images.imgElement(function(element: MammothImageElement) {
-              return element.read("base64").then(function(imageBuffer: string) {
-                const contentType = element.contentType || "image/png";
-                return { src: `data:${contentType};base64,${imageBuffer}` };
-              });
+            convertImage: mammoth.images.imgElement(function (
+              element: MammothImageElement
+            ) {
+              return element
+                .read("base64")
+                .then(function (imageBuffer: string) {
+                  const contentType = element.contentType || "image/png";
+                  return { src: `data:${contentType};base64,${imageBuffer}` };
+                });
             }),
           }
         );
-        // 2) extract docx table styles using JSZip + XML parse
         const tablesStyles = await extractDocxTableStyles(arrayBuffer).catch(
           (err) => {
             console.warn("No pudo extraer estilos DOCX:", err);
             return null;
           }
         );
-
-        // 3) merge styles into mammoth HTML
         html = mergeDocxStylesIntoHtml(
           typeof mammothHtml === "string" ? mammothHtml : mammothHtml.value,
           tablesStyles
@@ -517,7 +526,6 @@ export const FileImporter = ({
         const arrayBuffer = await file.arrayBuffer();
         const wb = XLSX.read(arrayBuffer) as ExtendedWorkBook;
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        // Corregido: Ahora pasamos 'wb' a excelToHtml
         html = excelToHtml(sheet, wb);
       } else {
         setError(`Formato no soportado. Usa: ${acceptedFormats}`);
@@ -526,19 +534,17 @@ export const FileImporter = ({
       }
 
       let normalized = normalizeHtml(html);
-
       try {
         normalized = elevateCellInlineStyles(normalized);
       } catch (err) {
-        console.warn("elevateCellInlineStyles fallo:", err);
+        console.warn(err);
       }
-
       try {
         normalized = removeWordEndOfCellMarkers
           ? removeWordEndOfCellMarkers(normalized)
           : normalized;
       } catch (err) {
-        console.warn("removeWordEndOfCellMarkers fallo:", err);
+        console.warn(err);
       }
 
       onImport(normalized);
@@ -549,15 +555,12 @@ export const FileImporter = ({
       );
     } finally {
       setIsLoading(false);
-      // reset input so same file can be selected again
       try {
         const input = document.getElementById(
           "file-importer"
         ) as HTMLInputElement | null;
         if (input) input.value = "";
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   };
 
@@ -576,7 +579,6 @@ export const FileImporter = ({
           </div>
         </Button>
       </label>
-
       <input
         id="file-importer"
         type="file"
@@ -585,7 +587,6 @@ export const FileImporter = ({
         onChange={handleFileChange}
         disabled={isLoading || disabled}
       />
-
       {error && <p className="text-sm text-destructive mt-2">{error}</p>}
     </div>
   );

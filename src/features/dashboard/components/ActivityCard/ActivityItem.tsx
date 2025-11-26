@@ -13,7 +13,6 @@ import {
 import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Mapa de acciones a icono
 const actionIconMap: Record<string, LucideIcon> = {
   CREATED: PlusCircle,
   UPDATED: PenSquare,
@@ -22,7 +21,6 @@ const actionIconMap: Record<string, LucideIcon> = {
   EXPORTED: FileDown,
 };
 
-// Mapa de acciones a texto
 const actionTextMap: Record<string, string> = {
   CREATED: "creó",
   UPDATED: "modificó",
@@ -47,21 +45,17 @@ const ActivityItem = ({ log, isLastItem }: ActivityItemProps) => {
     actionTextMap[log.action as LogAction] || log.action.toLowerCase();
 
   return (
-    // ✅ 1. Contenedor del item de la timeline
     <div className={cn("relative flex gap-4 pb-4", isLastItem && "pb-0")}>
-      {/* ✅ 2. La línea vertical de la timeline (se oculta en el último item) */}
       {!isLastItem && (
         <div className="absolute left-2 top-1 h-full w-px bg-border -translate-x-1/2" />
       )}
 
-      {/* ✅ 3. El icono (de un solo tono) */}
       <div className="relative z-10">
         <div className="flex h-5 w-5 items-center justify-center rounded-full bg-background p-0.5">
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
-      {/* ✅ 4. El contenido de texto */}
       <div className="flex-1 min-w-0 -mt-0.5">
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-primary">{log.user.nombre}</span>{" "}

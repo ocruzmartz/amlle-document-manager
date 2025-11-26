@@ -8,8 +8,6 @@ interface BookPdfPreview {
 }
 
 export const BookPdfPreview = ({ tome, allSigners }: BookPdfPreview) => {
-  console.log("🖼️ BookPdfPreview - Libro actualizado:", tome);
-
   return (
     <section className=" lg:flex flex bg-muted/40 overflow-hidden h-full min-w-[700px]">
       <div className="flex-1 overflow-hidden">

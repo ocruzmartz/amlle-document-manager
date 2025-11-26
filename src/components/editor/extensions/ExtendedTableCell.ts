@@ -13,6 +13,24 @@ export const ExtendedTableCell = TableCell.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      colwidth: {
+        default: null,
+        parseHTML: (element) => {
+          const colwidth = element.getAttribute("data-colwidth");
+          const value = colwidth
+            ? colwidth.split(",").map((item) => parseInt(item, 10))
+            : null;
+          return value;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.colwidth) {
+            return {};
+          }
+          return {
+            "data-colwidth": attributes.colwidth.join(","),
+          };
+        },
+      },
 
       colspan: {
         default: 1,
@@ -55,15 +73,22 @@ export const ExtendedTableCell = TableCell.extend({
 
           return null;
         },
-        renderHTML: (attributes) =>
-          attributes.valign ? { valign: attributes.valign } : {},
+        renderHTML: (attributes) => {
+          if (!attributes.valign) return {};
+          return {
+            valign: attributes.valign,
+            style: `vertical-align: ${attributes.valign}`,
+          };
+        },
       },
 
       style: {
         default: null,
         parseHTML: (element) => element.getAttribute("style"),
-        renderHTML: (attributes) =>
-          attributes.style ? { style: attributes.style } : {},
+        renderHTML: (attributes) => {
+          if (!attributes.style) return {};
+          return { style: attributes.style };
+        },
       },
 
       "data-attrs": {
@@ -83,7 +108,7 @@ export const ExtendedTableCell = TableCell.extend({
     };
   },
 
-  aaddCommands() {
+  addCommands() {
     return {
       setCellVerticalAlign:
         (align: VerticalAlign) =>

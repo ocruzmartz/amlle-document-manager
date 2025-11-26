@@ -9,12 +9,17 @@ interface BookPdfRendererProps {
 
 const PDFPreview = React.lazy(async () => {
   try {
-    console.log("1. Iniciando carga diferida de PDFPreview...");
     const { PDFViewer } = await import("@react-pdf/renderer");
     const { BookPdfDocument } = await import("./BookPdfDocument");
 
     return {
-      default: ({ tome, allSigners }: { tome: Tome; allSigners: CouncilMember[] }) => (
+      default: ({
+        tome,
+        allSigners,
+      }: {
+        tome: Tome;
+        allSigners: CouncilMember[];
+      }) => (
         <PDFViewer
           style={{
             width: "100%",
@@ -92,16 +97,9 @@ const PDFPreview = React.lazy(async () => {
 export const BookPdfRenderer = ({ tome, allSigners }: BookPdfRendererProps) => {
   const [isClient, setIsClient] = useState(false);
 
-  // ✅ Solo renderizar en el cliente para evitar errores de hidratación
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // ✅ Debug para ver la estructura del libro
-  useEffect(() => {
-    console.log("📚 BookPageRenderer - Tomo recibido:", tome);
-    console.log("📋 Actas disponibles:", tome.acts?.length || 0);
-  }, [tome]);
 
   if (!isClient) {
     return (

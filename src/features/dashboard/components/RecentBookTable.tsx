@@ -27,7 +27,6 @@ interface RecentBooksTableProps {
 
 export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
   return (
-    // ✅ 1. Usamos un Card minimalista
     <Card className="shadow-none">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
@@ -42,7 +41,6 @@ export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
           </Link>
         </Button>
       </CardHeader>
-      {/* ✅ 2. CardContent con p-0 para que la tabla se ajuste */}
       <CardContent className="p-0">
         {books.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
@@ -60,7 +58,6 @@ export const RecentBooksTable = ({ books }: RecentBooksTableProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Mostrar solo los primeros 5 libros para un look limpio */}
               {books.slice(0, 5).map((book) => (
                 <TableRow key={book.id}>
                   <TableCell className="pl-5">

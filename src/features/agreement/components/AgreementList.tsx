@@ -117,19 +117,16 @@ export const AgreementList = ({
                       className={cn(
                         "border rounded-lg p-3 bg-white transition-colors",
                         isActive
-                          ? "bg-blue-50 border-blue-300 ring-1 ring-blue-300" // Estilo si está activo
-                          : "hover:bg-gray-50" // Estilo normal
+                          ? "bg-blue-50 border-blue-300 ring-1 ring-blue-300"
+                          : "hover:bg-gray-50"
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        {/* ✅ Mostrar número dinámicamente */}
                         <h4 className="font-semibold truncate">
                           Acuerdo número {capitalize(numberToWords(index + 1))}
                         </h4>
 
-                        {/* ✅ Grupo de botones */}
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          {/* ✅ Botones de reordenación */}
                           <div className="flex flex-col">
                             <Button
                               onClick={() =>

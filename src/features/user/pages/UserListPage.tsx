@@ -37,7 +37,6 @@ export const UserListPage: React.FC = () => {
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
-        console.log("Fetching users - dataVersion:", dataVersion);
         const userData = await getUsers();
         setUsers(userData);
       } catch (error) {
@@ -72,18 +71,15 @@ export const UserListPage: React.FC = () => {
     setUserToTerminate(user);
   }, []);
 
-  // --- Manejadores de Confirmación (Conectados a la API) ---
-
   const confirmDelete = useCallback(async () => {
     if (!userToDelete) return;
     const toastId = toast.loading("Eliminando usuario...");
     try {
-      // Llama al endpoint real (DELETE /api/users/remove/:id)
       await deleteUser(userToDelete.id);
       toast.success(`Usuario "${userToDelete.nombre}" eliminado.`, {
         id: toastId,
       });
-      refreshData(); // Recarga la tabla
+      refreshData();
     } catch (error) {
       console.error("Error deleting user:", error);
       toast.error(
@@ -100,12 +96,11 @@ export const UserListPage: React.FC = () => {
     if (!userToTerminate) return;
     const toastId = toast.loading("Desactivando usuario...");
     try {
-      // Llama al endpoint real (PATCH /api/users/deactivate/:id)
       await terminateUserSession(userToTerminate.id);
       toast.success(`Usuario "${userToTerminate.nombre}" desactivado.`, {
         id: toastId,
       });
-      refreshData(); // Recarga la tabla
+      refreshData();
     } catch (error) {
       console.error("Error terminating session:", error);
       toast.error(
@@ -118,13 +113,17 @@ export const UserListPage: React.FC = () => {
     setUserToTerminate(null);
   }, [userToTerminate, refreshData]);
 
-  // --- Definiciones de Columnas y Filtros ---
   const columns = useMemo(
-    () => getColumns(handleEdit, handleDelete, handleTerminateSession, currentUser?.id),
+    () =>
+      getColumns(
+        handleEdit,
+        handleDelete,
+        handleTerminateSession,
+        currentUser?.id
+      ),
     [handleEdit, handleDelete, handleTerminateSession, currentUser?.id]
   );
 
-  // Filtros adaptados al modelo de datos real del backend
   const facetedFilters = useMemo(
     () => [
       {
@@ -148,11 +147,9 @@ export const UserListPage: React.FC = () => {
     []
   );
 
-  // --- Renderizado del Componente ---
   return (
     <>
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Header Section */}
         <div className="shrink-0 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -172,18 +169,19 @@ export const UserListPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Data Table Section (con estado de carga) */}
         <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? ( // <-- Mostrar estado de carga
+          {isLoading ? (
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Cargando lista de usuarios...</span>
+              <span className="ml-2 text-muted-foreground">
+                Cargando lista de usuarios...
+              </span>
             </div>
           ) : (
             <DataTable
               columns={columns}
-              data={users} // Pasa los usuarios del estado
-              filterColumnId="nombre" // Filtra por 'nombre'
+              data={users}
+              filterColumnId="nombre"
               filterPlaceholder="Filtrar por nombre..."
               facetedFilters={facetedFilters}
               initialSorting={initialSorting}
@@ -192,7 +190,6 @@ export const UserListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Panel lateral del Formulario */}
       <UserForm
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
@@ -200,7 +197,6 @@ export const UserListPage: React.FC = () => {
         onSave={refreshData}
       />
 
-      {/* Diálogo de Confirmación para Eliminar */}
       <AlertDialog
         open={!!userToDelete}
         onOpenChange={(open) => !open && setUserToDelete(null)}
@@ -228,7 +224,6 @@ export const UserListPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Diálogo de Confirmación para Desactivar (Terminar Sesión) */}
       <AlertDialog
         open={!!userToTerminate}
         onOpenChange={(open) => !open && setUserToTerminate(null)}

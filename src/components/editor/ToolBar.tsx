@@ -25,6 +25,8 @@ import {
   X,
   Baseline,
   Grid2X2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Separator } from "@/components/ui/separator";
@@ -249,15 +251,42 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
 
   return (
     <div className="sticky top-0 z-10 bg-background border-b">
-      <div className="flex flex-wrap items-center gap-0.5 p-1.5">
-        <div className="flex items-center h-8 w-20 border rounded-md overflow-hidden shadow-none">
+      <div className="flex flex-wrap items-center gap-1 p-2">
+        {/* Grupo: Deshacer/Rehacer */}
+        <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            title="Deshacer (Ctrl+Z)"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            title="Rehacer (Ctrl+Y)"
+          >
+            <Redo2 className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-0.5" />
+
+        {/* Grupo: Tamaño de Fuente */}
+        <div className="flex items-center h-8 w-20 border rounded-md overflow-hidden bg-muted/20">
           <Input
             type="number"
             value={sizeInput}
             onChange={(e) => setSizeInput(e.target.value)}
             onKeyDown={handleSizeInputKeyDown}
             onBlur={handleSizeInputBlur}
-            className="h-full w-12 border-none shadow-none focus-visible:ring-0 px-1.5 text-xs"
+            className="h-full w-12 border-none shadow-none focus-visible:ring-0 px-1.5 text-xs bg-transparent"
             min="1"
             max="100"
           />
@@ -266,7 +295,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-full w-8 p-0 border-l rounded-l-none rounded-r-md"
+                className="h-full w-8 p-0 border-l rounded-l-none rounded-r-md hover:bg-accent/50"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
               </Button>
@@ -288,7 +317,10 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-0.5">
+        <Separator orientation="vertical" className="h-6 mx-0.5" />
+
+        {/* Grupo: Formato de Texto */}
+        <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
           <Toggle
             size="sm"
             className="h-8 w-8 p-0"
@@ -296,7 +328,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
             onPressedChange={() => editor.chain().focus().toggleBold().run()}
             title="Negrita (Ctrl+B)"
           >
-            <Bold className="h-3.5 w-3.5" />
+            <Bold className="h-4 w-4" />
           </Toggle>
           <Toggle
             size="sm"
@@ -305,7 +337,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
             onPressedChange={() => editor.chain().focus().toggleItalic().run()}
             title="Cursiva (Ctrl+I)"
           >
-            <Italic className="h-3.5 w-3.5" />
+            <Italic className="h-4 w-4" />
           </Toggle>
           <Toggle
             size="sm"
@@ -316,127 +348,132 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
             }
             title="Subrayado (Ctrl+U)"
           >
-            <Underline className="h-3.5 w-3.5" />
+            <Underline className="h-4 w-4" />
           </Toggle>
         </div>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+        <Separator orientation="vertical" className="h-6 mx-0.5" />
 
-        <div className="flex items-center gap-0.5">
-          <div
-            className="flex items-center gap-0.5 ml-1"
-            title="Color de texto"
+        {/* Grupo: Color de Texto */}
+        <div
+          className="flex items-center gap-1 bg-muted/40 rounded-md px-2 py-1"
+          title="Color de texto"
+        >
+          <Baseline className="h-4 w-4 text-muted-foreground" />
+          <Input
+            type="color"
+            ref={textColorInputRef}
+            className="h-6 w-10 p-1 rounded-sm cursor-pointer shadow-none border"
+            value={editor.getAttributes("textStyle").color || "#000000"}
+            onInput={(e) => setTextColor(e.currentTarget.value)}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-accent/50"
+            title="Restablecer color de texto"
+            onClick={() => setTextColor("")}
           >
-            <Baseline className="h-4 w-4 text-muted-foreground" />
-            <Input
-              type="color"
-              ref={textColorInputRef}
-              className="h-6 w-10 ml-1 p-1 rounded-sm cursor-pointer shadow-none"
-              value={editor.getAttributes("textStyle").color || "#000000"}
-              onInput={(e) => setTextColor(e.currentTarget.value)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-4 w-4 p-0"
-              title="Restablecer color de texto"
-              onClick={() => setTextColor("")}
-            >
-              <X className="h-2 w-2" />
-            </Button>
-          </div>
+            <X className="h-3 w-3" />
+          </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+        <Separator orientation="vertical" className="h-6 mx-0.5" />
 
+        {/* Grupo: Alineación y Listas */}
+        <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Alineación"
+              >
+                <AlignmentIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuRadioGroup
+                value={activeAlignment}
+                onValueChange={(value) =>
+                  editor.chain().focus().setTextAlign(value).run()
+                }
+              >
+                <DropdownMenuRadioItem value="left">
+                  <AlignLeft className="mr-2 h-4 w-4" />
+                  Izquierda
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="center">
+                  <AlignCenter className="mr-2 h-4 w-4" />
+                  Centro
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="right">
+                  <AlignRight className="mr-2 h-4 w-4" />
+                  Derecha
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="justify">
+                  <AlignJustify className="mr-2 h-4 w-4" />
+                  Justificado
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Listas"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onSelect={() => editor.chain().focus().toggleBulletList().run()}
+                data-active={editor.isActive("bulletList")}
+              >
+                <List className="mr-2 h-4 w-4" />
+                Lista de viñetas
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  editor.chain().focus().toggleOrderedList().run()
+                }
+                data-active={editor.isActive("orderedList")}
+              >
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Lista numerada
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  editor.chain().focus().toggleRomanOrderedList().run()
+                }
+                data-active={editor.isActive("romanOrderedList")}
+              >
+                <Hash className="mr-2 h-4 w-4" />
+                Lista romana
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-0.5" />
+
+        {/* Grupo: Tablas */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
-              title="Alineación"
-            >
-              <AlignmentIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup
-              value={activeAlignment}
-              onValueChange={(value) =>
-                editor.chain().focus().setTextAlign(value).run()
-              }
-            >
-              <DropdownMenuRadioItem value="left">
-                <AlignLeft className="mr-2 h-4 w-4" />
-                Izquierda
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="center">
-                <AlignCenter className="mr-2 h-4 w-4" />
-                Centro
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="right">
-                <AlignRight className="mr-2 h-4 w-4" />
-                Derecha
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="justify">
-                <AlignJustify className="mr-2 h-4 w-4" />
-                Justificado
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              title="Listas"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              onSelect={() => editor.chain().focus().toggleBulletList().run()}
-              data-active={editor.isActive("bulletList")}
-            >
-              <List className="mr-2 h-4 w-4" />
-              Lista de viñetas
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => editor.chain().focus().toggleOrderedList().run()}
-              data-active={editor.isActive("orderedList")}
-            >
-              <ListOrdered className="mr-2 h-4 w-4" />
-              Lista numerada
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() =>
-                editor.chain().focus().toggleRomanOrderedList().run()
-              }
-              data-active={editor.isActive("romanOrderedList")}
-            >
-              <Hash className="mr-2 h-4 w-4" />
-              Lista romana
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 gap-1"
+              className="h-8 px-2.5 gap-1.5 bg-muted/40 rounded-md hover:bg-muted/60"
               disabled={isTableActive}
               title="Insertar tabla"
             >
-              <Table className="h-3.5 w-3.5" />
+              <Table className="h-4 w-4" />
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
@@ -467,9 +504,11 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
         </DropdownMenu>
       </div>
 
+      {/* Barra de Herramientas de Tabla */}
       {isTableActive && (
-        <div className="flex flex-wrap items-center gap-0.5 p-1.5 border-t bg-muted/30">
-          <div className="flex items-center gap-0.5">
+        <div className="flex flex-wrap items-center gap-1 p-2 border-t bg-muted/30">
+          {/* Grupo: Alineación Vertical */}
+          <div className="flex items-center gap-0.5 bg-background/60 rounded-md p-0.5">
             <Toggle
               size="sm"
               className="h-8 w-8 p-0"
@@ -513,37 +552,39 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
             </Toggle>
           </div>
 
-          <Separator orientation="vertical" className="h-6 mx-1" />
+          <Separator orientation="vertical" className="h-6 mx-0.5" />
 
+          {/* Grupo: Color de Fondo */}
           <div
-            className="flex items-center gap-1"
+            className="flex items-center gap-1.5 bg-background/60 rounded-md px-2 py-1"
             title="Color de fondo de celda"
           >
-            <Palette className="h-4 w-4 text-muted-foreground ml-1" />
+            <Palette className="h-4 w-4 text-muted-foreground" />
             <Input
               type="color"
               ref={colorInputRef}
-              className="h-7 w-10 p-1 rounded-sm cursor-pointer"
+              className="h-6 w-10 p-1 rounded-sm cursor-pointer border"
               defaultValue="#000000"
               onInput={(e) => setCellBackgroundColor(e.currentTarget.value)}
             />
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="h-6 w-6 p-0 hover:bg-accent/50"
               title="Limpiar color de fondo"
               onClick={() => setCellBackgroundColor("")}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3" />
             </Button>
           </div>
 
+          {/* Grupo: Bordes */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 bg-background/60 rounded-md hover:bg-accent/50"
                 title="Configurar bordes"
               >
                 <Grid2X2 className="h-4 w-4" />
@@ -624,10 +665,10 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Separator orientation="vertical" className="h-6 mx-1" />
+          <Separator orientation="vertical" className="h-6 mx-0.5" />
 
           {/* Grupo: Estructura de Tabla */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 bg-background/60 rounded-md p-0.5">
             <Button
               variant="ghost"
               size="sm"
@@ -635,7 +676,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               onClick={() => editor.chain().focus().addColumnBefore().run()}
               title="Añadir columna izquierda"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
@@ -644,7 +685,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               onClick={() => editor.chain().focus().deleteColumn().run()}
               title="Eliminar columna"
             >
-              <Minus className="h-3.5 w-3.5" />
+              <Minus className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
@@ -653,7 +694,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               onClick={() => editor.chain().focus().addRowAfter().run()}
               title="Añadir fila"
             >
-              <Plus className="h-3.5 w-3.5 rotate-90" />
+              <Plus className="h-4 w-4 rotate-90" />
             </Button>
             <Button
               variant="ghost"
@@ -662,7 +703,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               onClick={() => editor.chain().focus().deleteRow().run()}
               title="Eliminar fila"
             >
-              <Minus className="h-3.5 w-3.5 rotate-90" />
+              <Minus className="h-4 w-4 rotate-90" />
             </Button>
             <Button
               variant="ghost"
@@ -672,7 +713,7 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               disabled={!editor.can().mergeCells()}
               title="Combinar celdas"
             >
-              <Combine className="h-3.5 w-3.5" />
+              <Combine className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
@@ -682,16 +723,16 @@ export const ToolBar = ({ editor }: ToolBarProps) => {
               disabled={!editor.can().splitCell()}
               title="Dividir celda"
             >
-              <SplitSquareHorizontal className="h-3.5 w-3.5" />
+              <SplitSquareHorizontal className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => editor.chain().focus().deleteTable().run()}
               title="Eliminar tabla"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -150,7 +150,7 @@ export const BookWorkspacePage = () => {
         activeAgreementId: null,
       };
     }
-    // Default to cover
+
     return {
       main: { type: "cover" },
       detail: { type: "none" },
@@ -161,10 +161,7 @@ export const BookWorkspacePage = () => {
 
   const setViewAndUrl = useCallback(
     (view: WorkspaceView) => {
-      // 1. Actualizar el estado local
       setCurrentView(view);
-
-      // 2. Actualizar la URL con searchParams
       const params = new URLSearchParams();
       params.set("view", view.main.type);
       if (view.activeActId) {
@@ -176,7 +173,6 @@ export const BookWorkspacePage = () => {
       if (view.activeAgreementId) {
         params.set("agreementId", view.activeAgreementId);
       }
-      // Usar 'replace: true' para no contaminar el historial del navegador
       setSearchParams(params, { replace: true });
     },
     [setSearchParams]
@@ -400,15 +396,12 @@ export const BookWorkspacePage = () => {
     const toastId = toast.loading("Eliminando acuerdo...");
 
     try {
-      // 1. Llamar al servicio API
       await agreementService.deleteAgreement(agreementToDelete.id);
 
-      // 2. Refrescar el acta actual para actualizar la lista
-      // (Esto es más limpio que manipular el estado local)
       await refetchActiveAct({ showLoadingScreen: false });
 
       toast.success("Acuerdo eliminado exitosamente.", { id: toastId });
-      setAgreementToDelete(null); // Cerrar modal
+      setAgreementToDelete(null);
       setConfirmationText("");
     } catch (error: unknown) {
       console.error("❌ Error al eliminar acuerdo:", error);
@@ -504,7 +497,7 @@ export const BookWorkspacePage = () => {
         name: newActName,
         actNumber: newActNumber,
         meetingDate: formatDateToISO(new Date()),
-        meetingTime: "diez horas", // <-- VALOR POR DEFECTO
+        meetingTime: "diez horas",
       };
 
       const newActFromBackend = await actService.createAct(payload);
@@ -518,7 +511,6 @@ export const BookWorkspacePage = () => {
       });
 
       setViewAndUrl({
-        // <-- Usar la nueva función
         main: { type: "act-edit", actId: newActFromBackend.id },
         detail: { type: "agreement-list" },
         activeActId: newActFromBackend.id,
@@ -832,14 +824,6 @@ export const BookWorkspacePage = () => {
         <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
           <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
             <SheetTitle>Vista Previa del Tomo (PDF)</SheetTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleTomeUpdate({})}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Recargar
-            </Button>
           </SheetHeader>
           <BookPdfPreview
             key={previewKey}

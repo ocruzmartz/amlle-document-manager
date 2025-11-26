@@ -1,13 +1,10 @@
-// filepath: src/lib/textUtils.ts
 import { isValid, format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// Función auxiliar para capitalizar (ya la tenías, la usamos abajo)
 export const capitalize = (s: string): string =>
   s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
 export const numberToWords = (num: number): string => {
-  // 1. Cambiamos todo a minúsculas para evitar "VeintiUno"
   const units = [
     "",
     "uno",
@@ -51,7 +48,7 @@ export const numberToWords = (num: number): string => {
     13: "trece",
     14: "catorce",
     15: "quince",
-    16: "dieciséis", // Corregido con tilde
+    16: "dieciséis",
     17: "diecisiete",
     18: "dieciocho",
     19: "diecinueve",
@@ -59,7 +56,6 @@ export const numberToWords = (num: number): string => {
     30: "treinta",
   };
 
-  // Helper interno para formatear sin capitalizar aún
   const resolveNumber = (n: number): string => {
     if (specials[n]) return specials[n];
 
@@ -90,7 +86,6 @@ export const numberToWords = (num: number): string => {
     return str || n.toString();
   };
 
-  // 2. Obtenemos el texto en minúscula y capitalizamos solo la primera letra
   const result = resolveNumber(num);
   return capitalize(result);
 };

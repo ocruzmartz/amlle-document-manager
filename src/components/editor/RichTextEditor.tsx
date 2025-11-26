@@ -11,15 +11,7 @@ import { RomanOrderedList } from "./extensions/RomanOrderedList";
 import { ExtendedTable } from "./extensions/ExtendedTable";
 import { ExtendedTableRow } from "./extensions/ExtendedTableRow";
 import { ExtendedTableCell } from "./extensions/ExtendedTableCell";
-import { removeWordEndOfCellMarkers } from "./utils/removeWordEndOfCellMarkers";
-import { elevateCellInlineStyles } from "./utils/elevateCellInLineStyles";
-
-const cleanPastedHtml = (html: string): string => {
-  let cleanedHtml = html;
-  cleanedHtml = cleanedHtml.replace(/<\/?\w+:[^>]*>/g, "");
-  cleanedHtml = cleanedHtml.replace(/<o:p>.*?<\/o:p>/g, "");
-  return cleanedHtml;
-};
+import { transformTableHtml } from "./utils/transformTableHtml";
 
 interface RichTextEditorProps {
   content: string;
@@ -52,7 +44,7 @@ export const RichTextEditor = ({
         },
       }),
       ExtendedTableRow,
-      TableHeader, // ← no es necesario extenderlo
+      TableHeader,
       ExtendedTableCell.configure({
         HTMLAttributes: {
           class: "tiptap-table-cell",
@@ -71,24 +63,7 @@ export const RichTextEditor = ({
         style: "font-family: 'MuseoModerno', sans-serif; font-size: 11pt;",
       },
       transformPastedHTML: (html) => {
-        let cleaned = cleanPastedHtml(html);
-
-        try {
-          // Esta función promueve 'vertical-align' y 'text-align' de <p> anidados al <td>
-          cleaned = elevateCellInlineStyles(cleaned);
-        } catch (err) {
-          console.warn("elevateCellInlineStyles falló en el pegado:", err);
-        }
-
-        try {
-          cleaned = removeWordEndOfCellMarkers(cleaned);
-        } catch (err) {
-          console.warn("removeWordEndOfCellMarkers falló en el pegado:", err);
-        }
-
-        cleaned = cleaned.replace(/^(<p><\/p>|<p>\s*<\/p>)+/, "");
-
-        return cleaned;
+        return transformTableHtml(html);
       },
     },
     onUpdate({ editor }) {

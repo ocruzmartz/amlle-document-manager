@@ -81,7 +81,7 @@ export const columns: ColumnDef<Agreement>[] = [
     ),
     cell: ({ row }) => {
       <div className="font-medium">
-        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
+        {formatDateTime(row.getValue("createdAt"))}
       </div>;
     },
   },

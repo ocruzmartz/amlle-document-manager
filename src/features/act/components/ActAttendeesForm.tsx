@@ -21,7 +21,6 @@ export const ActAttendeesForm = ({
   const [isLoadingPropietarios, setIsLoadingPropietarios] = useState(true);
 
   useEffect(() => {
-    // (Usando función flecha)
     const loadPropietarios = async () => {
       try {
         const data = await participantsService.getPropietarios();
@@ -43,7 +42,6 @@ export const ActAttendeesForm = ({
 
   return (
     <div className="space-y-6">
-      {/* Header con botón */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold">Asistencia</h3>
@@ -70,9 +68,9 @@ export const ActAttendeesForm = ({
             <span className="text-xs text-muted-foreground">
               Síndico Municipal
             </span>
-           
+
             <span className="text-sm font-medium">{OFFICIAL_SYNDIC.name}</span>
-             {
+            {
               /* Muestra un badge de asistencia basado en el 'attendees' del getActById */
               attendees?.syndic ? (
                 <Badge variant="outline" className="text-xs mb-1">
@@ -89,7 +87,7 @@ export const ActAttendeesForm = ({
             <span className="text-xs text-muted-foreground">
               Secretaria Municipal
             </span>
-            
+
             <span className="text-sm font-medium">
               {OFFICIAL_SECRETARY.name}
             </span>
@@ -107,7 +105,6 @@ export const ActAttendeesForm = ({
         </div>
       </div>
 
-      {/* Separador */}
       <div className="border-t"></div>
 
       {/* Concejales */}

@@ -5,7 +5,6 @@ import type { Style } from "@react-pdf/types";
 const BASE_BORDER_COLOR = "#000000";
 const BASE_BORDER_WIDTH = 0.25;
 
-// Tipo auxiliar para manejar estilos dinámicos con claves string
 type DynamicStyle = Record<string, string | number | undefined | null>;
 
 function unitToNumber(
@@ -19,16 +18,13 @@ function unitToNumber(
     return Number.isNaN(n) ? undefined : n;
   }
   if (s.endsWith("px")) {
-    // asumir px ~ pt 1:1 para react-pdf
     const n = parseFloat(s.replace("px", ""));
     return Number.isNaN(n) ? undefined : n;
   }
   if (s.endsWith("in")) {
-    // 1in = 72pt
     const n = parseFloat(s.replace("in", ""));
     return Number.isNaN(n) ? undefined : n * 72;
   }
-  // percentage or plain number
   const n = parseFloat(s);
   return Number.isNaN(n) ? undefined : n;
 }
@@ -106,13 +102,11 @@ function parseBorderStyle(style: DynamicStyle | undefined) {
   const parseSingle = (val: string | number | undefined | null) => {
     if (!val) return null;
     const str = String(val);
-    // color word -> map common names
     let color = undefined;
     const colorMatch = str.match(/#([0-9a-fA-F]{3,6})/);
     if (colorMatch) color = `#${colorMatch[1]}`;
     else if (/windowtext/i.test(str)) color = "#000000";
     else {
-      // try rgb(...) -> convert to hex-ish simple fallback
       const rgb = str.match(/rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)/);
       if (rgb) {
         const r = parseInt(rgb[1], 10);
@@ -168,9 +162,7 @@ function mapVerticalAlignToJustify(
   return "flex-start";
 }
 
-function normalizeWidth(
-  width: string | number | undefined
-) {
+function normalizeWidth(width: string | number | undefined) {
   if (typeof width === "string") {
     const w = width.trim();
     if (w.endsWith("%")) return w;
@@ -188,7 +180,6 @@ function normalizeWidth(
   return undefined;
 }
 
-/* Convert font-size values like "12pt" or numeric into number for react-pdf */
 function normalizeFontSize(
   fontSizeRaw: string | number | undefined | null,
   fallback = 10
@@ -208,7 +199,6 @@ function normalizeFontSize(
   return Number.isNaN(v) ? fallback : v;
 }
 
-/* Components */
 interface PdfTableProps {
   children: React.ReactNode;
   totalColumns?: number;
@@ -254,15 +244,12 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
   width,
   totalColumns = 1,
 }) => {
-  let resolvedWidth: string | number | undefined = normalizeWidth(
-    width
-  );
+  let resolvedWidth: string | number | undefined = normalizeWidth(width);
   if (!resolvedWidth) {
     const pct = (colSpan / (totalColumns || 1)) * 100;
     resolvedWidth = `${pct}%`;
   }
 
-  // Cast seguro a DynamicStyle para los helpers de parsing
   const styleObj = style as DynamicStyle;
   const paddingParts = parsePadding(styleObj);
   const borderParts = parseBorderStyle(styleObj);
@@ -295,30 +282,24 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
     10
   );
 
-  // ---------------------------------------------------------------------------
-  // CORRECCIÓN: Manejo seguro de backgroundColor para evitar fondo negro
-  // ---------------------------------------------------------------------------
-  const rawBg = styleObj && (styleObj.backgroundColor ?? styleObj["background-color"]);
+  const rawBg =
+    styleObj && (styleObj.backgroundColor ?? styleObj["background-color"]);
   const backgroundColor = rawBg ? String(rawBg) : undefined;
 
   const cellStyle: Style = {
     ...styles.cellBase,
     width: resolvedWidth,
-    backgroundColor, // Ahora es string | undefined
+    backgroundColor,
     paddingTop: paddingParts.paddingTop ?? styles.cellBase.paddingTop,
     paddingBottom: paddingParts.paddingBottom ?? styles.cellBase.paddingBottom,
     paddingLeft: paddingParts.paddingLeft ?? styles.cellBase.paddingLeft,
     paddingRight: paddingParts.paddingRight ?? styles.cellBase.paddingRight,
     justifyContent: justifyContent,
     borderTopWidth: Number(
-      borderParts.borderTopWidth ??
-        borderParts.borderWidth ??
-        BASE_BORDER_WIDTH
+      borderParts.borderTopWidth ?? borderParts.borderWidth ?? BASE_BORDER_WIDTH
     ),
     borderTopColor: String(
-      borderParts.borderTopColor ??
-        borderParts.borderColor ??
-        BASE_BORDER_COLOR
+      borderParts.borderTopColor ?? borderParts.borderColor ?? BASE_BORDER_COLOR
     ),
     borderRightWidth: Number(
       borderParts.borderRightWidth ??
@@ -350,7 +331,13 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
         borderParts.borderColor ??
         BASE_BORDER_COLOR
     ),
-    alignItems: alignItems as "flex-start" | "flex-end" | "center" | "stretch" | "baseline" | undefined,
+    alignItems: alignItems as
+      | "flex-start"
+      | "flex-end"
+      | "center"
+      | "stretch"
+      | "baseline"
+      | undefined,
   };
 
   const renderChildren = () => {
@@ -361,7 +348,11 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
           style={[
             styles.cellText,
             {
-              textAlign: textAlignVal as "left" | "right" | "center" | "justify",
+              textAlign: textAlignVal as
+                | "left"
+                | "right"
+                | "center"
+                | "justify",
               fontSize: fontSizeFromStyle,
             },
           ]}
@@ -395,17 +386,30 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
 
       try {
         if (React.isValidElement(child)) {
-          // Tipado fuerte para el elemento hijo y sus props de estilo
           const childElement = child as React.ReactElement<{ style?: Style }>;
-          // Define a type that extends Style with optional justifyContent
-          type ExtendedStyle = Style & { justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around" | "space-evenly" };
-          const childStyle: ExtendedStyle = (childElement.props.style || {}) as ExtendedStyle;
+          type ExtendedStyle = Style & {
+            justifyContent?:
+              | "flex-start"
+              | "center"
+              | "flex-end"
+              | "space-between"
+              | "space-around"
+              | "space-evenly";
+          };
+          const childStyle: ExtendedStyle = (childElement.props.style ||
+            {}) as ExtendedStyle;
 
           const mergedStyle: Style = {
             fontFamily: childStyle.fontFamily ?? "Museo Sans",
             fontSize: childStyle.fontSize ?? fontSizeFromStyle,
-            textAlign: childStyle.textAlign ?? (textAlignVal as "left" | "right" | "center" | "justify" | undefined),
-            // Use the extended type for justifyContent
+            textAlign:
+              childStyle.textAlign ??
+              (textAlignVal as
+                | "left"
+                | "right"
+                | "center"
+                | "justify"
+                | undefined),
             justifyContent: childStyle.justifyContent ?? justifyContent,
           };
 
@@ -415,7 +419,6 @@ export const PdfTableCell: React.FC<PdfTableCellProps> = ({
           });
         }
       } catch (error) {
-        // Ignorar errores de clonación
         console.warn("Error cloning child in PdfTable", error);
       }
       return child;

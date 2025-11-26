@@ -20,7 +20,6 @@ import {
 } from "../schemas/authSchema";
 import { jwtDecode } from "jwt-decode";
 
-// Importaciones de Shadcn
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -34,7 +33,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
-// Tipo para el payload del JWT
 interface JWTPayload {
   sub: string;
   active: boolean;
@@ -42,14 +40,12 @@ interface JWTPayload {
   exp: number;
 }
 
-// Tipo para el estado de location
 interface LocationState {
   from?: {
     pathname: string;
   };
 }
 
-// --- Sub-componente: Formulario de Login ---
 const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,46 +61,29 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      console.log("📤 Enviando credenciales...");
-
-      // 1️⃣ Hacer login y obtener el token
       const token = await login(data);
-      console.log("✅ Token recibido del backend");
 
       if (!token || typeof token !== "string") {
         throw new Error("Token inválido recibido del servidor");
       }
 
-      // 2️⃣ Decodificar el token JWT para obtener el userId (sub)
       const decodedToken = jwtDecode<JWTPayload>(token);
       const userId = decodedToken.sub;
-      console.log("✅ Token decodificado, userId:", userId);
 
       if (!userId) {
         throw new Error("No se pudo obtener el ID del usuario del token");
       }
 
-      // 3️⃣ Guardar en el contexto
-      console.log("💾 Guardando sesión en contexto...");
       await authLogin(token, userId);
-      console.log("✅ Sesión guardada correctamente");
-
-      // 4️⃣ Obtener datos del usuario para el mensaje
       const user = await getUserById(userId);
       toast.success(`Bienvenido de nuevo, ${user.nombre}`);
 
-      // 5️⃣ Redirigir
       const from = (location.state as LocationState)?.from?.pathname || "/";
-      console.log("🔀 Redirigiendo a:", from);
       navigate(from, { replace: true });
     } catch (error: any) {
-      console.error("❌ Error completo en login:", error);
-
-      // ✅ Mostrar error detallado en consola (para debugging)
       console.error("📦 Error response:", error.response?.data);
       console.error("📊 Error status:", error.response?.status);
 
-      // ✅ Mostrar mensaje amigable al usuario
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
@@ -158,7 +137,6 @@ const LoginForm = () => {
   );
 };
 
-// --- Sub-componente: Formulario de Activación ---
 const ActivateFormContent = ({
   onLoading,
   onUserChecked,
@@ -218,7 +196,6 @@ const ActivateFormContent = ({
     setIsLoading(true);
     onLoading(true);
     try {
-      // 1️⃣ Establecer contraseña y obtener token
       await setPasswordForUser(userIdToActivate, data.password);
 
       toast.success("Contraseña establecida correctamente.", {
@@ -239,7 +216,6 @@ const ActivateFormContent = ({
     }
   };
 
-  // Renderizado condicional de pasos
   if (flowStep === "set_password") {
     return (
       <Form {...passwordForm}>
@@ -323,7 +299,6 @@ const ActivateFormContent = ({
   );
 };
 
-// --- Componente Principal de la Página ---
 export const LoginPage = () => {
   const [activeTab, setActiveTab] = useState<"login" | "activate">("login");
   const [activationStep, setActivationStep] = useState<
@@ -352,14 +327,13 @@ export const LoginPage = () => {
   };
 
   const handleActivationSuccess = () => {
-    setActiveTab("login"); // Cambiar a la pestaña de login
-    setActivationStep("check"); // Resetear el formulario de activación
+    setActiveTab("login");
+    setActivationStep("check");
     setUserIdForSetPassword("");
   };
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950">
-      {/* Columna Izquierda: Logo */}
       <div className="hidden lg:flex w-1/2 items-center justify-center bg-[#ff3586] p-8">
         <img
           src="https://lalibertadeste.gob.sv/images/logo/escudo-alcaldia_white.png"
@@ -368,7 +342,6 @@ export const LoginPage = () => {
         />
       </div>
 
-      {/* Columna Derecha: Formulario de Autenticación */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-sm rounded-lg border bg-card text-card-foreground shadow-xl">
           <div className="flex flex-col space-y-1.5 p-6 pb-4 text-center">

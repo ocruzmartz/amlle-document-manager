@@ -18,14 +18,14 @@ import { agreementService } from "@/features/agreement/api/agreementService";
 const mapTomeToActivityLogs = (tome: Tome): FullActivityLog[] => {
   const logs: FullActivityLog[] = [];
   const createdUser = {
-    nombre: tome.createdByName || "Sistema", // ✅ CORREGIDO
+    nombre: tome.createdByName || "Sistema",
   };
   const lastModifier =
     tome.modificationName && tome.modificationName.length > 0
       ? tome.modificationName[tome.modificationName.length - 1]
       : tome.createdByName;
   const modifiedUser = {
-    nombre: lastModifier || "Sistema", // ✅ CORREGIDO
+    nombre: lastModifier || "Sistema",
   };
   const targetName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
   const targetUrl = `/books/${tome.id}`;
@@ -144,8 +144,6 @@ const mapAgreementToActivityLogs = (
   return logs;
 };
 
-// --- Página del Módulo de Auditoría ---
-
 export const AuditLogListPage = () => {
   const [allLogs, setAllLogs] = useState<FullActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -217,7 +215,6 @@ export const AuditLogListPage = () => {
       options: [
         { label: "Creado", value: "CREATED" },
         { label: "Modificado", value: "UPDATED" },
-        // Eliminamos las acciones que ya no podemos detectar
       ],
     },
     {

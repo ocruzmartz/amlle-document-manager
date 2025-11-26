@@ -1,11 +1,9 @@
-// filepath: src/features/audit/components/AuditLogColumns.tsx
 import { type ColumnDef } from "@tanstack/react-table";
 import { type FullActivityLog, type ActivityLog, type User } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Link } from "react-router";
-// 👇 VERIFICA ESTA IMPORTACIÓN
 import { formatDateTime } from "@/lib/textUtils";
 
 const actionVariantMap: Partial<

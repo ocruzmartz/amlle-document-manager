@@ -1,4 +1,3 @@
-// src/features/book/components/BookSidebarNav.tsx
 import { type Act } from "@/types";
 import { type WorkspaceView } from "@/features/book/types";
 import {
@@ -22,33 +21,30 @@ export const BookSidebarNav = ({
   currentView,
   onViewChange,
 }: BookSidebarNavProps) => {
-  // ✅ Función para manejar el clic en la portada
   const handleCoverClick = () => {
     onViewChange({
       main: { type: "cover" },
       detail: { type: "none" },
       activeActId: null,
-      activeAgreementId: null, // ✅ CORRECCIÓN 1: Añadido
+      activeAgreementId: null,
     });
   };
 
-  // ✅ Función para manejar el clic en un acta
   const handleActClick = (actId: string) => {
     onViewChange({
       main: { type: "act-edit", actId: actId },
       detail: { type: "agreement-list" },
       activeActId: actId,
-      activeAgreementId: null, // ✅ CORRECCIÓN 2: Añadido (ningún acuerdo está activo)
+      activeAgreementId: null,
     });
   };
 
-  // ✅ Función para manejar el clic en un acuerdo
   const handleAgreementClick = (actId: string, agreementId: string) => {
     onViewChange({
       main: { type: "act-edit", actId: actId },
       detail: { type: "agreement-editor", agreementId: agreementId },
       activeActId: actId,
-      activeAgreementId: agreementId, // ✅ CORRECCIÓN 3: Añadido (el acuerdo SÍ está activo)
+      activeAgreementId: agreementId,
     });
   };
 
@@ -57,7 +53,7 @@ export const BookSidebarNav = ({
       main: { type: "pdf-settings" },
       detail: { type: "none" },
       activeActId: null,
-      activeAgreementId: null, // ✅ CORRECCIÓN 4: Añadido
+      activeAgreementId: null,
     });
   };
 

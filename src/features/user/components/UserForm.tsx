@@ -1,4 +1,3 @@
-// filepath: src/features/user/components/UserForm.tsx
 import { useEffect } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +5,7 @@ import {
   userFormSchema,
   type UserFormData,
   getDefaultValues,
-} from "../schemas/userFormSchema"; // ✅ Esquema simplificado
+} from "../schemas/userFormSchema";
 import { type User } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +37,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { createUser, updateUser } from "../api/user";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// ⛔️ Switch y otros campos ya no son necesarios
 
-// Opciones para la duración de sesión (UI)
 const sessionDurationOptions = [
   { label: "1 Hora", value: "1h" },
   { label: "4 Horas", value: "4h" },
@@ -88,7 +85,10 @@ export const UserForm: React.FC<UserFormProps> = ({
         toast.success("Usuario actualizado exitosamente", { id: toastId });
       } else {
         await createUser(formData);
-        toast.success("Usuario creado. La contraseña debe asignarse por separado.", { id: toastId });
+        toast.success(
+          "Usuario creado. La contraseña debe asignarse por separado.",
+          { id: toastId }
+        );
       }
       onSave();
       onOpenChange(false);
@@ -139,17 +139,10 @@ export const UserForm: React.FC<UserFormProps> = ({
                 )}
               />
 
-              {/* ⛔️ SECCIÓN ELIMINADA: Email, Password, Confirm Password */}
-
-              {/* --- SECCIÓN DE SESIÓN (SIEMPRE VISIBLE) --- */}
               <div className="border-t pt-6 space-y-6">
                 <h4 className="text-sm font-medium text-muted-foreground">
                   Configuración de Sesión
                 </h4>
-
-                {/* ⛔️ SECCIÓN ELIMINADA: Rol, Activo (Switch) */}
-
-                {/* --- CAMPOS DE SESIÓN (SIEMPRE VISIBLES) --- */}
                 <FormField
                   control={form.control}
                   name="sessionType"
@@ -158,9 +151,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                       <FormLabel>Tipo de Sesión</FormLabel>
                       <FormControl>
                         <RadioGroup
-                          onValueChange={(
-                            value: "INDEFINITE" | "TEMPORAL"
-                          ) => {
+                          onValueChange={(value: "INDEFINITE" | "TEMPORAL") => {
                             field.onChange(value);
                             if (value === "INDEFINITE") {
                               form.setValue("sessionDuration", null);

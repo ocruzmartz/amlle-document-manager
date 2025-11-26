@@ -33,7 +33,6 @@ export const RawHtmlExtension = Extension.create({
               return { class: attributes.class };
             },
           },
-          // Capture any data-* attribute
           "data-attrs": {
             default: null,
             parseHTML: (element) => {

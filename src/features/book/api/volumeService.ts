@@ -65,8 +65,6 @@ export const volumeService = {
       payload
     );
 
-    console.log("✅ Tomo creado (Payload AHORA SÍ es correcto):", newTome);
-
     if (!newTome.name) {
       newTome.name = `Tomo ${numberToRoman(newTome.number)}`;
     }
@@ -83,7 +81,6 @@ export const volumeService = {
 
   getAllVolumes: async (): Promise<Tome[]> => {
     const response = await apiGetDirect<Tome[]>("/volume/find-all");
-    console.log("✅ Tomos obtenidos (GET /volume/find-all):", response);
     return response;
   },
 
@@ -93,7 +90,6 @@ export const volumeService = {
 
   getVolumeById: async (id: string): Promise<Tome> => {
     const tome = await apiGetDirect<Tome>(`/volume/find/${id}`);
-    console.log("✅ Tomo obtenido (GET /volume/find/:id):", tome);
     tome.acts = tome.acts || [];
     tome.actCount = tome.actCount || 0;
     tome.agreementCount = tome.agreementCount || 0;

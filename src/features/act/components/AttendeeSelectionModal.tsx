@@ -42,7 +42,6 @@ export const AttendeeSelectionModal = ({
   currentAttendees,
   onAttendeesChange,
 }: AttendeeSelectionModalProps) => {
-
   const defaultSyndicId = availableSyndics[0]?.id || null;
   const defaultSecretaryId = availableSecretaries[0]?.id || null;
 
@@ -102,7 +101,7 @@ export const AttendeeSelectionModal = ({
           ? {
               ...item,
               attended: isAttending,
-              substituteId: isAttending ? item.substituteId : null, // Si deja de asistir, anula al sustituto
+              substituteId: isAttending ? item.substituteId : null,
             }
           : item
       )
@@ -116,46 +115,39 @@ export const AttendeeSelectionModal = ({
           ? {
               ...item,
               substituteId: substituteId === "none" ? null : substituteId,
-              attended: true, // Si selecciona algo (incluso "none"), es porque marcó asistencia
+              attended: true,
             }
           : item
       )
     );
   };
 
-  // 6. Handler para confirmar y guardar
   const handleConfirm = () => {
-
     const finalAttendees: Act["attendees"] = {
       syndic: OFFICIAL_SYNDIC || null,
       secretary: OFFICIAL_SECRETARY || null,
 
-      // Mapeo de asistencia de propietarios
       owners: ownerAttendance
-        .filter((item) => item.attended) // Solo los que asistieron
+        .filter((item) => item.attended)
         .map((item) => {
           if (item.substituteId) {
-            // --- Lógica de Sustituto ---
             const owner = propietariosList.find((p) => p.id === item.ownerId);
             const substitute = owner?.approvedSubstitutes?.find(
               (m) => m.id === item.substituteId
             );
 
-            // Construir el objeto CouncilMember del sustituto
             return substitute
               ? {
-                  ...substitute, // id, name
-                  role: "SUBSTITUTE", // Asignar rol
-                  substituteForId: item.ownerId, // Indicar a quién reemplaza
+                  ...substitute,
+                  role: "SUBSTITUTE",
+                  substituteForId: item.ownerId,
                 }
               : null;
           } else {
-            // --- Lógica de Propietario ---
             const owner = propietariosList.find((m) => m.id === item.ownerId);
-            // Asegurarse que no tenga 'substituteForId' si asiste el propietario
             if (owner) {
               const { ...ownerWithoutSub } = owner;
-              return { ...ownerWithoutSub, role: "OWNER" }; // Asegurar el rol
+              return { ...ownerWithoutSub, role: "OWNER" };
             }
             return null;
           }
@@ -167,7 +159,6 @@ export const AttendeeSelectionModal = ({
     onOpenChange(false);
   };
 
-  // 7. Renderizado del JSX
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[90vh] flex flex-col">

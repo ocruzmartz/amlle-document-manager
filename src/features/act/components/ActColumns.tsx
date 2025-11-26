@@ -77,7 +77,7 @@ export const columns: ColumnDef<Act>[] = [
     ),
     cell: ({ row }) => {
       <div className="font-medium">
-        {formatDateTime(row.getValue("createdAt"))} {/* ✅ Usar helper */}
+        {formatDateTime(row.getValue("createdAt"))}
       </div>;
     },
   },

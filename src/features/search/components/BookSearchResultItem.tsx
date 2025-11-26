@@ -1,4 +1,3 @@
-// filepath: src/features/search/components/BookSearchResultItem.tsx
 import { Link } from "react-router";
 import { type Book, type BookStatus } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -6,19 +5,30 @@ import { Book as BookIcon, FileText, Handshake } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-const statusMap: Record<BookStatus, { label: string; variant: "default" | "secondary" | "outline" }> = {
+const statusMap: Record<
+  BookStatus,
+  { label: string; variant: "default" | "secondary" | "outline" }
+> = {
   BORRADOR: { label: "Borrador", variant: "outline" },
   FINALIZADO: { label: "Finalizado", variant: "default" },
   ARCHIVADO: { label: "Archivado", variant: "secondary" },
 };
 
 export const BookSearchResultItem = ({ item }: { item: Book }) => {
-  const timeAgo = formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true, locale: es });
+  const timeAgo = formatDistanceToNow(new Date(item.updatedAt), {
+    addSuffix: true,
+    locale: es,
+  });
   const status = statusMap[item.status] || statusMap.BORRADOR;
-  const modifier = item.modificationName?.[item.modificationName.length - 1] || item.createdByName;
+  const modifier =
+    item.modificationName?.[item.modificationName.length - 1] ||
+    item.createdByName;
 
   return (
-    <Link to={`/books`} className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+    <Link
+      to={`/books`}
+      className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+    >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
           <BookIcon className="h-5 w-5 text-primary" />

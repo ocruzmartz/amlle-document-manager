@@ -1,11 +1,7 @@
-// filepath: src/lib/apiHelpers.ts
 import { apiClient } from "@/services/apiClient";
 import type { ApiResponse, PaginatedResponse } from "@/types/index";
 import { AxiosError } from "axios";
 
-/**
- * Maneja errores de API de forma consistente
- */
 export const handleApiError = (
   error: unknown,
   defaultMessage: string
@@ -16,10 +12,6 @@ export const handleApiError = (
   throw new Error(defaultMessage);
 };
 
-/**
- * GET genérico con estructura estándar { data: { data: T } }
- * ✅ 1. Añadido TParams genérico
- */
 export const apiGet = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
   params?: TParams
@@ -34,10 +26,6 @@ export const apiGet = async <T, TParams = Record<string, unknown>>(
   }
 };
 
-/**
- * GET directo - cuando el backend devuelve los datos sin envolver
- * ✅ 2. Añadido TParams genérico
- */
 export const apiGetDirect = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
   params?: TParams
@@ -50,10 +38,6 @@ export const apiGetDirect = async <T, TParams = Record<string, unknown>>(
   }
 };
 
-/**
- * GET con paginación
- * ✅ 3. Añadido TParams genérico
- */
 export const apiGetPaginated = async <T, TParams = Record<string, unknown>>(
   endpoint: string,
   params?: TParams
@@ -71,9 +55,6 @@ export const apiGetPaginated = async <T, TParams = Record<string, unknown>>(
   }
 };
 
-/**
- * POST genérico (sin cambios, ya era correcto)
- */
 export const apiPost = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -89,9 +70,6 @@ export const apiPost = async <TData, TResponse>(
   }
 };
 
-/**
- * POST directo (sin cambios, ya era correcto)
- */
 export const apiPostDirect = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -104,9 +82,6 @@ export const apiPostDirect = async <TData, TResponse>(
   }
 };
 
-/**
- * PATCH genérico (sin cambios, ya era correcto)
- */
 export const apiPatch = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -122,9 +97,6 @@ export const apiPatch = async <TData, TResponse>(
   }
 };
 
-/**
- * PATCH directo (sin cambios, ya era correcto)
- */
 export const apiPatchDirect = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -137,9 +109,6 @@ export const apiPatchDirect = async <TData, TResponse>(
   }
 };
 
-/**
- * PUT genérico con estructura estándar (sin cambios, ya era correcto)
- */
 export const apiPut = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -155,9 +124,6 @@ export const apiPut = async <TData, TResponse>(
   }
 };
 
-/**
- * PUT directo (sin cambios, ya era correcto)
- */
 export const apiPutDirect = async <TData, TResponse>(
   endpoint: string,
   data: TData
@@ -170,9 +136,6 @@ export const apiPutDirect = async <TData, TResponse>(
   }
 };
 
-/**
- * DELETE genérico (sin cambios, ya era correcto)
- */
 export const apiDelete = async (endpoint: string): Promise<void> => {
   try {
     await apiClient.delete(endpoint);

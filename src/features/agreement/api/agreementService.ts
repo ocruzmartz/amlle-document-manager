@@ -27,7 +27,6 @@ export const agreementService = {
       "/agreements/create",
       payload
     );
-    console.log("✅ Acuerdo creado:", newAgreement);
     return newAgreement;
   },
 
@@ -43,9 +42,9 @@ export const agreementService = {
   },
 
   getAllAgreements: async (): Promise<Agreement[]> => {
-    console.log("🔍 Cargando TODOS los acuerdos...");
-    const agreements = await apiGetDirect<Agreement[]>("/agreements/management/find-all");
-    console.log(agreements);
+    const agreements = await apiGetDirect<Agreement[]>(
+      "/agreements/management/find-all"
+    );
     return agreements;
   },
 
@@ -64,6 +63,6 @@ export const agreementService = {
   },
 
   deleteAgreement: async (id: string): Promise<void> => {
-    await apiDelete(`/agreements/delete/${id}`); //
+    await apiDelete(`/agreements/delete/${id}`);
   },
 };

@@ -4,7 +4,7 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/components/ui/card"; // ✅ CardFooter eliminado
+} from "@/components/ui/card";
 import ActivityItem from "./ActivityItem";
 import { type ActivityLog } from "@/types";
 import { Link } from "react-router";
@@ -23,9 +23,7 @@ export function ActivityCard({ logs }: ActivityCardProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Actividad Reciente</CardTitle>
-          <CardDescription>
-            Últimas acciones en el sistema.
-          </CardDescription>
+          <CardDescription>Últimas acciones en el sistema.</CardDescription>
         </div>
         <Button asChild variant="link" className="text-muted-foreground">
           <Link to="/audit">
@@ -33,8 +31,7 @@ export function ActivityCard({ logs }: ActivityCardProps) {
           </Link>
         </Button>
       </CardHeader>
-      
-      {/* ✅ 2. Contenido de la timeline */}
+
       <CardContent>
         {recentLogs.length > 0 ? (
           <div className="relative flex flex-col gap-4">
@@ -52,7 +49,6 @@ export function ActivityCard({ logs }: ActivityCardProps) {
           </p>
         )}
       </CardContent>
-
     </Card>
   );
 }

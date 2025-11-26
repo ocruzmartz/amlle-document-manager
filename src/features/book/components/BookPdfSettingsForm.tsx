@@ -150,9 +150,7 @@ export const BookPdfSettingsForm = ({
   };
 
   return (
-    // ✅ 1. Contenedor raíz con layout flex-col
     <div className="h-full flex flex-col">
-      {/* ✅ 2. Cabecera (no se desplaza) */}
       <div className="flex items-center justify-between pb-4 border-b p-4 shrink-0">
         <div>
           <h3 className="text-2xl font-bold">Configuración de PDF</h3>
@@ -161,8 +159,6 @@ export const BookPdfSettingsForm = ({
           </p>
         </div>
       </div>
-
-      {/* ✅ 3. El <Form> ahora es el contenedor principal y el área de scroll */}
       <Form {...form}>
         <div className="flex-1 overflow-y-auto">
           <fieldset
@@ -170,13 +166,11 @@ export const BookPdfSettingsForm = ({
             className="p-4 space-y-6 flex-1 min-h-0"
           >
             <form
-              id="pdf-settings-form" // ID para el botón del footer
+              id="pdf-settings-form"
               onSubmit={form.handleSubmit(onSubmit)}
               className="flex-1 overflow-y-auto min-h-0"
             >
-              {/* Espaciado interno */}
               <div className="p-4 space-y-6">
-                {/* --- GRUPO 1: Página (Minimalista) --- */}
                 <div className="border rounded-lg">
                   <h4 className="font-semibold p-4 border-b">
                     Formato de Página

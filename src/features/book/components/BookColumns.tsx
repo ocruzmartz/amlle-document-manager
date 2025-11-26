@@ -38,15 +38,11 @@ export const getColumns = ({
   navigate,
 }: GetColumnsProps): ColumnDef<Tome>[] => [
   {
-    // ✅ 1. Cambiar accessorKey a 'name'
     accessorKey: "name",
     header: "Nombre del Tomo",
     cell: ({ row }) => {
       const tome = row.original;
-
-      // ✅ 2. Ser defensivo con los nombres
       const bookName = tome.bookName || "Libro sin asignar";
-      // Si el nombre es 'null' (como en tu JSON), genera uno
       const tomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
 
       return (
@@ -63,7 +59,6 @@ export const getColumns = ({
         </Link>
       );
     },
-    // ✅ 3. Actualizar filtro para que busque en los nombres generados
     filterFn: (row, value) => {
       const tome = row.original;
       const bookName = tome.book?.name || "";
@@ -94,9 +89,8 @@ export const getColumns = ({
     accessorKey: "agreementCount",
     header: () => <div className="text-center"># Acuerdos</div>,
     cell: ({ row }) => {
-      // ✅ 5. Standby: 'agreementCount' SÍ viene (es 0)
       const count = row.getValue("agreementCount") as number | undefined;
-      // Mostrará 0 (ya que 0 no es 'falsy' para '||')
+
       return <div className="text-center">{count ?? "—"}</div>;
     },
   },
@@ -159,7 +153,7 @@ export const getColumns = ({
     ),
     cell: ({ row }) => (
       <div className="font-medium">
-        {formatDateTime(row.getValue("updatedAt"))} 
+        {formatDateTime(row.getValue("updatedAt"))}
       </div>
     ),
   },

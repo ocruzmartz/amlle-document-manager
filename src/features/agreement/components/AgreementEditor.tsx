@@ -9,6 +9,7 @@ import {
 } from "@/lib/textUtils";
 import { FileImporter } from "@/components/editor/FileImporter";
 import { useSaveAction } from "@/hooks/useSaveAction";
+import { transformTableHtml } from "@/components/editor/utils/transformTableHtml";
 
 type SaveHandler = () => Promise<boolean>;
 
@@ -48,7 +49,7 @@ export const AgreementEditor = ({
       onUpdate(dataToSave);
     },
     [onUpdate]
-  ); 
+  );
 
   const { handleSave, isDirty, isSaving } = useSaveAction<Agreement>({
     initialData: agreement,
@@ -75,9 +76,9 @@ export const AgreementEditor = ({
   }, []);
 
   const handleImportedContent = (importedHtml: string) => {
-    const cleanedImport = removeEmptyParagraphsAtStart(importedHtml);
+    const transformedHtml = transformTableHtml(importedHtml);
+    const cleanedImport = removeEmptyParagraphsAtStart(transformedHtml);
 
-    // Si hay contenido existente y no está vacío, concatenar con limpieza
     if (
       localContent &&
       localContent !== "<p></p>" &&
@@ -86,7 +87,6 @@ export const AgreementEditor = ({
       const newContent = `${localContent}${cleanedImport}`;
       handleContentChange(newContent);
     } else {
-      // Si no hay contenido existente, solo usar el importado
       handleContentChange(cleanedImport);
     }
   };

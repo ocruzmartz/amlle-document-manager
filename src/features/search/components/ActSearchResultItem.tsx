@@ -1,4 +1,3 @@
-// filepath: src/features/search/components/ActSearchResultItem.tsx
 import { Link } from "react-router";
 import { type Act } from "@/types";
 import { Badge } from "@/components/ui/badge";

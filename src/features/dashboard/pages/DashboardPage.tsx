@@ -16,7 +16,6 @@ import {
 } from "@/types";
 import { numberToRoman } from "@/lib/textUtils";
 import { toast } from "sonner";
-import { bookService } from "@/features/book/api/bookService";
 
 interface DashboardStats {
   tomeCount: number;
@@ -171,23 +170,6 @@ const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const response = bookService.getAllAgreementsContent(
-        "b0d19cc4-0744-406d-b9ee-face42fec994"
-      );
-      console.log(
-        "[DashboardPage] Contenido de todos los acuerdos para el libro b0d19cc4-0744-406d-b9ee-face42fec994:",
-        response
-      );
-    } catch (error) {
-      console.error(
-        "Error al obtener el contenido de todos los acuerdos:",
-        error
-      );
-    }
-  }, []);
-
-  useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true);
       try {
@@ -199,12 +181,12 @@ const DashboardPage = () => {
           agreementCountResult,
           tomeCountResult,
         ] = await Promise.allSettled([
-          volumeService.getAllVolumes(), // Para Actividad Reciente y Libros Recientes
-          actService.getAllActs(), // Para Actividad Reciente
-          agreementService.getAllAgreements(), // Para Actividad Reciente
-          actService.getTotalActCount(), // Para Card
-          agreementService.getTotalAgreementCount(), // Para Card
-          volumeService.getTotalVolumeCount(), // Para Card
+          volumeService.getAllVolumes(),
+          actService.getAllActs(),
+          agreementService.getAllAgreements(),
+          actService.getTotalActCount(),
+          agreementService.getTotalAgreementCount(),
+          volumeService.getTotalVolumeCount(),
         ]);
 
         const newStats: DashboardStats = {
@@ -231,7 +213,6 @@ const DashboardPage = () => {
           toast.error("No se pudieron cargar los libros recientes.");
         }
 
-        // --- Procesar Actividad Reciente (con mappers corregidos) ---
         const combinedActivity: ActivityLog[] = [];
 
         if (tomesResult.status === "fulfilled") {
@@ -250,13 +231,10 @@ const DashboardPage = () => {
           );
         }
 
-        // Ordenar la lista combinada por fecha descendente
         const sortedActivity = combinedActivity.sort(
           (a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-
-        // Guardar las 4 más recientes
         setRecentActivity(sortedActivity.slice(0, 4));
       } catch (error) {
         console.error("Error crítico al cargar el dashboard:", error);
@@ -269,7 +247,6 @@ const DashboardPage = () => {
     loadDashboardData();
   }, []);
 
-  // Definición de statCardItems (sin cambios)
   const statCardItems = [
     {
       id: 1,
@@ -294,7 +271,6 @@ const DashboardPage = () => {
     },
   ];
 
-  // JSX de renderizado (sin cambios)
   return (
     <div className="space-y-6 overflow-y-auto p-4 lg:p-6">
       <div>
