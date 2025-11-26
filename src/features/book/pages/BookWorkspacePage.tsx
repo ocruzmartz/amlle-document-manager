@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   PanelRightOpen,
   X,
-  RefreshCw,
   PlusCircle,
   Trash,
   PenSquare,
@@ -200,18 +199,12 @@ export const BookWorkspacePage = () => {
 
       setIsLoading(true);
       try {
-        console.log("🔍 Cargando tomo:", tomeId);
-
         const [foundTome, propietarios] = await Promise.all([
           volumeService.getVolumeById(tomeId!),
-          participantsService.getPropietarios(), // <-- Cargar concejales
+          participantsService.getPropietarios(),
         ]);
 
-        console.log("✅ Tomo cargado:", foundTome);
-        console.log("✅ Propietarios cargados:", propietarios);
-
         const foundActs = await actService.getActsByVolumeId(tomeId!);
-        console.log("✅ Actas cargadas:", foundActs);
 
         setTome({
           ...foundTome,
@@ -219,16 +212,13 @@ export const BookWorkspacePage = () => {
         });
 
         setAllSigners([OFFICIAL_SECRETARY, OFFICIAL_SYNDIC, ...propietarios]);
-
         const bookId = foundTome.book.id;
         const foundBook = await bookService.getBookById(bookId);
-        console.log("✅ Libro padre cargado:", foundBook);
 
         setParentBook(foundBook);
         setNewBookName(foundBook.name);
 
         const volumes = await volumeService.getVolumesByBookId(bookId);
-        console.log("✅ Volúmenes del libro:", volumes);
         setAllVolumes(volumes);
       } catch (error: unknown) {
         console.error("❌ Error al cargar workspace:", error);
@@ -350,10 +340,7 @@ export const BookWorkspacePage = () => {
         (a) => a.id !== actToDelete.id
       );
 
-      // Recalcula NOMBRES y NÚMEROS de las actas restantes
       const newState = recalculateNumbers({ ...tome!, acts: actsAfterDelete });
-
-      // Llama a 'updateActNameNumber' para las actas restantes
       const updatePromises = newState.acts!.map((act) =>
         actService.updateActNameNumber(act.id, act.name, act.actNumber!)
       );
@@ -387,7 +374,6 @@ export const BookWorkspacePage = () => {
     }
   };
 
-  // ✅ 5. Lógica para confirmar la eliminación (Acuerdo)
   const handleConfirmDeleteAgreement = async () => {
     if (!agreementToDelete || !currentView.activeActId || isDeletingAgreement)
       return;
@@ -528,7 +514,6 @@ export const BookWorkspacePage = () => {
     }
   };
 
-  // ✅ Sin cambios
   const handleBackClick = () => {
     if (hasUnsavedChanges) {
       setShowExitDialog(true);
@@ -550,7 +535,7 @@ export const BookWorkspacePage = () => {
         description:
           "El formulario que estabas editando ya no está visible. Cierra este diálogo y vuelve a la sección que querías guardar.",
       });
-      return; // Salir
+      return; 
     }
 
     try {
@@ -561,7 +546,6 @@ export const BookWorkspacePage = () => {
         navigate("/books");
       } else {
         // El hook useSaveAction ya mostró el toast de error.
-        // Mantenemos el modal abierto.
       }
     } catch (error) {
       console.error("Error en handleSaveAndExit:", error);

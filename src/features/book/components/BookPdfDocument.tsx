@@ -497,7 +497,6 @@ const renderCellContent = (
   return <Text style={forcedStyle}>{contentNodes}</Text>;
 };
 
-// --- INTERFACES Y TIPOS PARA LA TABLA ---
 interface ParsedCell {
   innerHtml: string;
   style: Style;
@@ -516,7 +515,6 @@ const parseHtmlTable = (
   baseTextStyle: Style,
   fontSize: number
 ) => {
-  // 1. Intentar leer colgroup
   const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
   const columnWidths: (number | null)[] = [];
   let colIsPercent = true;
@@ -545,24 +543,20 @@ const parseHtmlTable = (
       }
     });
   }
-
-  // 2. Parsear TODAS las filas
   const rowsHtml = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
 
   const parsedRows: ParsedRow[] = rowsHtml.map((rowHtml) => {
     const trTagMatch = rowHtml.match(/<tr([^>]*)>/i);
     const trAttributes = trTagMatch ? trTagMatch[1] : "";
 
-    // Detectar altura de la fila
     let rowHeight: number | undefined = undefined;
     const styleAttr = trAttributes.match(/style="([^"]*)"/i);
     if (styleAttr) {
       const styleObj = parseStyleAttribute(styleAttr[1]);
-      // Forzamos el tipo a number si viene como string en Style
       if (styleObj.height) rowHeight = Number(styleObj.height);
     }
     if (!rowHeight) {
-      const heightAttr = trAttributes.match(/height=["']?([\d\.]+)["']?/i);
+      const heightAttr = trAttributes.match(/height=["']?([\d.]+)["']?/i);
       if (heightAttr) {
         const h = parseFloat(heightAttr[1]);
         if (!isNaN(h)) rowHeight = h;
@@ -616,6 +610,7 @@ const parseHtmlTable = (
           if (!cellInlineStyle.fontWeight) cellInlineStyle.fontWeight = 700;
         }
       }
+
 
       let cellWidth: number | null = null;
       const dataColWidthMatch = attributes.match(
@@ -691,7 +686,10 @@ const parseHtmlTable = (
     if (colIsPercent) {
       resolvedColumnWidths = columnWidths;
     } else {
-      const totalPx = columnWidths.reduce((acc: number, val) => acc + (val ?? 0), 0);
+      const totalPx = columnWidths.reduce(
+        (acc: number, val) => acc + (val ?? 0),
+        0
+      );
       if (totalPx !== null && totalPx > 0) {
         resolvedColumnWidths = columnWidths.map((w) =>
           w ? (w / totalPx) * 100 : null
