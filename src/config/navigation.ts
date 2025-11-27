@@ -35,12 +35,12 @@ export const adminNavItems: NavItem[] = [
     url: "/users",
     icon: Users,
   },
-  // {
-  //   title: "Registro",
-  //   url: "/settings",
-  //   icon: Logs,
-  // },
-   {
+  {
+    title: "Gestión del Concejo",
+    url: "/council",
+    icon: Users,
+  },
+  {
     title: "Auditoría",
     url: "/audit",
     icon: Logs,

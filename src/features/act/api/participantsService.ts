@@ -7,14 +7,8 @@ interface PropietarioApiResponse {
   approvedSubstitutes: SimpleMember[];
 }
 
-let propietariosCache: CouncilMember[] | null = null;
-
 export const participantsService = {
   getPropietarios: async (): Promise<CouncilMember[]> => {
-    if (propietariosCache) {
-      return propietariosCache;
-    }
-
     const propietariosFromApi = await apiGetDirect<PropietarioApiResponse[]>(
       "/participants/propietarios"
     );
@@ -25,7 +19,6 @@ export const participantsService = {
         role: "OWNER",
       }));
 
-    propietariosCache = propietariosAsCouncilMembers;
-    return propietariosCache;
+    return propietariosAsCouncilMembers;
   },
 };

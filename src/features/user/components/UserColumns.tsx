@@ -141,15 +141,11 @@ export const getColumns = (
     },
     sortingFn: "datetime",
   },
-
-  // --- COLUMNA DE ACCIONES MODIFICADA ---
   {
     id: "actions",
     cell: ({ row }) => {
       const user = row.original;
       const isActive = user.activo;
-
-      // ✅ 2. Verificamos si es el mismo usuario
       const isSelf = user.id === currentUserId;
 
       return (

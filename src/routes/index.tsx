@@ -28,6 +28,7 @@ const protectedShellRoute: RouteObject = {
             ...actRoutes,
             ...agreementRoutes,
             ...auditRoutes,
+            ...councilRoutes,
           ],
         },
         {
@@ -59,4 +60,5 @@ export const router = createBrowserRouter([
   },
 ]);
 
-import { Navigate } from "react-router";
+import { Navigate } from "react-router";import { councilRoutes } from "@/features/council/routes";
+

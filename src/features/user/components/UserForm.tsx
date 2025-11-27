@@ -119,7 +119,6 @@ export const UserForm: React.FC<UserFormProps> = ({
               onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-6 p-6"
             >
-              {/* --- CAMPO 'NOMBRE' (SIEMPRE VISIBLE) --- */}
               <FormField
                 control={form.control}
                 name="nombre"
@@ -156,7 +155,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                             if (value === "INDEFINITE") {
                               form.setValue("sessionDuration", null);
                             } else {
-                              form.setValue("sessionDuration", "8h"); // Default
+                              form.setValue("sessionDuration", "8h"); 
                             }
                           }}
                           value={field.value}

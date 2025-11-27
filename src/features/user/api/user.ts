@@ -57,7 +57,7 @@ export const updateUser = async (
   formData: UserFormData,
   originalUser: User
 ): Promise<void> => {
-  const updatePromises: Promise<any>[] = [];
+  const updatePromises: Promise<unknown>[] = [];
 
   if (formData.nombre !== originalUser.nombre) {
     const profilePayload: UpdateProfileDto = {
