@@ -48,7 +48,6 @@ export const BookCoverForm = ({
   onRegisterSaveHandler,
   onStateChange,
 }: BookCoverFormProps) => {
-  // ✅ 2. Lógica para generar el nombre por defecto si es 'null'
   const defaultTomeName = tome.name || `Tomo ${numberToRoman(tome.number)}`;
 
   const form = useForm<BookCoverFormValues>({

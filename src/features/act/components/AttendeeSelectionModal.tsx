@@ -40,14 +40,11 @@ export const AttendeeSelectionModal = ({
   const [substitutingIds, setSubstitutingIds] = useState<Set<string>>(
     new Set()
   );
-
-  // ✅ EFECTO 1: Cargar datos de la API (Solo cuando se abre el modal)
   useEffect(() => {
     if (isOpen) {
       const fetchMembers = async () => {
         setIsLoading(true);
         try {
-          // Solo si no tenemos datos ya cargados, o si queremos forzar refresco al abrir
           const membersFromApi = await councilService.getPropietarios();
           const sortedMembers = sortCouncilMembers<Propietario>(membersFromApi);
           setAllMembers(sortedMembers);
@@ -59,9 +56,8 @@ export const AttendeeSelectionModal = ({
       };
       fetchMembers();
     }
-  }, [isOpen]); // <--- Quitamos currentAttendees de aquí
+  }, [isOpen]); 
 
-  // ✅ EFECTO 2: Sincronizar selección (Se ejecuta si cambian los asistentes o al terminar de cargar la lista)
   useEffect(() => {
     if (isOpen && allMembers.length > 0) {
       const currentList = [
@@ -70,17 +66,15 @@ export const AttendeeSelectionModal = ({
         ...(currentAttendees?.owners || []),
       ].filter((m): m is CouncilMember => !!m);
 
-      // 1. Marcar presentes
       const initialIds = new Set(currentList.map((m) => m.id));
       setSelectedIds(initialIds);
 
-      // 2. Marcar suplentes activos (los que tienen substituteForId)
       const initialSubstituting = new Set(
         currentList.filter((m) => !!m.substituteForId).map((m) => m.id)
       );
       setSubstitutingIds(initialSubstituting);
     }
-  }, [isOpen, allMembers, currentAttendees]); // <--- Aquí sí va currentAttendees, pero es una operación rápida síncrona
+  }, [isOpen, allMembers, currentAttendees]); 
 
   const handlePresenceToggle = (id: string) => {
     const newSet = new Set(selectedIds);

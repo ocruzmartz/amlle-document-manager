@@ -94,15 +94,6 @@ export const getColumns = ({
       return <div className="text-center">{count ?? "—"}</div>;
     },
   },
-  // {
-  //   accessorKey: "pageCount",
-  //   header: () => <div className="text-center"># Páginas</div>,
-  //   cell: ({ row }) => {
-  //     // ✅ 5. Standby: 'pageCount' SÍ viene (es 0)
-  //     const count = row.getValue("pageCount") as number | undefined;
-  //     return <div className="text-center">{count ?? "—"}</div>;
-  //   },
-  // },
   {
     accessorKey: "createdBy.nombre",
     header: "Creado por",

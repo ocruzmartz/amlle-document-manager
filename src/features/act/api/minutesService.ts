@@ -45,15 +45,12 @@ interface UpdateMinutesDto {
   lastPageNumber?: number;
 }
 
-// ✅ LECTURA CORREGIDA: Maneja correctamente si el suplente viene como Objeto o String
 async function _parseActFromApi(actResponse: ActApiResponse): Promise<Act> {
   const allPropietarios = await councilService.getPropietarios();
 
-  // Sets para calcular rápidamente estados de asistencia
   const presentOwnerIds = new Set<string>();
   const attendanceList = actResponse.attendanceList || [];
 
-  // Paso 1: Identificar qué PROPIETARIOS asistieron realmente
   attendanceList.forEach((record: any) => {
     const asistio = record.asistioPropietario ?? record.attended ?? false;
     const pId =
@@ -88,9 +85,7 @@ async function _parseActFromApi(actResponse: ActApiResponse): Promise<Act> {
       const ownerConfig = allPropietarios.find((p) => p.id === propietarioId);
 
       if (ownerConfig) {
-        // A. Agregar Propietario si asistió
         if (ownerAttended) {
-          // Evitamos duplicados si el backend manda múltiples filas sucias
           const alreadyAdded =
             owners.some((o) => o.id === ownerConfig.id) ||
             syndic?.id === ownerConfig.id ||
@@ -106,15 +101,12 @@ async function _parseActFromApi(actResponse: ActApiResponse): Promise<Act> {
           }
         }
 
-        // B. Agregar Suplente si existe ID (independientemente de asistioPropietario)
         if (substituteId) {
           const subConfig = ownerConfig.substitutos?.find(
             (s) => s.id === substituteId
           );
 
           if (subConfig) {
-            // Lógica de UI: Si el propietario NO está presente, es una SUPLENCIA (Badge Amarillo).
-            // Si el propietario SÍ está, el suplente solo asiste (Badge Verde).
             const isSubstituting = !presentOwnerIds.has(ownerConfig.id);
 
             const subMember: CouncilMember = {
@@ -207,14 +199,12 @@ export const actService = {
     return apiGetDirect<number>("/minutes/count/total");
   },
 
-  // ✅ ESCRITURA: Genera filas independientes para propietario y suplente si ambos van
   updateAct: async (actToSave: Act): Promise<void> => {
     const allOwners = await councilService.getPropietarios();
     const syndicNameString = actToSave.attendees?.syndic?.name || "Sin Asignar";
     const secretaryNameString =
       actToSave.attendees?.secretary?.name || "Sin Asignar";
 
-    // "Bolsa" de IDs presentes en la UI
     const allPresentMembers = [
       actToSave.attendees?.syndic,
       actToSave.attendees?.secretary,

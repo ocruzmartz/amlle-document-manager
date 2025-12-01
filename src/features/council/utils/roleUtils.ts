@@ -26,7 +26,6 @@ const ROLE_LABELS: Record<string, string> = {
   CUARTO_SUPLENTE: "Cuarto Regidor Suplente",
 };
 
-// ✅ Aceptamos string, null o undefined
 export const getRoleLabel = (type?: string | null) => {
   if (!type) return "Concejal / Miembro";
   return ROLE_LABELS[type] || type.replace(/_/g, " ");

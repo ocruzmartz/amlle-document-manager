@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, X } from "lucide-react"; // ✅ Importar X
+import { Search, PlusCircle, X } from "lucide-react"; 
 import {
   Select,
   SelectContent,
@@ -33,20 +33,18 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel, // ✅ Importar Label
-  DropdownMenuSeparator, // ✅ Importar Separator
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-// ✅ Interfaz movida fuera
 interface FacetedFilterOption {
   label: string;
   value: string;
 }
 
-// ✅ Nueva interfaz para la prop
 interface FacetedFilterProps {
   columnId: string;
   title: string;
@@ -58,12 +56,10 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   filterColumnId: string;
   filterPlaceholder?: string;
-  // ✅ Prop actualizada para aceptar un array de filtros
   facetedFilters?: FacetedFilterProps[];
   initialSorting?: SortingState;
 }
 
-// ✅ Componente interno para el botón de filtro (lógica actualizada)
 function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
@@ -73,7 +69,6 @@ function DataTableFacetedFilter<TData, TValue>({
   title?: string;
   options: FacetedFilterOption[];
 }) {
-  // ✅ Adaptado para manejar un array de valores seleccionados
   const selectedValues = (column?.getFilterValue() as string[]) || [];
 
   return (
@@ -112,7 +107,6 @@ function DataTableFacetedFilter<TData, TValue>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* ✅ Botón para limpiar filtros */}
         {selectedValues.length > 0 && (
           <>
             <DropdownMenuLabel>
@@ -136,7 +130,6 @@ function DataTableFacetedFilter<TData, TValue>({
               className="capitalize"
               checked={isSelected}
               onCheckedChange={(value) => {
-                // ✅ Lógica actualizada para manejar múltiples selecciones
                 if (value) {
                   column?.setFilterValue([...selectedValues, option.value]);
                 } else {
@@ -160,7 +153,7 @@ export const DataTable = <TData, TValue>({
   data,
   filterColumnId,
   filterPlaceholder = "Filtrar...",
-  facetedFilters, // ✅ Prop actualizada
+  facetedFilters,
   initialSorting,
 }: DataTableProps<TData, TValue>) => {
   const [sorting, setSorting] = React.useState<SortingState>(
@@ -210,7 +203,6 @@ export const DataTable = <TData, TValue>({
               className="pl-8 shadow-none"
             />
           </div>
-          {/* ✅ Lógica actualizada para renderizar múltiples filtros */}
           {facetedFilters &&
             facetedFilters.map((filter) => (
               <DataTableFacetedFilter

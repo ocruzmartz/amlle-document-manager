@@ -58,7 +58,6 @@ Font.register({
 });
 
 const hyphenator = createHyphenator(patternsEs);
-// ✅ Se usa ahora en el componente Text de la nota aclaratoria
 const hyphenationCallback: HyphenationCallback = (word) => {
   if (word.length < 8) return [word];
   const result = hyphenator(word);
@@ -109,7 +108,7 @@ const parseStyleAttribute = (styleString: string | null): Style => {
       }
       case "text-align":
         if (["left", "right", "center", "justify"].includes(value))
-          // ✅ Tipado corregido
+
           style.textAlign = value as Style["textAlign"];
         break;
       case "font-weight":
@@ -266,7 +265,6 @@ const renderHtmlNodes = (
   return nodes;
 };
 
-// ✅ HELPER: Tipado corregido para aceptar string, null o undefined
 const getPrincipalRoleForSubstitute = (
   subRole: string | null | undefined
 ): string | null => {
@@ -402,7 +400,6 @@ const parseHtmlTable = (
   const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
   const columnWidths: (number | null)[] = [];
 
-  // ✅ Variable colIsPercent eliminada por no usarse
 
   if (colgroupMatch) {
     const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
@@ -471,10 +468,7 @@ const parseHtmlTable = (
     if (cols > maxColumns) maxColumns = cols;
   });
 
-  const getWidthForCell = (start: number, span: number) => {
-    // ✅ Se eliminó la variable 'start' no usada del argumento si no se necesitaba,
-    // pero aquí 'start' es el argumento de la función, el linter se quejaba de 'start'
-    // en el render prop de Text más abajo.
+  const getWidthForCell = (_start: number, span: number) => {
     return `${(span / maxColumns) * 100}%`;
   };
 
@@ -776,7 +770,6 @@ export const BookPdfDocument = ({
           <Text
             style={styles.pageNumber}
             fixed
-            // ✅ Se eliminó variable no usada totalPages
             render={({ pageNumber }) => {
               const start = Number(initialPageNumber) || 1;
               const effectivePageNumber = pageNumber + (start - 1);
@@ -809,7 +802,6 @@ export const BookPdfDocument = ({
           const hasNote =
             act.clarifyingNote && act.clarifyingNote.trim().length > 0;
 
-          // ✅ 1. OBTENER FIRMANTES OBLIGATORIOS (Alcaldesa, Sindico, Secretaria)
           const alcaldesaPresente = act.attendees?.owners?.find(
             (m) => m.role === "ALCALDESA"
           );
@@ -823,7 +815,6 @@ export const BookPdfDocument = ({
           const signerSecretaria =
             secretariaPresente || oficialSecretaria || fallbackSecretaria;
 
-          // ✅ 2. OBTENER LISTA CRUDA DE OTROS MIEMBROS (Regidores y Suplentes)
           const rawSignatories = [...(act.attendees?.owners || [])].filter(
             (m) =>
               m.role !== "ALCALDESA" &&
@@ -831,28 +822,21 @@ export const BookPdfDocument = ({
               m.role !== "SECRETARIA"
           );
 
-          // ✅ 3. FILTRAR SUPLENTES SI EL PROPIETARIO ESTÁ
           const presentRoles = new Set(rawSignatories.map((m) => m.role));
 
           const finalSignatories = rawSignatories.filter((member) => {
-            // Si es un cargo propietario (ej. PRIMER_REGIDOR), se queda
             if (!member.role?.includes("SUPLENTE")) return true;
 
-            // Si es suplente, verificamos si su "Jefe" (el rol principal) está presente
-            // ✅ Casting seguro para evitar error de string
             const principalRole = getPrincipalRoleForSubstitute(
               (member.role as string) || ""
             );
 
-            // Si encontramos el rol principal en la lista de presentes, el suplente NO firma
-            if (principalRole && presentRoles.has(principalRole)) {
+            if (principalRole && presentRoles.has(principalRole as any)) {
               return false;
             }
-            // Si el principal no está, el suplente firma (está supliendo)
             return true;
           });
 
-          // Agregamos al Síndico al inicio de la lista de columnas
           const columnSignatories = [signerSindico, ...finalSignatories];
 
           return (

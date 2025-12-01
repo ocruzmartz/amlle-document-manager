@@ -117,23 +117,19 @@ export const BookEditor = ({
     }
 
     try {
-      // ✅ 1. Calcular nombre y número
       const agreementNumber = (act.agreements || []).length + 1;
       const newAgreementName = `Acuerdo número ${capitalize(
         numberToWords(agreementNumber)
       )}`;
 
-      // ✅ 2. Llamar a la API con el DTO completo
       const newAgreement = await agreementService.createAgreement({
         minutesId: actId,
         name: newAgreementName,
         agreementNumber: agreementNumber,
-        // No enviamos 'content' (opcional)
       });
 
       onRefetchAct({ showLoadingScreen: false });
 
-      // ✅ 3. Actualizar el estado local (Tome) con la respuesta de la API
       const updatedActs =
         tome.acts?.map((a) =>
           a.id === actId
@@ -146,7 +142,6 @@ export const BookEditor = ({
         ) || [];
       onUpdateTome({ acts: updatedActs });
 
-      // ✅ 4. Navegar al nuevo acuerdo
       setCurrentView({
         ...currentView,
         detail: {

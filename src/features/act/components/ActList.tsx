@@ -124,7 +124,7 @@ export const ActList = ({
                         </Button>
                       </div>
                       <Button
-                        onClick={() => onDeleteAct(act.id)} // ✅ 5. Conectar acción
+                        onClick={() => onDeleteAct(act.id)}
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"

@@ -60,7 +60,6 @@ export const AgreementList = ({
             Añadir Acuerdo
           </Button>
         </div>
-        {/* ✅ Buscador de acuerdos */}
         <div className="relative mt-4">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -73,7 +72,6 @@ export const AgreementList = ({
         </div>
       </div>
 
-      {/* ✅ Lista de Acuerdos ahora es colapsable */}
       <Collapsible defaultOpen className="flex-1 flex flex-col min-h-0">
         <CollapsibleTrigger className="p-2 text-xs font-semibold text-muted-foreground flex items-center justify-center gap-1 hover:bg-muted">
           <ChevronsUpDown className="h-3 w-3" />
@@ -81,7 +79,6 @@ export const AgreementList = ({
         </CollapsibleTrigger>
 
         <CollapsibleContent className="flex-1 overflow-y-auto p-4">
-          {/* ✅ Caso 1: No hay acuerdos creados */}
           {(act.agreements?.length || 0) === 0 ? (
             <div className="text-center py-12">
               <p className="text-lg font-medium text-muted-foreground mb-2">
@@ -91,8 +88,7 @@ export const AgreementList = ({
                 Comienza agregando tu primer acuerdo para esta acta.
               </p>
             </div>
-          ) : /* ✅ Caso 2: Hay acuerdos pero no coinciden con la búsqueda */
-          filteredAgreements.length === 0 ? (
+          ) : filteredAgreements.length === 0 ? (
             <div className="text-center py-12">
               <div className="mb-4">
                 <Search className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -105,7 +101,6 @@ export const AgreementList = ({
               </p>
             </div>
           ) : (
-            /* ✅ Caso 3: Hay acuerdos que mostrar */
             filteredAgreements.length > 0 && (
               <div className="grid gap-4">
                 {filteredAgreements.map((agreement, index) => {
@@ -169,7 +164,7 @@ export const AgreementList = ({
                             variant="outline"
                             size="sm"
                           >
-                            Editar 
+                            Editar
                           </Button>
                         </div>
                       </div>

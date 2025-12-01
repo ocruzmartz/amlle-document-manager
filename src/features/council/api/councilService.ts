@@ -21,7 +21,7 @@ interface SubstitutoApiResponse {
 const mapPropietario = (apiData: PropietarioApiResponse): Propietario => ({
   id: apiData.id,
   name: apiData.name,
-  type: apiData.type, // ✅
+  type: apiData.type,
   substitutos: (apiData.approvedSubstitutes || []).map((s) => ({
     id: s.id,
     name: s.name,
@@ -32,7 +32,7 @@ const mapPropietario = (apiData: PropietarioApiResponse): Propietario => ({
 const mapSubstituto = (apiData: SubstitutoApiResponse): Substituto => ({
   id: apiData.id,
   name: apiData.name,
-  type: apiData.type, // ✅
+  type: apiData.type, 
 });
 
 export const councilService = {

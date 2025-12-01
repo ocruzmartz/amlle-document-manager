@@ -22,7 +22,7 @@ export type LogTargetType = "Book" | "Act" | "Agreement" | "User";
 
 export type ActivityLog = {
   id: string;
-  user: Pick<User, "nombre">; // ✅ CORREGIDO
+  user: Pick<User, "nombre">;
   action: LogAction;
   target: {
     type: LogTargetType;
@@ -35,7 +35,7 @@ export type ActivityLog = {
 
 export type FullActivityLog = {
   id: string;
-  user: Pick<User, "nombre">; // ✅ CORREGIDO
+  user: Pick<User, "nombre">; 
   action: LogAction;
   targetType: LogTargetType;
   targetName: string;
