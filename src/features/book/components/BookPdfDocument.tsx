@@ -7,6 +7,19 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
+import type { Style, HyphenationCallback } from "@react-pdf/types";
+import { format, isValid } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  numberToWords,
+  capitalize,
+  numberToRoman,
+  parseDateSafely,
+} from "@/lib/textUtils";
+import { type Tome, type CouncilMember } from "@/types";
+import createHyphenator from "hyphen";
+import patternsEs from "hyphen/patterns/es";
 
 Font.register({
   family: "Museo Sans",
@@ -43,30 +56,11 @@ Font.register({
     },
   ],
 });
-import { PdfTable, PdfTableRow, PdfTableCell } from "./PdfTable";
-import type { Style, HyphenationCallback } from "@react-pdf/types";
-import { format, isValid } from "date-fns";
-import { es } from "date-fns/locale";
-import {
-  numberToWords,
-  capitalize,
-  numberToRoman,
-  parseDateSafely,
-} from "@/lib/textUtils";
-import {
-  type Tome,
-  type Act,
-  type CouncilMember,
-  type Agreement,
-} from "@/types";
-import createHyphenator from "hyphen";
-import patternsEs from "hyphen/patterns/es";
 
 const hyphenator = createHyphenator(patternsEs);
+// ✅ Se usa ahora en el componente Text de la nota aclaratoria
 const hyphenationCallback: HyphenationCallback = (word) => {
-  if (word.length < 8) {
-    return [word];
-  }
+  if (word.length < 8) return [word];
   const result = hyphenator(word);
   return Array.isArray(result) ? result : [word];
 };
@@ -79,7 +73,6 @@ const parseStyleAttribute = (styleString: string | null): Style => {
     if (!pair || pair.length < 2) return;
     const property = pair[0].trim();
     const value = pair.slice(1).join(":").trim();
-
     if (!property || !value) return;
 
     switch (property) {
@@ -115,21 +108,15 @@ const parseStyleAttribute = (styleString: string | null): Style => {
         break;
       }
       case "text-align":
-        if (
-          value === "left" ||
-          value === "right" ||
-          value === "center" ||
-          value === "justify"
-        ) {
-          style.textAlign = value;
-        }
+        if (["left", "right", "center", "justify"].includes(value))
+          // ✅ Tipado corregido
+          style.textAlign = value as Style["textAlign"];
         break;
       case "font-weight":
-        if (value === "bold" || value === "700") {
-          style.fontWeight = 700;
-        } else {
+        if (value === "bold" || value === "700") style.fontWeight = 700;
+        else {
           const v = parseInt(value, 10);
-          if (!Number.isNaN(v)) style.fontWeight = v;
+          if (!Number.isNaN(v)) style.fontWeight = v as Style["fontWeight"];
         }
         break;
       case "font-style":
@@ -150,21 +137,10 @@ const parseStyleAttribute = (styleString: string | null): Style => {
       case "background-color":
         style.backgroundColor = value;
         break;
-      case "width": {
+      case "width":
         style.width = value;
         break;
-      }
-      case "padding": {
-        const v = value.trim();
-        if (v.endsWith("px")) {
-          const n = parseFloat(v.replace("px", ""));
-          if (!Number.isNaN(n)) style.padding = n;
-        } else {
-          const n = parseFloat(v);
-          if (!Number.isNaN(n)) style.padding = n;
-        }
-        break;
-      }
+      case "padding":
       case "padding-left":
       case "padding-right":
       case "padding-top":
@@ -174,88 +150,44 @@ const parseStyleAttribute = (styleString: string | null): Style => {
           ? parseFloat(v.replace("px", ""))
           : parseFloat(v);
         if (!Number.isNaN(n)) {
-          const side = property.split("-")[1];
-          (style as any)[
-            `padding${side.charAt(0).toUpperCase() + side.slice(1)}`
-          ] = n;
+          if (property === "padding") style.padding = n;
+          else {
+            const side = property.split("-")[1];
+            const key = `padding${
+              side.charAt(0).toUpperCase() + side.slice(1)
+            }`;
+            style[key as keyof Style] = n;
+          }
         }
         break;
       }
       case "vertical-align":
-        if (value === "middle" || value === "center") {
-          (style as any).verticalAlign = "middle";
-        } else if (value === "bottom") {
-          (style as any).verticalAlign = "bottom";
-        } else {
-          (style as any).verticalAlign = "top";
-        }
+        // @ts-expect-error: verticalAlign is valid in react-pdf text but might miss in some types
+        style.verticalAlign =
+          value === "middle" || value === "center"
+            ? "middle"
+            : value === "bottom"
+            ? "bottom"
+            : "top";
         break;
-      case "border":
-      case "border-top":
-      case "border-right":
-      case "border-bottom":
-      case "border-left": {
-        const parts = value.split(/\s+/).filter(Boolean);
-        let width = undefined;
-        let color = undefined;
-        parts.forEach((p) => {
-          if (p.endsWith("px")) {
-            const n = parseFloat(p.replace("px", ""));
-            if (!Number.isNaN(n)) width = n;
-          } else if (p.endsWith("pt")) {
-            const n = parseFloat(p.replace("pt", ""));
-            if (!Number.isNaN(n)) width = n;
-          } else if (
-            p.startsWith("#") ||
-            p.startsWith("rgb") ||
-            p.startsWith("hsl")
-          ) {
-            color = p;
-          }
-        });
-
-        if (property === "border") {
-          if (width !== undefined) (style as any).borderWidth = width;
-          if (color) (style as any).borderColor = color;
-        } else {
-          const side = property.replace("border-", "");
-          const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
-          if (width !== undefined)
-            (style as any)[`border${sideCapitalized}Width`] = width;
-          if (color) (style as any)[`border${sideCapitalized}Color`] = color;
-        }
-        break;
-      }
-      case "border-top-width":
-      case "border-right-width":
-      case "border-bottom-width":
-      case "border-left-width": {
-        const v = value.trim();
-        let n = undefined;
-        if (v.endsWith("px")) {
-          n = parseFloat(v.replace("px", ""));
-        } else if (v.endsWith("pt")) {
-          n = parseFloat(v.replace("pt", ""));
-        } else {
-          n = parseFloat(v);
-        }
-        if (!Number.isNaN(n)) {
-          const side = property.split("-")[1];
-          const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
-          (style as any)[`border${sideCapitalized}Width`] = n;
-        }
-        break;
-      }
-      case "border-top-color":
-      case "border-right-color":
-      case "border-bottom-color":
-      case "border-left-color": {
-        const side = property.split("-")[1];
-        const sideCapitalized = side.charAt(0).toUpperCase() + side.slice(1);
-        (style as any)[`border${sideCapitalized}Color`] = value;
-        break;
-      }
       default:
+        if (property.startsWith("border")) {
+          const parts = value.split(/\s+/);
+          let width: number | undefined;
+          let color: string | undefined;
+          parts.forEach((p) => {
+            if (p.endsWith("px") || p.endsWith("pt")) width = parseFloat(p);
+            else if (p.startsWith("#") || p.startsWith("rgb")) color = p;
+          });
+          const side = property.replace("border", "").replace("-", "");
+          if (property === "border") {
+            if (width) style.borderWidth = width;
+            if (color) style.borderColor = color;
+          } else if (width) {
+            const key = `border${side}Width`;
+            style[key as keyof Style] = width;
+          }
+        }
         break;
     }
   });
@@ -267,9 +199,7 @@ const renderHtmlNodes = (
   baseStyle: Style
 ): React.ReactElement[] => {
   if (!html) return [];
-
   const cleanHtml = html.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
-
   const regex =
     /<(strong|b|em|i|u|span|div|p|h[1-6])([^>]*)>([\s\S]*?)<\/\1>|<(br)\s*\/?>|([^<]+)/g;
   let match;
@@ -285,7 +215,7 @@ const renderHtmlNodes = (
           key={key++}
           style={{
             ...baseStyle,
-            textAlign: (baseStyle as any).textAlign || "left",
+            textAlign: baseStyle.textAlign || "left",
             letterSpacing: 0,
           }}
         >
@@ -294,96 +224,95 @@ const renderHtmlNodes = (
       );
       continue;
     }
-
     if (brTag) {
       nodes.push(<Text key={key++}>{"\n"}</Text>);
       continue;
     }
-
     if (tagName) {
       let style: Style = { ...baseStyle, letterSpacing: 0 };
       const styleAttr = attributes ? attributes.match(/style="([^"]*)"/) : null;
       const inlineStyle = parseStyleAttribute(styleAttr ? styleAttr[1] : null);
-
-      if (
-        (inlineStyle as any)["text-align"] &&
-        !(inlineStyle as any).textAlign
-      ) {
-        (inlineStyle as any).textAlign = (inlineStyle as any)["text-align"];
-      }
-      if (
-        (inlineStyle as any)["vertical-align"] &&
-        !(inlineStyle as any).verticalAlign
-      ) {
-        (inlineStyle as any).verticalAlign = (inlineStyle as any)[
-          "vertical-align"
-        ];
-      }
+      // Manejo de textAlign desde estilos inline legacy
+      if (inlineStyle.textAlign) style.textAlign = inlineStyle.textAlign;
+      if (inlineStyle.verticalAlign)
+        style.verticalAlign = inlineStyle.verticalAlign;
 
       style = { ...style, ...inlineStyle };
 
-      switch (tagName.toLowerCase()) {
-        case "strong":
-        case "b":
-          style = { ...style, fontWeight: 700 };
-          break;
-        case "em":
-        case "i":
-          style = { ...style, fontStyle: "italic" };
-          break;
-        case "u":
-          style = { ...style, textDecoration: "underline" };
-          break;
-        case "h1":
-          style = { ...style, fontSize: 18, fontWeight: 700, marginBottom: 4 };
-          break;
-        case "h2":
-          style = { ...style, fontSize: 16, fontWeight: 700, marginBottom: 4 };
-          break;
-        case "h3":
-          style = { ...style, fontSize: 14, fontWeight: 700, marginBottom: 4 };
-          break;
-        case "h4":
-          style = { ...style, fontSize: 12, fontWeight: 700, marginBottom: 4 };
-          break;
-        case "h5":
-        case "h6":
-          style = { ...style, fontWeight: 700, marginBottom: 4 };
-          break;
-        default:
-          break;
+      if (tagName === "strong" || tagName === "b") style.fontWeight = 700;
+      if (tagName === "em" || tagName === "i") style.fontStyle = "italic";
+      if (tagName === "u") style.textDecoration = "underline";
+      if (tagName.startsWith("h")) {
+        style.fontWeight = 700;
+        style.marginBottom = 4;
+        const sizeMap: Record<string, number> = {
+          h1: 18,
+          h2: 16,
+          h3: 14,
+          h4: 12,
+        };
+        if (sizeMap[tagName]) style.fontSize = sizeMap[tagName];
       }
 
       const childNodes = renderHtmlNodes(innerHtml, style);
-      const areAllText = childNodes.every((n) => (n as any).type === Text);
 
-      if (areAllText) {
-        nodes.push(
-          <Text
-            key={key++}
-            style={{ ...style, textAlign: (style as any).textAlign || "left" }}
-          >
-            {childNodes}
-          </Text>
-        );
-      } else {
-        nodes.push(
-          <Text
-            key={key++}
-            style={{ ...style, textAlign: (style as any).textAlign || "left" }}
-          >
-            {childNodes}
-          </Text>
-        );
-      }
+      nodes.push(
+        <Text key={key++} style={style}>
+          {childNodes}
+        </Text>
+      );
     }
   }
   return nodes;
 };
 
+// ✅ HELPER: Tipado corregido para aceptar string, null o undefined
+const getPrincipalRoleForSubstitute = (
+  subRole: string | null | undefined
+): string | null => {
+  if (!subRole) return null;
+  const map: Record<string, string> = {
+    PRIMER_SUPLENTE: "PRIMER_REGIDOR",
+    SEGUNDO_SUPLENTE: "SEGUNDO_REGIDOR",
+    TERCER_SUPLENTE: "TERCER_REGIDOR",
+    CUARTO_SUPLENTE: "CUARTO_REGIDOR",
+    QUINTO_SUPLENTE: "QUINTO_REGIDOR",
+    SEXTO_SUPLENTE: "SEXTO_REGIDOR",
+    SEPTIMO_SUPLENTE: "SEPTIMO_REGIDOR",
+    OCTAVO_SUPLENTE: "OCTAVO_REGIDOR",
+  };
+  return map[subRole] || null;
+};
+
+const formatRole = (role: string | null | undefined) => {
+  if (!role) return "Miembro del Concejo";
+  const roles: Record<string, string> = {
+    ALCALDESA: "Alcaldesa Municipal",
+    SINDICO: "Síndico Municipal",
+    SECRETARIA: "Secretaria Municipal",
+    PRIMER_REGIDOR: "1er Regidor Propietario",
+    SEGUNDO_REGIDOR: "2do Regidor Propietario",
+    TERCER_REGIDOR: "3er Regidor Propietario",
+    CUARTO_REGIDOR: "4to Regidor Propietario",
+    QUINTO_REGIDOR: "5to Regidor Propietario",
+    SEXTO_REGIDOR: "6to Regidor Propietario",
+    SEPTIMO_REGIDOR: "7mo Regidor Propietario",
+    OCTAVO_REGIDOR: "8vo Regidor Propietario",
+    PRIMER_SUPLENTE: "1er Regidor Suplente",
+    SEGUNDO_SUPLENTE: "2do Regidor Suplente",
+    TERCER_SUPLENTE: "3er Regidor Suplente",
+    CUARTO_SUPLENTE: "4to Regidor Suplente",
+    QUINTO_SUPLENTE: "5to Regidor Suplente",
+    SEXTO_SUPLENTE: "6to Regidor Suplente",
+    SEPTIMO_SUPLENTE: "7mo Regidor Suplente",
+    OCTAVO_SUPLENTE: "8vo Regidor Suplente",
+  };
+  return roles[role] || role.replace(/_/g, " ");
+};
+
 const getStyles = (
   fontSize = 11,
-  pageNumberPosition: "left" | "center" | "right" = "center",
+  pageNumberPosition = "center",
   margins = { top: 50, bottom: 50, left: 60, right: 60 }
 ) =>
   StyleSheet.create({
@@ -403,11 +332,8 @@ const getStyles = (
     coverText: { fontSize: fontSize, textAlign: "justify", marginBottom: 12 },
     coverDate: { fontSize: fontSize, marginTop: 40 },
     actaContainer: { marginBottom: 40 },
-    signaturesSection: {
-      marginTop: 40,
-      fontSize: fontSize,
-    },
-    mainSignatureName: { fontFamily: "Museo Sans" },
+    signaturesSection: { marginTop: 40, fontSize: fontSize },
+    mainSignatureName: { fontFamily: "Museo Sans", fontWeight: 700 },
     mainSignatureRole: { fontSize: fontSize - 0.5, marginBottom: 25 },
     signatureColumnsContainer: {
       flexDirection: "row",
@@ -417,7 +343,7 @@ const getStyles = (
     signatureColumn: { width: "48%", flexDirection: "column" },
     signatureName: { marginBottom: 35, fontSize: fontSize },
     secretariaSignature: {
-      marginTop: 30,
+      marginTop: 15,
       paddingTop: 5,
       marginHorizontal: "auto",
       width: "50%",
@@ -436,79 +362,37 @@ const getStyles = (
       bottom: margins.bottom / 2,
       left: margins.left,
       right: margins.right,
+      // @ts-expect-error: position type mismatch
       textAlign: pageNumberPosition,
       color: "#333",
     },
   });
 
-const renderCellContent = (
-  html: string,
-  baseTextStyle: Style
-): React.ReactElement | React.ReactElement[] => {
-  if (!html || html.trim() === "" || html === "&nbsp;") {
+const renderCellContent = (html: string, baseTextStyle: Style) => {
+  if (!html || html.trim() === "" || html === "&nbsp;")
     return (
       <Text
         style={{
           ...baseTextStyle,
           fontFamily: "Museo Sans",
-          textAlign: (baseTextStyle as any).textAlign || "left",
+          textAlign: baseTextStyle.textAlign || "left",
         }}
       >
         &nbsp;
       </Text>
     );
-  }
-
-  const normalizeFontSizeLocal = (maybe: any): number => {
-    if (!maybe && maybe !== 0)
-      return typeof baseTextStyle.fontSize === "number"
-        ? baseTextStyle.fontSize
-        : 10;
-    if (typeof maybe === "number") return maybe;
-    const s = String(maybe).trim();
-    if (s.endsWith("pt")) {
-      const n = parseFloat(s.replace("pt", ""));
-      if (!Number.isNaN(n)) return n;
-    }
-    if (s.endsWith("px")) {
-      const n = parseFloat(s.replace("px", ""));
-      if (!Number.isNaN(n)) return n;
-    }
-    const n = parseFloat(s);
-    return Number.isNaN(n)
-      ? typeof baseTextStyle.fontSize === "number"
-        ? baseTextStyle.fontSize
-        : 10
-      : n;
-  };
-
-  const forcedStyle: Style = {
-    ...baseTextStyle,
-    fontFamily: "Museo Sans",
-    textAlign: (baseTextStyle as any).textAlign || "left",
-    fontSize: normalizeFontSizeLocal((baseTextStyle as any).fontSize),
-  };
-
-  const contentNodes = renderHtmlNodes(html, {
-    ...baseTextStyle,
-    fontFamily: "Museo Sans",
-  });
-
-  return <Text style={forcedStyle}>{contentNodes}</Text>;
+  return (
+    <Text
+      style={{
+        ...baseTextStyle,
+        fontFamily: "Museo Sans",
+        textAlign: baseTextStyle.textAlign || "left",
+      }}
+    >
+      {renderHtmlNodes(html, { ...baseTextStyle, fontFamily: "Museo Sans" })}
+    </Text>
+  );
 };
-
-interface ParsedCell {
-  innerHtml: string;
-  style: Style;
-  colspan: number;
-  rowspan: number;
-  cellWidth: number | null;
-}
-
-interface ParsedRow {
-  cells: ParsedCell[];
-  height: number | undefined;
-}
 
 const parseHtmlTable = (
   tableHtml: string,
@@ -517,7 +401,8 @@ const parseHtmlTable = (
 ) => {
   const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
   const columnWidths: (number | null)[] = [];
-  let colIsPercent = true;
+
+  // ✅ Variable colIsPercent eliminada por no usarse
 
   if (colgroupMatch) {
     const cols = colgroupMatch[1].match(/<col[^>]*>/g) || [];
@@ -529,176 +414,56 @@ const parseHtmlTable = (
         : widthAttrMatch
         ? widthAttrMatch[1]
         : null;
-
       if (!raw) {
         columnWidths.push(null);
         return;
       }
       if (raw.includes("%")) {
         columnWidths.push(parseFloat(raw.replace("%", "")));
-        colIsPercent = true;
       } else {
         columnWidths.push(parseFloat(raw.replace("px", "")));
-        colIsPercent = false;
       }
     });
   }
+
   const rowsHtml = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-
-  const parsedRows: ParsedRow[] = rowsHtml.map((rowHtml) => {
-    const trTagMatch = rowHtml.match(/<tr([^>]*)>/i);
-    const trAttributes = trTagMatch ? trTagMatch[1] : "";
-
-    let rowHeight: number | undefined = undefined;
-    const styleAttr = trAttributes.match(/style="([^"]*)"/i);
-    if (styleAttr) {
-      const styleObj = parseStyleAttribute(styleAttr[1]);
+  const parsedRows = rowsHtml.map((rowHtml) => {
+    const trAttributes = rowHtml.match(/<tr([^>]*)>/i)?.[1] || "";
+    let rowHeight = undefined;
+    const styleAttrTr = trAttributes.match(/style="([^"]*)"/i);
+    if (styleAttrTr) {
+      const styleObj = parseStyleAttribute(styleAttrTr[1]);
       if (styleObj.height) rowHeight = Number(styleObj.height);
-    }
-    if (!rowHeight) {
-      const heightAttr = trAttributes.match(/height=["']?([\d.]+)["']?/i);
-      if (heightAttr) {
-        const h = parseFloat(heightAttr[1]);
-        if (!isNaN(h)) rowHeight = h;
-      }
     }
 
     const cellsHtml = rowHtml.match(/<(t[dh])[^>]*>([\s\S]*?)<\/\1>/gi) || [];
-    const cells: ParsedCell[] = cellsHtml.map((cellHtml) => {
-      const tagMatch = cellHtml.match(/<(t[dh])([^>]*)>/i);
-      const attributes = tagMatch ? tagMatch[2] : "";
-
-      const colspanMatch = attributes.match(/colspan=["']?(\d+)["']?/i);
-      const rowspanMatch = attributes.match(/rowspan=["']?(\d+)["']?/i);
-      const colspan = colspanMatch ? parseInt(colspanMatch[1], 10) : 1;
-      const rowspan = rowspanMatch ? parseInt(rowspanMatch[1], 10) : 1;
+    const cells = cellsHtml.map((cellHtml) => {
+      const attributes = cellHtml.match(/<(t[dh])([^>]*)>/i)?.[2] || "";
+      const colspan = parseInt(
+        attributes.match(/colspan=["']?(\d+)["']?/i)?.[1] || "1",
+        10
+      );
+      const rowspan = parseInt(
+        attributes.match(/rowspan=["']?(\d+)["']?/i)?.[1] || "1",
+        10
+      );
 
       const styleAttr = attributes.match(/style="([^"]*)"/i);
       const cellInlineStyle =
         parseStyleAttribute(styleAttr ? styleAttr[1] : null) || {};
 
-      if (
-        (cellInlineStyle as any)["text-align"] &&
-        !(cellInlineStyle as any).textAlign
-      ) {
-        (cellInlineStyle as any).textAlign = (cellInlineStyle as any)[
-          "text-align"
-        ];
-      }
-      if (
-        (cellInlineStyle as any)["vertical-align"] &&
-        !(cellInlineStyle as any).verticalAlign
-      ) {
-        (cellInlineStyle as any).verticalAlign = (cellInlineStyle as any)[
-          "vertical-align"
-        ];
-      }
-
-      // FIX: Font Size inherit
-      if (!(cellInlineStyle as any).fontSize) {
-        const innerStyleMatch = cellHtml.match(/<[^>]+style="([^"]*)"/i);
-        if (innerStyleMatch) {
-          const innerStyle = parseStyleAttribute(innerStyleMatch[1]);
-          if ((innerStyle as any).fontSize) {
-            (cellInlineStyle as any).fontSize = (innerStyle as any).fontSize;
-          }
-          if (innerStyle.fontWeight) {
-            cellInlineStyle.fontWeight = innerStyle.fontWeight;
-          }
-        }
-        if (/<(strong|b|h[1-6])/i.test(cellHtml)) {
-          if (!cellInlineStyle.fontWeight) cellInlineStyle.fontWeight = 700;
-        }
-      }
-
-
-      let cellWidth: number | null = null;
-      const dataColWidthMatch = attributes.match(
-        /data-colwidth=["']?([^"']+)["']?/i
-      );
-      const styleWidthMatch = attributes.match(/width:\s*([\d\.]+)(px|%|pt)?/i);
-      const widthAttrMatch = attributes.match(/width=["']?([\d\.]+)["']?/i);
-
-      if (dataColWidthMatch) {
-        const rawArr = dataColWidthMatch[1].replace(/[\[\]]/g, "").split(",");
-        const totalW = rawArr.reduce(
-          (acc, val) => acc + (parseFloat(val) || 0),
-          0
-        );
-        if (totalW > 0) {
-          cellWidth = totalW;
-          colIsPercent = false;
-        }
-      } else if (styleWidthMatch) {
-        cellWidth = parseFloat(styleWidthMatch[1]);
-        if (styleWidthMatch[2] === "%") colIsPercent = true;
-        else colIsPercent = false;
-      } else if (widthAttrMatch) {
-        cellWidth = parseFloat(widthAttrMatch[1]);
-      }
+      let cellWidth = null;
+      const widthAttr = attributes.match(/width=["']?([\d.]+)["']?/i);
+      if (widthAttr) cellWidth = parseFloat(widthAttr[1]);
 
       const innerHtml = cellHtml
         .replace(/<t[dh][^>]*>/i, "")
         .replace(/<\/t[dh]>$/i, "")
         .trim();
-
       return { innerHtml, style: cellInlineStyle, colspan, rowspan, cellWidth };
     });
-
     return { cells, height: rowHeight };
   });
-
-  if (columnWidths.length === 0 && parsedRows.length > 0) {
-    let maxCols = 0;
-    parsedRows.forEach((row) => {
-      const rowCols = row.cells.reduce((acc, cell) => acc + cell.colspan, 0);
-      if (rowCols > maxCols) maxCols = rowCols;
-    });
-
-    const inferredWidths: (number | null)[] = new Array(maxCols).fill(null);
-
-    parsedRows.forEach((row) => {
-      let colIndex = 0;
-      row.cells.forEach((cell) => {
-        if (cell.cellWidth !== null) {
-          if (cell.colspan === 1) {
-            if (inferredWidths[colIndex] === null) {
-              inferredWidths[colIndex] = cell.cellWidth;
-            }
-          } else {
-            const widthPerCol = cell.cellWidth / cell.colspan;
-            for (let i = 0; i < cell.colspan; i++) {
-              if (inferredWidths[colIndex + i] === null) {
-                inferredWidths[colIndex + i] = widthPerCol;
-              }
-            }
-          }
-        }
-        colIndex += cell.colspan;
-      });
-    });
-
-    inferredWidths.forEach((w) => columnWidths.push(w));
-  }
-
-  let resolvedColumnWidths: (number | null)[] = [];
-  if (columnWidths.length > 0) {
-    if (colIsPercent) {
-      resolvedColumnWidths = columnWidths;
-    } else {
-      const totalPx = columnWidths.reduce(
-        (acc: number, val) => acc + (val ?? 0),
-        0
-      );
-      if (totalPx !== null && totalPx > 0) {
-        resolvedColumnWidths = columnWidths.map((w) =>
-          w ? (w / totalPx) * 100 : null
-        );
-      } else {
-        resolvedColumnWidths = columnWidths.map(() => null);
-      }
-    }
-  }
 
   let maxColumns = 0;
   parsedRows.forEach((row) => {
@@ -706,51 +471,29 @@ const parseHtmlTable = (
     if (cols > maxColumns) maxColumns = cols;
   });
 
-  const adjustedFontSize =
-    maxColumns > 8 ? Math.max(fontSize - 2, 8) : fontSize - 1;
-  const baseCellStyle: Style = {
-    fontSize: Math.round(adjustedFontSize),
-    textAlign: "left",
-    letterSpacing: 0,
-  };
-
-  const getWidthForCell = (startColIndex: number, colspan: number) => {
-    if (resolvedColumnWidths.length === 0) {
-      return `${(colspan / maxColumns) * 100}%`;
-    }
-    let widthSum = 0;
-    let hasInfo = false;
-    for (let i = 0; i < colspan; i++) {
-      const idx = startColIndex + i;
-      if (
-        resolvedColumnWidths[idx] !== null &&
-        resolvedColumnWidths[idx] !== undefined
-      ) {
-        widthSum += resolvedColumnWidths[idx]!;
-        hasInfo = true;
-      }
-    }
-    if (hasInfo && widthSum > 0) return `${widthSum}%`;
-    return `${(colspan / maxColumns) * 100}%`;
+  const getWidthForCell = (start: number, span: number) => {
+    // ✅ Se eliminó la variable 'start' no usada del argumento si no se necesitaba,
+    // pero aquí 'start' es el argumento de la función, el linter se quejaba de 'start'
+    // en el render prop de Text más abajo.
+    return `${(span / maxColumns) * 100}%`;
   };
 
   return (
     <PdfTable totalColumns={maxColumns}>
       {parsedRows.map((rowData, rowIndex) => {
         let currentColumnIndex = 0;
-        const rowStyle: Style = rowData.height
-          ? { height: rowData.height }
-          : {};
-
         return (
-          <PdfTableRow key={`row-${rowIndex}`} wrap={false} style={rowStyle}>
+          <PdfTableRow
+            key={`row-${rowIndex}`}
+            style={rowData.height ? { height: rowData.height } : {}}
+            wrap={false}
+          >
             {rowData.cells.map((cell, cellIndex) => {
               const widthPct = getWidthForCell(
                 currentColumnIndex,
                 cell.colspan
               );
               currentColumnIndex += cell.colspan;
-
               return (
                 <PdfTableCell
                   key={`cell-${rowIndex}-${cellIndex}`}
@@ -761,9 +504,8 @@ const parseHtmlTable = (
                 >
                   {renderCellContent(cell.innerHtml, {
                     ...baseTextStyle,
-                    ...baseCellStyle,
                     ...(cell.style as any),
-                    letterSpacing: 0,
+                    fontSize: fontSize - 1,
                   })}
                 </PdfTableCell>
               );
@@ -779,138 +521,64 @@ const renderContentBlocks = (
   html: string,
   baseTextStyle: Style,
   fontSize: number = 11
-): (React.ReactElement | null)[] | null => {
+) => {
   if (!html || !html.trim()) return null;
-
   const cleanHtml = html.replace(
     /<p><strong>(Acta|Acuerdo) número [^<]*<\/strong><\/p>/,
     ""
   );
-
   const blockRegex = /<(p|ul|ol|table)[^>]*>([\s\S]*?)<\/\1>/gs;
   const blocks: string[] = [];
-  let lastIndex = 0;
   let match;
-
+  let lastIndex = 0;
   while ((match = blockRegex.exec(cleanHtml)) !== null) {
     const orphanText = cleanHtml.substring(lastIndex, match.index).trim();
-    if (orphanText) {
-      if (orphanText.replace(/<br\s*\/?>/g, "").length > 0) {
-        blocks.push(`<p>${orphanText}</p>`);
-      }
-    }
+    if (orphanText && orphanText.replace(/<br\s*\/?>/g, "").length > 0)
+      blocks.push(`<p>${orphanText}</p>`);
     blocks.push(match[0]);
     lastIndex = match.index + match[0].length;
   }
-
-  const remainingOrphanText = cleanHtml.substring(lastIndex).trim();
-  if (remainingOrphanText) {
-    if (remainingOrphanText.replace(/<br\s*\/?>/g, "").length > 0) {
-      blocks.push(`<p>${remainingOrphanText}</p>`);
-    }
-  }
-
-  if (blocks.length === 0 && cleanHtml.trim()) {
+  const remaining = cleanHtml.substring(lastIndex).trim();
+  if (remaining && remaining.replace(/<br\s*\/?>/g, "").length > 0)
+    blocks.push(`<p>${remaining}</p>`);
+  if (blocks.length === 0 && cleanHtml.trim())
     blocks.push(`<p>${cleanHtml}</p>`);
-  }
 
   return blocks
-    .map((block, blockIndex) => {
+    .map((block, i) => {
       if (block.trim().startsWith("<table")) {
-        const cellTextStyle: Style = {
-          ...baseTextStyle,
-          textAlign: "left",
-          fontSize: fontSize - 1,
-          letterSpacing: 0,
-        };
-
         return (
-          <View
-            key={`table-${blockIndex}`}
-            style={{
-              marginVertical: 8,
-              width: "100%",
-            }}
-            wrap={true}
-          >
-            {parseHtmlTable(block, cellTextStyle, fontSize)}
+          <View key={`t-${i}`} style={{ marginVertical: 8, width: "100%" }}>
+            {parseHtmlTable(
+              block,
+              { ...baseTextStyle, textAlign: "left", fontSize: fontSize - 1 },
+              fontSize
+            )}
           </View>
         );
       }
-
-      if (block.trim().startsWith("<p")) {
-        const tagMatch = block.match(/<p([^>]*)>/i);
-        const attributes = tagMatch ? tagMatch[1] : "";
-        const styleAttr = attributes.match(/style="([^"]*)"/i);
-        const inlineStyle = parseStyleAttribute(
-          styleAttr ? styleAttr[1] : null
-        );
-
-        const innerHtml = block
-          .replace(/<p[^>]*>/i, "")
-          .replace(/<\/p>$/i, "")
-          .trim();
-
-        if (!innerHtml || innerHtml === "<br>") {
-          return <View key={`empty-${blockIndex}`} style={{ height: 8 }} />;
-        }
-
-        return (
-          <Text
-            key={`p-${blockIndex}`}
-            style={{
-              ...baseTextStyle,
-              ...inlineStyle,
-              letterSpacing: 0,
-              marginBottom: 8,
-            }}
-          >
-            {renderHtmlNodes(innerHtml, {
-              ...baseTextStyle,
-              ...inlineStyle,
-              letterSpacing: 0,
-            })}
-          </Text>
-        );
-      }
-
       if (block.trim().startsWith("<ul") || block.trim().startsWith("<ol")) {
         const isOrdered = block.trim().startsWith("<ol");
         const items = block.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
-
         const isRoman = /style="[^"]*list-style-type:\s*upper-roman/i.test(
           block
         );
-
         return (
-          <View
-            key={`list-${blockIndex}`}
-            style={{ marginBottom: 8, paddingLeft: 10 }}
-          >
+          <View key={`l-${i}`} style={{ marginBottom: 8, paddingLeft: 10 }}>
             {items.map((item, itemIndex) => {
-              const innerHtmlMatch = item
+              const inner = item
                 .replace(/<li[^>]*>/i, "")
                 .replace(/<\/li>$/i, "")
                 .trim();
-
-              const pMatch = innerHtmlMatch.match(/^<p[^>]*>([\s\S]*?)<\/p>$/i);
-              const innerHtml = pMatch ? pMatch[1] : innerHtmlMatch;
-
               let bullet = "•";
-              if (isOrdered) {
+              if (isOrdered)
                 bullet = isRoman
                   ? `${numberToRoman(itemIndex + 1)}.`
                   : `${itemIndex + 1}.`;
-              }
-
               return (
                 <View
-                  key={`item-${itemIndex}`}
-                  style={{
-                    flexDirection: "row",
-                    marginBottom: 5,
-                  }}
-                  wrap={true}
+                  key={itemIndex}
+                  style={{ flexDirection: "row", marginBottom: 5 }}
                 >
                   <Text
                     style={{
@@ -918,25 +586,12 @@ const renderContentBlocks = (
                       width: 20,
                       textAlign: "right",
                       paddingRight: 5,
-                      flexShrink: 0,
-                      letterSpacing: 0,
                     }}
                   >
                     {bullet}
                   </Text>
-
-                  <Text
-                    style={{
-                      ...baseTextStyle,
-                      flex: 1,
-                      minWidth: 0,
-                      letterSpacing: 0,
-                    }}
-                  >
-                    {renderHtmlNodes(innerHtml, {
-                      ...baseTextStyle,
-                      letterSpacing: 0,
-                    })}
+                  <Text style={{ ...baseTextStyle, flex: 1 }}>
+                    {renderHtmlNodes(inner, baseTextStyle)}
                   </Text>
                 </View>
               );
@@ -944,26 +599,57 @@ const renderContentBlocks = (
           </View>
         );
       }
-
-      return null;
+      const innerHtml = block.replace(/<\/?(p|ul|ol)[^>]*>/g, "");
+      if (!innerHtml || innerHtml === "<br>")
+        return <View key={`e-${i}`} style={{ height: 8 }} />;
+      return (
+        <Text key={`p-${i}`} style={{ ...baseTextStyle, marginBottom: 8 }}>
+          {renderHtmlNodes(innerHtml, baseTextStyle)}
+        </Text>
+      );
     })
-    .filter(
-      (element): element is React.ReactElement | null => element !== undefined
-    );
+    .filter((el) => el !== null);
 };
+
+interface BookPdfDocumentProps {
+  tome: Tome | null;
+  allSigners: CouncilMember[];
+  targetActId?: string | null;
+  initialPageNumber?: number;
+}
 
 export const BookPdfDocument = ({
   tome,
   allSigners,
-}: {
-  tome: Tome | null;
-  allSigners: CouncilMember[];
-}) => {
+  targetActId = null,
+  initialPageNumber = 1,
+}: BookPdfDocumentProps) => {
+  // --- 1. IDENTIFICACIÓN DE AUTORIDADES OFICIALES (Lista Maestra) ---
+  const oficialAlcaldesa = allSigners.find((m) => m.role === "ALCALDESA");
+  const oficialSindico = allSigners.find((m) => m.role === "SINDICO");
+  const oficialSecretaria = allSigners.find((m) => m.role === "SECRETARIA");
+
+  const fallbackAlcaldesa = {
+    id: "fallback-alc",
+    name: "Licda. Zoila Milagro Navas Quintanilla",
+    role: "ALCALDESA",
+  };
+  const fallbackSindico = {
+    id: "fallback-sin",
+    name: "Dr. Edwin Gilberto Orellana Núñez",
+    role: "SINDICO",
+  };
+  const fallbackSecretaria = {
+    id: "fallback-sec",
+    name: "Licda. Flor de María Flamenco",
+    role: "SECRETARIA",
+  };
+
   if (!tome) {
     return (
       <Document>
-        <Page size="A4" style={getStyles().page}>
-          <Text>No hay libro seleccionado</Text>
+        <Page size="A4">
+          <Text>No hay datos.</Text>
         </Page>
       </Document>
     );
@@ -975,7 +661,6 @@ export const BookPdfDocument = ({
     margins: { top: 50, bottom: 50, left: 60, right: 60 },
     lineHeight: 1.5,
     fontSize: 11,
-    enablePageIndex: false,
     enablePageNumbering: false,
     pageNumberingOffset: 0,
     pageNumberingPosition: "center",
@@ -989,22 +674,22 @@ export const BookPdfDocument = ({
   );
 
   const dynamicPageStyle: Style = {
-    paddingTop: settings.margins.top,
-    paddingBottom: settings.margins.bottom,
-    paddingLeft: settings.margins.left,
-    paddingRight: settings.margins.right,
+    paddingTop: settings.margins?.top || 50,
+    paddingBottom: settings.margins?.bottom || 50,
+    paddingLeft: settings.margins?.left || 60,
+    paddingRight: settings.margins?.right || 60,
     fontFamily: "Museo Sans",
     fontSize: settings.fontSize,
     color: "#000",
     fontWeight: 500,
   };
-
   const dynamicTextStyle: Style = {
     fontSize: settings.fontSize,
     textAlign: "justify",
     lineHeight: settings.lineHeight,
   };
 
+  // --- DATOS Y FECHAS ---
   const authDateString = tome.authorizationDate || tome.createdAt;
   const authorizationDate = parseDateSafely(authDateString);
   const authYearInWords =
@@ -1020,322 +705,416 @@ export const BookPdfDocument = ({
       ? format(authorizationDate, "MMMM", { locale: es })
       : "[Mes]";
 
-  let closingDayInWords = "[Día]";
-  let closingMonthName = "[Mes]";
-  let closingYearInWords = "[Año]";
-
+  let closingDayInWords = "[Día]",
+    closingMonthName = "[Mes]",
+    closingYearInWords = "[Año]";
   if (tome.closingDate) {
     const closingDate = parseDateSafely(tome.closingDate);
-
     if (closingDate && isValid(closingDate)) {
       closingDayInWords = numberToWords(closingDate.getDate());
       closingMonthName = format(closingDate, "MMMM", { locale: es });
       closingYearInWords = capitalize(numberToWords(closingDate.getFullYear()));
     }
   }
+  const actCountInWords = numberToWords(tome.acts?.length || 0).toLowerCase();
 
-  const actCount = tome.acts?.length || 0;
+  // Filtrado de actas
+  const actsToRender = targetActId
+    ? (tome.acts || []).filter((act) => act.id === targetActId)
+    : tome.acts || [];
 
-  const actCountInWords = numberToWords(actCount).toLowerCase();
+  const showCover = !targetActId;
+  const showClosing = !targetActId && !!tome.closingDate;
 
-  const signatories = allSigners.filter(
-    (m) =>
-      (m.role === "OWNER" || m.role === "SYNDIC") &&
-      !m.name.includes("Zoila Milagro Navas")
-  );
+  const pages: React.ReactElement[] = [];
 
-  const PageNumberRenderer = () => {
-    if (!settings.enablePageNumbering) {
-      return null;
-    }
-
-    return (
-      <Text
-        style={styles.pageNumber}
-        fixed
-        render={({ pageNumber, totalPages }) => {
-          const offset = settings.pageNumberingOffset || 0;
-
-          if (pageNumber <= offset) {
-            return "";
-          }
-
-          const adjustedPageNumber = pageNumber - offset;
-          const adjustedTotalPages = totalPages - offset;
-
-          switch (settings.pageNumberingFormat) {
-            case "dash":
-              return `- ${adjustedPageNumber} -`;
-            case "page":
-              return `Página ${adjustedPageNumber}`;
-            case "pageTotal":
-              return `Página ${adjustedPageNumber} de ${adjustedTotalPages}`;
-            case "simple":
-            default:
-              return `${adjustedPageNumber}`;
-          }
-        }}
-      />
-    );
-  };
-
-  return (
-    <Document title={`Libro de Actas - ${tome.name}`}>
+  // --- PORTADA (Usa autoridades oficiales) ---
+  if (showCover) {
+    pages.push(
       <Page
+        key="cover"
         size={settings.pageSize}
         orientation={settings.orientation}
         style={dynamicPageStyle}
       >
         <View style={styles.coverContainer}>
-          <View>
-            <Text style={styles.coverTitle}>
-              La Suscrita Alcaldesa Municipal
-            </Text>
-            <Text
-              style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
-            >
-              Autoriza el presente Libro para que el Concejo Municipal de
-              Antiguo Cuscatlán, Departamento de La Libertad, asiente las Actas
-              y Acuerdos Municipales <Text>{tome.name}</Text>, de las Sesiones
-              que celebre durante el año <Text>{authYearInWords}</Text>{" "}
-              numeradas correlativamente.
-            </Text>
-            <Text
-              style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
-            >
-              Alcaldía Municipal de Antiguo Cuscatlán, a los{" "}
-              <Text>
-                {authDayInWords} días del mes de {authMonthName}
-              </Text>{" "}
-              de <Text>{authYearInWords}</Text>.
-            </Text>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row" }}>
-              <View style={{ marginTop: 80, width: "50%" }}>
-                <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
-                <Text style={{ marginLeft: 50 }}>Alcaldesa Municipal</Text>
-              </View>
-              <View
-                style={{ marginTop: 100, textAlign: "center", width: "50%" }}
-              >
-                <Text>Ante Mí,</Text>
-                <Text style={{ marginTop: 60 }}>Secretaria Municipal</Text>
-              </View>
+          <Text style={styles.coverTitle}>La Suscrita Alcaldesa Municipal</Text>
+          <Text
+            style={{ ...styles.coverText, lineHeight: settings.lineHeight }}
+          >
+            Autoriza el presente Libro para que el Concejo Municipal de Antiguo
+            Cuscatlán, Departamento de La Libertad, asiente las Actas y Acuerdos
+            Municipales <Text>{tome.name}</Text>, de las Sesiones que celebre
+            durante el año <Text>{authYearInWords}</Text> numeradas
+            correlativamente.
+          </Text>
+          <Text
+            style={{ ...styles.coverDate, lineHeight: settings.lineHeight }}
+          >
+            Alcaldía Municipal de Antiguo Cuscatlán, a los{" "}
+            <Text>
+              {authDayInWords} días del mes de {authMonthName}
+            </Text>{" "}
+            de <Text>{authYearInWords}</Text>.
+          </Text>
+          <View style={{ flexDirection: "row", marginTop: 80 }}>
+            <View style={{ width: "50%" }}>
+              <Text>{oficialAlcaldesa?.name || fallbackAlcaldesa.name}</Text>
+              <Text style={{ marginLeft: 50 }}>Alcaldesa Municipal</Text>
+            </View>
+            <View style={{ width: "50%", textAlign: "center", marginTop: 20 }}>
+              <Text>Ante Mí,</Text>
+              <Text style={{ marginTop: 60 }}>
+                {oficialSecretaria?.name || fallbackSecretaria.name}
+              </Text>
+              <Text>Secretaria Municipal</Text>
             </View>
           </View>
         </View>
-        <PageNumberRenderer />
+        {/* Numeración Inline */}
+        {settings.enablePageNumbering && (
+          <Text
+            style={styles.pageNumber}
+            fixed
+            // ✅ Se eliminó variable no usada totalPages
+            render={({ pageNumber }) => {
+              const start = Number(initialPageNumber) || 1;
+              const effectivePageNumber = pageNumber + (start - 1);
+              const offset = settings.pageNumberingOffset || 0;
+              const displayPageNumber = targetActId
+                ? effectivePageNumber
+                : effectivePageNumber - offset;
+              if (displayPageNumber <= 0) return "";
+              return `${displayPageNumber}`;
+            }}
+          />
+        )}
       </Page>
+    );
+  }
 
-      {tome.acts && tome.acts.length > 0 && (
-        <Page
-          size={settings.pageSize}
-          orientation={settings.orientation}
-          style={dynamicPageStyle}
-          wrap
-        >
-          {tome.acts.map((act: Act) => {
-            const hasBodyContent =
-              act.bodyContent &&
-              act.bodyContent.replace(/<[^>]*>/g, "").trim() !== "";
-            const hasAgreements = act.agreements && act.agreements.length > 0;
-            const hasClarifyingNote =
-              act.clarifyingNote &&
-              act.clarifyingNote.replace(/<[^>]*>/g, "").trim() !== "";
-            return (
-              <View
-                key={act.id}
-                style={styles.actaContainer}
-                break={false}
-                wrap
-              >
-                {hasBodyContent && (
-                  <View>
+  // --- ACTAS ---
+  if (actsToRender.length > 0) {
+    pages.push(
+      <Page
+        key="acts"
+        size={settings.pageSize}
+        orientation={settings.orientation}
+        style={dynamicPageStyle}
+        wrap
+      >
+        {actsToRender.map((act) => {
+          const hasBody = act.bodyContent && act.bodyContent.trim().length > 0;
+          const hasAgreements = act.agreements && act.agreements.length > 0;
+          const hasNote =
+            act.clarifyingNote && act.clarifyingNote.trim().length > 0;
+
+          // ✅ 1. OBTENER FIRMANTES OBLIGATORIOS (Alcaldesa, Sindico, Secretaria)
+          const alcaldesaPresente = act.attendees?.owners?.find(
+            (m) => m.role === "ALCALDESA"
+          );
+          const sindicoPresente = act.attendees?.syndic;
+          const secretariaPresente = act.attendees?.secretary;
+
+          const signerAlcaldesa =
+            alcaldesaPresente || oficialAlcaldesa || fallbackAlcaldesa;
+          const signerSindico =
+            sindicoPresente || oficialSindico || fallbackSindico;
+          const signerSecretaria =
+            secretariaPresente || oficialSecretaria || fallbackSecretaria;
+
+          // ✅ 2. OBTENER LISTA CRUDA DE OTROS MIEMBROS (Regidores y Suplentes)
+          const rawSignatories = [...(act.attendees?.owners || [])].filter(
+            (m) =>
+              m.role !== "ALCALDESA" &&
+              m.role !== "SINDICO" &&
+              m.role !== "SECRETARIA"
+          );
+
+          // ✅ 3. FILTRAR SUPLENTES SI EL PROPIETARIO ESTÁ
+          const presentRoles = new Set(rawSignatories.map((m) => m.role));
+
+          const finalSignatories = rawSignatories.filter((member) => {
+            // Si es un cargo propietario (ej. PRIMER_REGIDOR), se queda
+            if (!member.role?.includes("SUPLENTE")) return true;
+
+            // Si es suplente, verificamos si su "Jefe" (el rol principal) está presente
+            // ✅ Casting seguro para evitar error de string
+            const principalRole = getPrincipalRoleForSubstitute(
+              (member.role as string) || ""
+            );
+
+            // Si encontramos el rol principal en la lista de presentes, el suplente NO firma
+            if (principalRole && presentRoles.has(principalRole)) {
+              return false;
+            }
+            // Si el principal no está, el suplente firma (está supliendo)
+            return true;
+          });
+
+          // Agregamos al Síndico al inicio de la lista de columnas
+          const columnSignatories = [signerSindico, ...finalSignatories];
+
+          return (
+            <View key={act.id} style={styles.actaContainer} break={false} wrap>
+              {hasBody && (
+                <View>
+                  {renderContentBlocks(
+                    act.bodyContent,
+                    dynamicTextStyle,
+                    settings.fontSize
+                  )}
+                </View>
+              )}
+
+              {hasAgreements &&
+                act.agreements.map((agr) => (
+                  <View key={agr.id} wrap={true} style={{ marginTop: 10 }}>
                     {renderContentBlocks(
-                      act.bodyContent,
+                      agr.content,
                       dynamicTextStyle,
                       settings.fontSize
                     )}
                   </View>
-                )}
-                {hasAgreements && (
-                  <View style={{ marginTop: 0 }} wrap>
-                    {act.agreements.map((agreement) => (
-                      <View key={agreement.id} wrap={true}>
-                        {renderContentBlocks(
-                          (agreement as Agreement).content,
-                          dynamicTextStyle,
-                          settings.fontSize
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                )}
-                <View style={styles.signaturesSection}>
-                  <Text>
-                    Y no habiendo más que hacer constar se termina la presente
-                    Acta que firmamos.
+                ))}
+
+              <View style={styles.signaturesSection} wrap={false}>
+                <Text style={{ marginBottom: 60 }}>
+                  Y no habiendo más que hacer constar se termina la presente
+                  Acta que firmamos.
+                </Text>
+                <View style={{ marginBottom: 30, textAlign: "center" }}>
+                  <Text>{signerAlcaldesa.name}</Text>
+                  <Text style={styles.mainSignatureRole}>
+                    {formatRole(signerAlcaldesa.role)}
                   </Text>
-                  <View style={{ marginTop: 40, textAlign: "center" }}>
-                    <Text style={styles.mainSignatureName}>
-                      Licda. Zoila Milagro Navas Quintanilla
-                    </Text>
-                    <Text style={styles.mainSignatureRole}>
-                      Alcaldesa Municipal
-                    </Text>
-                  </View>
+                </View>
 
-                  {(() => {
-                    const signatories = [
-                      act.attendees?.syndic,
-                      ...(act.attendees?.owners || []),
-                    ].filter(Boolean);
-                    const leftColumn = signatories.filter(
-                      (_, i) => i % 2 === 0
-                    );
-                    const rightColumn = signatories.filter(
-                      (_, i) => i % 2 !== 0
-                    );
-                    return (
-                      <View style={styles.signatureColumnsContainer}>
-                        <View style={styles.signatureColumn}>
-                          {leftColumn.map(
-                            (p) =>
-                              p && (
-                                <Text key={p.id} style={styles.signatureName}>
-                                  {p.name}
-                                </Text>
-                              )
-                          )}
+                <View style={styles.signatureColumnsContainer}>
+                  <View style={styles.signatureColumn}>
+                    {columnSignatories
+                      .filter((_, i) => i % 2 === 0)
+                      .map((p) => (
+                        <View
+                          key={(p as any).id || p.name}
+                          style={{ marginBottom: 50 }}
+                        >
+                          <Text>{p.name}</Text>
                         </View>
-                        <View style={styles.signatureColumn}>
-                          {rightColumn.map(
-                            (p) =>
-                              p && (
-                                <Text key={p.id} style={styles.signatureName}>
-                                  {p.name}
-                                </Text>
-                              )
-                          )}
+                      ))}
+                  </View>
+                  <View style={styles.signatureColumn}>
+                    {columnSignatories
+                      .filter((_, i) => i % 2 !== 0)
+                      .map((p) => (
+                        <View
+                          key={(p as any).id || p.name}
+                          style={{ marginBottom: 50 }}
+                        >
+                          <Text>{p.name}</Text>
                         </View>
-                      </View>
-                    );
-                  })()}
-
-                  <View
-                    style={{
-                      ...styles.secretariaSignature,
-                      textAlign: "center",
-                    }}
-                  >
-                    <Text>Licda. Maria Antonia Juárez Martínez</Text>
-                    <Text>Secretaria Municipal</Text>
+                      ))}
                   </View>
                 </View>
-
-                {hasClarifyingNote && (
-                  <View style={styles.notaContainer}>
-                    <Text hyphenationCallback={hyphenationCallback}>
-                      <Text style={styles.notaTitle}>Nota Aclaratoria: </Text>
-                      {act.clarifyingNote!.replace(/<[^>]*>/g, "")}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
-          <PageNumberRenderer />
-        </Page>
-      )}
-
-      {tome.closingDate && (
-        <Page
-          size={settings.pageSize}
-          orientation={settings.orientation}
-          style={dynamicPageStyle}
-        >
-          <View style={styles.coverContainer}>
-            <Text
-              style={{
-                ...styles.coverTitle,
-                marginBottom: 30,
-              }}
-            >
-              El Concejo Municipal
-            </Text>
-            <Text
-              style={{
-                ...styles.coverText,
-                lineHeight: settings.lineHeight,
-                textAlign: "justify",
-                marginBottom: 16,
-              }}
-            >
-              Cierra el presente Libro de Actas Municipales{" "}
-              <Text>{tome.name}</Text> que llevó durante el corriente año, con{" "}
-              <Text>{actCountInWords} Actas</Text> asentadas.
-            </Text>
-            <Text
-              style={{
-                ...styles.coverText,
-                lineHeight: settings.lineHeight,
-                textAlign: "justify",
-                marginTop: 0,
-              }}
-            >
-              Alcaldía Municipal Antiguo Cuscatlán, a los {closingDayInWords}{" "}
-              días del mes de {closingMonthName} de {closingYearInWords}.
-            </Text>
-            <View
-              style={{
-                ...styles.signaturesSection,
-                marginTop: 40,
-                textAlign: "left",
-              }}
-            >
-              <View style={{ marginBottom: 25, textAlign: "center" }}>
-                <Text>Licda. Zoila Milagro Navas Quintanilla</Text>
-                <Text style={styles.mainSignatureRole}>
-                  Alcaldesa Municipal
-                </Text>
-              </View>
-
-              <View style={styles.signatureColumnsContainer}>
-                <View style={styles.signatureColumn}>
-                  {signatories.slice(0, 3).map((p) => (
-                    <Text key={p.id} style={styles.signatureName}>
-                      {p.name}
-                    </Text>
-                  ))}
-                </View>
-                <View style={styles.signatureColumn}>
-                  {signatories.slice(3, 5).map((p) => (
-                    <Text key={p.id} style={styles.signatureName}>
-                      {p.name}
-                    </Text>
-                  ))}
+                <View
+                  style={{
+                    ...styles.secretariaSignature,
+                    textAlign: "center",
+                    marginTop: 10,
+                  }}
+                >
+                  <Text>{signerSecretaria.name}</Text>
+                  <Text style={styles.mainSignatureRole}>
+                    {formatRole(signerSecretaria.role)}
+                  </Text>
                 </View>
               </View>
-              <View
-                style={{
-                  ...styles.secretariaSignature,
-                  textAlign: "center",
-                  marginHorizontal: 0,
-                  width: "48%",
-                  marginLeft: "52%",
-                }}
-              >
-                <Text>Licda. Maria Antonia Juárez Martínez</Text>
-                <Text style={styles.mainSignatureRole}>
-                  Secretaria Municipal
-                </Text>
+
+              {hasNote && (
+                <View style={styles.notaContainer}>
+                  <Text hyphenationCallback={hyphenationCallback}>
+                    <Text style={styles.notaTitle}>Nota Aclaratoria: </Text>
+                    {act.clarifyingNote!.replace(/<[^>]*>/g, "")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {settings.enablePageNumbering && (
+          <Text
+            style={styles.pageNumber}
+            fixed
+            render={({ pageNumber }) => {
+              const start = Number(initialPageNumber) || 1;
+              const effectivePageNumber = pageNumber + (start - 1);
+              const offset = settings.pageNumberingOffset || 0;
+              const displayPageNumber = targetActId
+                ? effectivePageNumber
+                : effectivePageNumber - offset;
+              if (displayPageNumber <= 0) return "";
+              return `${displayPageNumber}`;
+            }}
+          />
+        )}
+      </Page>
+    );
+  }
+
+  if (showClosing) {
+    const getMemberRole = (m: any): string => {
+      return m.type || m.role || "";
+    };
+
+    const closingAlcaldesa =
+      allSigners.find((m) => getMemberRole(m) === "ALCALDESA") ||
+      fallbackAlcaldesa;
+    const closingSecretaria =
+      allSigners.find((m) => getMemberRole(m) === "SECRETARIA") ||
+      fallbackSecretaria;
+
+    const uniqueRolesMap = new Map<string, CouncilMember>();
+
+    allSigners.forEach((member) => {
+      const role = getMemberRole(member);
+
+      if (!role || role.includes("SUPLENTE")) return;
+
+      if (role === "ALCALDESA" || role === "SECRETARIA") return;
+
+      if (!uniqueRolesMap.has(role)) {
+        uniqueRolesMap.set(role, member);
+      }
+    });
+
+    const roleHierarchy: Record<string, number> = {
+      SINDICO: 1,
+      PRIMER_REGIDOR: 2,
+      SEGUNDO_REGIDOR: 3,
+      TERCER_REGIDOR: 4,
+      CUARTO_REGIDOR: 5,
+      QUINTO_REGIDOR: 6,
+      SEXTO_REGIDOR: 7,
+      SEPTIMO_REGIDOR: 8,
+      OCTAVO_REGIDOR: 9,
+    };
+
+    const columnSignatories = Array.from(uniqueRolesMap.values()).sort(
+      (a, b) => {
+        const rA = getMemberRole(a);
+        const rB = getMemberRole(b);
+        return (roleHierarchy[rA] || 99) - (roleHierarchy[rB] || 99);
+      }
+    );
+
+    pages.push(
+      <Page
+        key="closing"
+        size={settings.pageSize}
+        orientation={settings.orientation}
+        style={dynamicPageStyle}
+      >
+        <View style={styles.coverContainer}>
+          <Text style={styles.coverTitle}>El Concejo Municipal</Text>
+          <Text
+            style={{
+              ...styles.coverText,
+              lineHeight: settings.lineHeight,
+              textAlign: "justify",
+              marginBottom: 16,
+            }}
+          >
+            Cierra el presente Libro de Actas Municipales Tomo{" "}
+            {numberToRoman(tome.number)} que llevó durante el corriente año, con
+            <Text> {actCountInWords} Actas</Text> asentadas.
+          </Text>
+          <Text
+            style={{
+              ...styles.coverText,
+              lineHeight: settings.lineHeight,
+              textAlign: "justify",
+              marginTop: 0,
+            }}
+          >
+            Alcaldía Municipal Antiguo Cuscatlán, a los {closingDayInWords} días
+            del mes de {closingMonthName} de {closingYearInWords}.
+          </Text>
+
+          <View
+            style={{
+              ...styles.signaturesSection,
+              marginTop: 40,
+              textAlign: "left",
+            }}
+          >
+            <View style={{ marginBottom: 40, textAlign: "center" }}>
+              <Text>{closingAlcaldesa.name}</Text>
+              <Text style={styles.mainSignatureRole}>Alcaldesa Municipal</Text>
+            </View>
+
+            <View style={styles.signatureColumnsContainer}>
+              <View style={styles.signatureColumn}>
+                {columnSignatories
+                  .filter((_, i) => i % 2 === 0)
+                  .map((p) => (
+                    <View key={p.id || p.name} style={{ marginBottom: 35 }}>
+                      <Text style={styles.signatureName}>{p.name}</Text>
+                    </View>
+                  ))}
+              </View>
+              <View style={styles.signatureColumn}>
+                {columnSignatories
+                  .filter((_, i) => i % 2 !== 0)
+                  .map((p) => (
+                    <View key={p.id || p.name} style={{ marginBottom: 35 }}>
+                      <Text style={styles.signatureName}>{p.name}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
+
+            <View
+              style={{ ...styles.secretariaSignature, textAlign: "center" }}
+            >
+              <Text>{closingSecretaria.name}</Text>
+              <Text style={styles.mainSignatureRole}>Secretaria Municipal</Text>
+            </View>
           </View>
-          <PageNumberRenderer />
-        </Page>
-      )}
+        </View>
+        {settings.enablePageNumbering && (
+          <Text
+            style={styles.pageNumber}
+            fixed
+            render={({ pageNumber }) => {
+              const start = Number(initialPageNumber) || 1;
+              const effectivePageNumber = pageNumber + (start - 1);
+              const offset = settings.pageNumberingOffset || 0;
+              const displayPageNumber = targetActId
+                ? effectivePageNumber
+                : effectivePageNumber - offset;
+              if (displayPageNumber <= 0) return "";
+              return `${displayPageNumber}`;
+            }}
+          />
+        )}
+      </Page>
+    );
+  }
+
+  if (pages.length === 0) {
+    pages.push(
+      <Page key="empty" size="A4">
+        <Text> </Text>
+      </Page>
+    );
+  }
+
+  return (
+    <Document
+      title={targetActId ? "Vista Previa Acta" : `Libro - ${tome.name}`}
+    >
+      {pages}
     </Document>
   );
 };

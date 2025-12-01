@@ -1,12 +1,14 @@
-import { useEffect } from "react";
+// src/features/council/components/ParticipantForm.tsx
+import { useEffect, useMemo } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   participantSchema,
   type ParticipantFormData,
   getDefaultValues,
+  COUNCIL_ROLE_OPTIONS,
 } from "../schemas/participantSchema";
-import { councilService } from "../api/councilService"; // Importamos el servicio aquí
+import { councilService } from "../api/councilService";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,6 +20,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -27,11 +36,13 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import type { CouncilMemberType, Propietario, Substituto } from "@/types/council";
 
 interface ParticipantFormProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  entityToEdit: { id: string; name: string } | null;
+  // entityToEdit puede ser Propietario o Substituto (ambos tienen id, name, type)
+  entityToEdit: (Partial<Propietario | Substituto> & { id: string; name: string }) | null;
   entityType: "PROPIETARIO" | "SUBSTITUTO";
   onSave: () => void;
 }
@@ -59,23 +70,37 @@ export const ParticipantForm = ({
     }
   }, [isOpen, entityToEdit, form]);
 
+  // Filtramos las opciones según el tipo de entidad que estamos creando
+  const filteredOptions = useMemo(() => {
+    if (entityType === "SUBSTITUTO") {
+      return COUNCIL_ROLE_OPTIONS.filter((opt) => opt.value.includes("SUPLENTE"));
+    }
+    // Para propietarios mostramos el resto (Alcalde, Sindico, Regidores)
+    return COUNCIL_ROLE_OPTIONS.filter((opt) => !opt.value.includes("SUPLENTE"));
+  }, [entityType]);
+
   const onSubmit: SubmitHandler<ParticipantFormData> = async (formData) => {
     const toastId = toast.loading(
       isEditMode ? "Actualizando..." : "Creando registro..."
     );
 
     try {
+      const payload = {
+        name: formData.name,
+        type: (formData.type || null) as CouncilMemberType | null, 
+      };
+
       if (entityType === "PROPIETARIO") {
         if (isEditMode && entityToEdit) {
-          await councilService.updatePropietario(entityToEdit.id, formData);
+          await councilService.updatePropietario(entityToEdit.id, payload);
         } else {
-          await councilService.createPropietario(formData);
+          await councilService.createPropietario(payload);
         }
       } else {
         if (isEditMode && entityToEdit) {
-          await councilService.updateSubstituto(entityToEdit.id, formData);
+          await councilService.updateSubstituto(entityToEdit.id, payload);
         } else {
-          await councilService.createSubstituto(formData);
+          await councilService.createSubstituto(payload);
         }
       }
 
@@ -113,6 +138,35 @@ export const ParticipantForm = ({
                   <FormControl>
                     <Input placeholder="Ej: Juan Pérez" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cargo / Rol</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el cargo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {filteredOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

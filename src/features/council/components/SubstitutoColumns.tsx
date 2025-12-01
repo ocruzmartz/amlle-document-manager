@@ -10,11 +10,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash, ArrowUpDown } from "lucide-react";
+import { COUNCIL_ROLE_OPTIONS } from "../schemas/participantSchema";
 
 interface GetColumnsProps {
   onEdit: (substituto: Substituto) => void;
   onDelete: (substituto: Substituto) => void;
 }
+
+const getRoleLabel = (value: string) => {
+  return COUNCIL_ROLE_OPTIONS.find((o) => o.value === value)?.label || value;
+};
 
 export const getSubstitutoColumns = ({
   onEdit,
@@ -27,11 +32,18 @@ export const getSubstitutoColumns = ({
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Nombre
+        Nombre y Cargo
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+    cell: ({ row }) => (
+      <div className="flex flex-col py-1">
+        <span className="font-medium">{row.original.name}</span>
+        <span className="text-xs text-muted-foreground uppercase font-semibold">
+          {getRoleLabel(row.original.type || "")}
+        </span>
+      </div>
+    ),
   },
   {
     id: "actions",

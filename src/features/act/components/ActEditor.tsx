@@ -142,11 +142,11 @@ export const ActEditor = ({
 
   return (
     <form onSubmit={(e) => e.preventDefault()} className="flex flex-col h-full">
-      <div className="shrink-0 p-3 border-b bg-white flex justify-between items-center sticky top-0 z-10">
+      <div className="shrink-0 p-3 border-b bg-gray-100 flex justify-between items-center sticky top-0 z-10">
         <h2 className="text-lg font-bold truncate" title={act.name}>
           {act.name}
         </h2>
-        <Button onClick={onToggleAgreements} variant="ghost" size="sm">
+        <Button onClick={onToggleAgreements} variant="outline" size="sm">
           {isAgreementsPanelVisible ? (
             <>
               <EyeOff className="mr-1 h-4 w-4" />
@@ -202,8 +202,8 @@ export const ActEditor = ({
           </div>
           <fieldset disabled={isReadOnly} className="space-y-6">
             {/* Collapsibles */}
-            <Collapsible defaultOpen className="border rounded-lg">
-              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+            <Collapsible defaultOpen className="border rounded-lg overflow-hidden">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-muted">
                 <h3 className="text-lg font-semibold">Datos de la Sesión</h3>
                 <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
               </CollapsibleTrigger>
@@ -214,10 +214,10 @@ export const ActEditor = ({
                 />
               </CollapsibleContent>
             </Collapsible>
-            <Collapsible defaultOpen className="border rounded-lg">
-              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+            <Collapsible defaultOpen className="border rounded-lg overflow-hidden">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-muted">
                 <h3 className="text-lg font-semibold">
-                  Asistencia del Concejo
+                  Asistencia del Concejo Municipal
                 </h3>
                 <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
               </CollapsibleTrigger>
@@ -231,9 +231,9 @@ export const ActEditor = ({
               </CollapsibleContent>
             </Collapsible>
           </fieldset>
-          <Collapsible defaultOpen className="border rounded-lg">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
-              <h3 className="text-lg font-semibold">Cuerpo del Acta</h3>
+          <Collapsible defaultOpen className="border rounded-lg overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-muted ">
+              <h3 className="text-lg font-semibold ">Cuerpo del Acta</h3>
               <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -254,8 +254,8 @@ export const ActEditor = ({
               )}
             </CollapsibleContent>
           </Collapsible>
-          <Collapsible className="border rounded-lg">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+          <Collapsible className="border rounded-lg overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-muted">
               <h3 className="text-lg font-semibold">
                 Nota Aclaratoria (Opcional)
               </h3>
@@ -276,12 +276,13 @@ export const ActEditor = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-4 border-t bg-white sticky bottom-0 z-10">
+      <div className="shrink-0 p-4 border-t bg-gray-100 sticky bottom-0 z-10">
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={onBackToList}>
-            Volver
+            Volver a la Lista de Actas
           </Button>
           <Button
+          variant="destructive"
             onClick={handleSave}
             disabled={!isDirty || isSaving || isReadOnly}
           >

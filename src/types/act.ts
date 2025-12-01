@@ -11,6 +11,7 @@ export interface ActApiResponse {
   meetingTime: string | null;
   bodyContent: string | null;
   status: string;
+  lastPageNumber?: number;
   createdAt: string;
   agreements: Agreement[];
   agreementCount?: number;
@@ -53,6 +54,7 @@ export type Act = {
   bookName?: string;
   bookId?: string;
   actNumber?: number;
+  lastPageNumber?: number;
   sessionType?: ActSessionType;
   meetingDate?: string;
   meetingTime?: string;

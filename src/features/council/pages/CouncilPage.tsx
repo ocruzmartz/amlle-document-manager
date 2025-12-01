@@ -10,9 +10,12 @@ export const CouncilPage = () => {
   const [activeTab, setActiveTab] = useState("propietarios");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
+
   // Estado compartido para edición
-  const [entityToEdit, setEntityToEdit] = useState<{ id: string; name: string } | null>(null);
+  const [entityToEdit, setEntityToEdit] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleCreateClick = () => {
     setEntityToEdit(null);
@@ -29,12 +32,16 @@ export const CouncilPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-y-auto">
+      {" "}
       <div className="shrink-0 p-6 pb-0 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión del Concejo</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Gestión del Concejo Municipal
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Administra la lista maestra de propietarios y sus suplentes asignados.
+            Administra la lista maestra de propietarios y sus suplentes
+            asignados.
           </p>
         </div>
 
@@ -44,7 +51,7 @@ export const CouncilPage = () => {
           className="flex flex-col"
         >
           {/* Header de Tabs y Botón en la misma línea */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-0">
             <TabsList className="h-10 bg-muted/50 p-1">
               <TabsTrigger value="propietarios" className="px-4">
                 Propietarios
@@ -66,21 +73,20 @@ export const CouncilPage = () => {
 
           <div className="mt-6">
             <TabsContent value="propietarios" className="m-0">
-              <PropietariosList 
-                refreshTrigger={refreshTrigger} 
-                onEdit={handleEditClick} 
+              <PropietariosList
+                refreshTrigger={refreshTrigger}
+                onEdit={handleEditClick}
               />
             </TabsContent>
             <TabsContent value="substitutos" className="m-0">
-              <SubstitutosList 
-                refreshTrigger={refreshTrigger} 
-                onEdit={handleEditClick} 
+              <SubstitutosList
+                refreshTrigger={refreshTrigger}
+                onEdit={handleEditClick}
               />
             </TabsContent>
           </div>
         </Tabs>
       </div>
-
       <ParticipantForm
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}

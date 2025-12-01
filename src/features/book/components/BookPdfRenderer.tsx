@@ -5,6 +5,8 @@ interface BookPdfRendererProps {
   tome: Tome;
   allSigners: CouncilMember[];
   currentPageIndex?: number;
+  targetActId?: string | null;
+  initialPageNumber?: number;
 }
 
 const PDFPreview = React.lazy(async () => {
@@ -16,10 +18,9 @@ const PDFPreview = React.lazy(async () => {
       default: ({
         tome,
         allSigners,
-      }: {
-        tome: Tome;
-        allSigners: CouncilMember[];
-      }) => (
+        targetActId,
+        initialPageNumber,
+      }: BookPdfRendererProps) => (
         <PDFViewer
           style={{
             width: "100%",
@@ -28,7 +29,12 @@ const PDFPreview = React.lazy(async () => {
           }}
           showToolbar={true}
         >
-          <BookPdfDocument tome={tome} allSigners={allSigners} />
+          <BookPdfDocument
+            tome={tome}
+            allSigners={allSigners}
+            targetActId={targetActId}
+            initialPageNumber={initialPageNumber}
+          />
         </PDFViewer>
       ),
     };
@@ -94,7 +100,12 @@ const PDFPreview = React.lazy(async () => {
   }
 });
 
-export const BookPdfRenderer = ({ tome, allSigners }: BookPdfRendererProps) => {
+export const BookPdfRenderer = ({
+  tome,
+  allSigners,
+  targetActId,
+  initialPageNumber,
+}: BookPdfRendererProps) => {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -128,7 +139,12 @@ export const BookPdfRenderer = ({ tome, allSigners }: BookPdfRendererProps) => {
           </div>
         }
       >
-        <PDFPreview tome={tome} allSigners={allSigners} />
+        <PDFPreview
+          tome={tome}
+          allSigners={allSigners}
+          targetActId={targetActId}
+          initialPageNumber={initialPageNumber}
+        />
       </React.Suspense>
     </div>
   );

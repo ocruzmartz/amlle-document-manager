@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { type Act, type CouncilMember } from "@/types";
-import { participantsService } from "../api/participantsService";
+import { type Act, type Propietario, type CouncilMember } from "@/types";
+import { councilService } from "@/features/council/api/councilService";
 import { Button } from "@/components/ui/button";
 import { AttendeeSelectionModal } from "./AttendeeSelectionModal";
 import { Badge } from "@/components/ui/badge";
 import { UserCheck, UserX, Loader2 } from "lucide-react";
-import { OFFICIAL_SYNDIC, OFFICIAL_SECRETARY } from "../lib/officials";
+import {
+  sortCouncilMembers,
+  getRoleLabel,
+} from "@/features/council/utils/roleUtils";
 
 interface ActAttendeesFormProps {
   attendees: Act["attendees"];
@@ -17,28 +20,121 @@ export const ActAttendeesForm = ({
   onAttendeesChange,
 }: ActAttendeesFormProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [propietariosList, setPropietariosList] = useState<CouncilMember[]>([]);
-  const [isLoadingPropietarios, setIsLoadingPropietarios] = useState(true);
+  const [allMembers, setAllMembers] = useState<Propietario[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadPropietarios = async () => {
+    const fetchMembers = async () => {
       try {
-        const data = await participantsService.getPropietarios();
-        setPropietariosList(data);
+        const data = await councilService.getPropietarios();
+        const sorted = sortCouncilMembers(data);
+        setAllMembers(sorted);
       } catch (error) {
-        console.error(
-          "Error cargando lista de propietarios en ActAttendeesForm:",
-          error
-        );
+        console.error("Error cargando miembros", error);
       } finally {
-        setIsLoadingPropietarios(false);
+        setIsLoading(false);
       }
     };
-    loadPropietarios();
+    fetchMembers();
   }, []);
 
-  const totalOwners = propietariosList.length;
-  const presentOwnerCount = attendees?.owners?.length ?? 0;
+  // Helper para buscar el registro de una persona en los asistentes
+  const getAttendeeRecord = (personId: string): CouncilMember | undefined => {
+    const allAttendees = [
+      attendees?.syndic,
+      attendees?.secretary,
+      ...(attendees?.owners || []),
+    ].filter(Boolean) as CouncilMember[];
+
+    return allAttendees.find((att) => att.id === personId);
+  };
+
+  const presentCount = [
+    attendees?.syndic,
+    attendees?.secretary,
+    ...(attendees?.owners || []),
+  ].filter(Boolean).length;
+
+  const PersonRow = ({
+    id,
+    name,
+    role,
+    isMain = true,
+  }: {
+    id: string;
+    name: string;
+    role: string;
+    isMain?: boolean;
+  }) => {
+    const record = getAttendeeRecord(id);
+    const present = !!record;
+    // Solo está supliendo si tiene la propiedad substituteForId definida
+    const isSubstituting = present && !!record?.substituteForId;
+
+    return (
+      <div
+        className={`flex items-center justify-between p-2 w-full rounded-md border transition-colors ${
+          present
+            ? "bg-green-50/50 border-green-200"
+            : "bg-muted/20 border-transparent opacity-80"
+        } ${!isMain ? "ml-6 w-[calc(100%-1.5rem)] mt-1" : "mt-2"}`}
+      >
+        <div className="flex items-center gap-3 w-full">
+          <div
+            className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${
+              present
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-200 text-gray-400"
+            }`}
+          >
+            {present ? (
+              <UserCheck className="h-3.5 w-3.5" />
+            ) : (
+              <UserX className="h-3.5 w-3.5" />
+            )}
+          </div>
+
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm ${
+                  present ? "font-medium" : "text-muted-foreground"
+                }`}
+              >
+                {name}
+              </span>
+
+              {present ? (
+                <Badge
+                  variant="outline"
+                  className=" h-5 px-1.5 bg-white text-green-700 border-green-200"
+                >
+                  Asistió
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className=" h-5 px-1.5 text-muted-foreground border-transparent bg-gray-100"
+                >
+                  No asistió
+                </Badge>
+              )}
+
+              {/* Badge de Supliendo: Solo si isSubstituting es true */}
+              {isSubstituting && (
+                <Badge className=" h-5 px-1.5 bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 border">
+                  Supliendo
+                </Badge>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+              {role}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -46,114 +142,61 @@ export const ActAttendeesForm = ({
         <div>
           <h3 className="text-base font-semibold">Asistencia</h3>
           <p className="text-sm text-muted-foreground">
-            {presentOwnerCount} de {totalOwners} concejales presentes
+            {presentCount} presentes totales
           </p>
         </div>
         <Button
-          variant="outline"
+          variant="default"
           onClick={() => setIsModalOpen(true)}
           className="shadow-none"
+          disabled={isLoading}
         >
-          Gestionar
+          <UserCheck className="mr-2 h-4 w-4" />
+          Gestionar Asistencia
         </Button>
       </div>
 
-      {/* Autoridades */}
-      <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Autoridades
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
-              Síndico Municipal
-            </span>
-
-            <span className="text-sm font-medium">{OFFICIAL_SYNDIC.name}</span>
-            {
-              /* Muestra un badge de asistencia basado en el 'attendees' del getActById */
-              attendees?.syndic ? (
-                <Badge variant="outline" className="text-xs mb-1">
-                  Presente
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="text-xs mb-1">
-                  Ausente
-                </Badge>
-              )
-            }
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
-              Secretaria Municipal
-            </span>
-
-            <span className="text-sm font-medium">
-              {OFFICIAL_SECRETARY.name}
-            </span>
-            {attendees?.secretary ? (
-              <Badge variant="outline" className="text-xs mb-1">
-                Presente
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="text-xs mb-1">
-                Ausente
-              </Badge>
-            )}
-            {/* Muestra un badge de asistencia basado en el 'attendees' del getActById */}
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t"></div>
-
-      {/* Concejales */}
-      <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Concejales Propietarios ({presentOwnerCount} presentes)
+      <div className="space-y-1">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Detalle por Cargo
         </h4>
 
-        {/* ✅ Mostrar Carga */}
-        {isLoadingPropietarios ? (
-          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <span className="text-sm italic text-muted-foreground">
-              Cargando datos del concejo...
+        {isLoading ? (
+          <div className="flex items-center justify-center p-4 border rounded-lg bg-muted/10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
+            <span className="text-sm text-muted-foreground">
+              Cargando lista...
             </span>
           </div>
-        ) : presentOwnerCount > 0 ? (
-          <div className="space-y-2">
-            {attendees?.owners?.map((owner) => {
-              const isSubstitute = !!owner.substituteForId;
-              const originalOwner = isSubstitute
-                ? propietariosList.find(
-                    (o: CouncilMember) => o.id === owner.substituteForId
-                  )
-                : null;
+        ) : allMembers.length > 0 ? (
+          <div className="flex flex-col ">
+            {allMembers.map((owner) => (
+              <div key={owner.id} className="group">
+                <PersonRow
+                  id={owner.id}
+                  name={owner.name}
+                  role={getRoleLabel(owner.type)}
+                />
 
-              return (
-                <div
-                  key={owner.id}
-                  className="flex items-center gap-2 p-2 rounded-md bg-muted/50"
-                >
-                  <UserCheck className="h-4 w-4 text-green-600 shrink-0" />
-                  <span className="text-sm flex-1">{owner.name}</span>
-                  {isSubstitute && originalOwner && (
-                    <Badge variant="outline" className="text-xs">
-                      Sustituye a{" "}
-                      {originalOwner.name.split(" ").slice(0, 2).join(" ")}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
+                {owner.substitutos && owner.substitutos.length > 0 && (
+                  <div className="border-l-2 border-muted ml-3 pl-0 space-y-1">
+                    {owner.substitutos.map((sub) => (
+                      <PersonRow
+                        key={sub.id}
+                        id={sub.id}
+                        name={sub.name}
+                        role={getRoleLabel(sub.type)}
+                        isMain={false}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 text-muted-foreground">
-            <UserX className="h-4 w-4" />
-            <span className="text-sm italic">
-              No se han registrado concejales presentes
-            </span>
+          <div className="text-center p-4 text-muted-foreground">
+            No hay miembros configurados.
           </div>
         )}
       </div>

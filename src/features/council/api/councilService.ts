@@ -9,12 +9,30 @@ import type {
   Substituto,
   CreateParticipantDto,
   PropietarioApiResponse,
+  CouncilMemberType,
 } from "@/types/council";
+
+interface SubstitutoApiResponse {
+  id: string;
+  name: string;
+  type: CouncilMemberType | null;
+}
 
 const mapPropietario = (apiData: PropietarioApiResponse): Propietario => ({
   id: apiData.id,
   name: apiData.name,
-  substitutos: apiData.approvedSubstitutes || [],
+  type: apiData.type, // ✅
+  substitutos: (apiData.approvedSubstitutes || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    type: s.type,
+  })),
+});
+
+const mapSubstituto = (apiData: SubstitutoApiResponse): Substituto => ({
+  id: apiData.id,
+  name: apiData.name,
+  type: apiData.type, // ✅
 });
 
 export const councilService = {
@@ -22,6 +40,7 @@ export const councilService = {
     const response = await apiGetDirect<PropietarioApiResponse[]>(
       "/participants/propietarios"
     );
+    console.log("Propietarios API Response:", response);
     return response.map(mapPropietario);
   },
 
@@ -50,8 +69,11 @@ export const councilService = {
     return apiDelete(`/participants/propietarios/${id}`);
   },
 
-  getSubstitutos: async () => {
-    return apiGetDirect<Substituto[]>("/participants/substitutos");
+  getSubstitutos: async (): Promise<Substituto[]> => {
+    const response = await apiGetDirect<SubstitutoApiResponse[]>(
+      "/participants/substitutos"
+    );
+    return response.map(mapSubstituto);
   },
 
   createSubstituto: async (data: CreateParticipantDto) => {

@@ -1,4 +1,15 @@
-export type MemberRole = "OWNER" | "SUBSTITUTE" | "SYNDIC" | "SECRETARY";
+export type CouncilMemberType =
+  | "ALCALDESA"
+  | "SINDICO"
+  | "SECRETARIA"
+  | "PRIMER_REGIDOR"
+  | "SEGUNDO_REGIDOR"
+  | "TERCER_REGIDOR"
+  | "CUARTO_REGIDOR"
+  | "PRIMER_SUPLENTE"
+  | "SEGUNDO_SUPLENTE"
+  | "TERCER_SUPLENTE"
+  | "CUARTO_SUPLENTE";
 
 export interface SimpleMember {
   id: string;
@@ -8,29 +19,37 @@ export interface SimpleMember {
 export interface CouncilMember {
   id: string;
   name: string;
-  role: MemberRole;
+  role: CouncilMemberType | null;
   substituteForId?: string;
   approvedSubstitutes?: SimpleMember[];
 }
+
 export interface PropietarioApiResponse {
   id: string;
   name: string;
-  approvedSubstitutes: { id: string; name: string }[];
-  attendanceRecords?: unknown[]; 
+  type: CouncilMemberType | null;
+  approvedSubstitutes: {
+    id: string;
+    name: string;
+    type: CouncilMemberType | null;
+  }[];
+  attendanceRecords?: unknown[];
 }
 
-// Lo que usa tu Frontend (UI)
 export interface Substituto {
   id: string;
   name: string;
+  type: CouncilMemberType | null;
 }
 
 export interface Propietario {
   id: string;
   name: string;
-  substitutos: Substituto[]; // Mapeado desde approvedSubstitutes
+  type: CouncilMemberType | null;
+  substitutos: Substituto[];
 }
 
 export interface CreateParticipantDto {
   name: string;
+  type?: CouncilMemberType | null;
 }

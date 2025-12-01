@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import {
   ChevronLeft,
-  PanelRightOpen,
   X,
   PlusCircle,
   Trash,
   PenSquare,
   ArchiveIcon,
+  FileText,
+  BookOpen,
 } from "lucide-react";
 import {
   Select,
@@ -30,7 +31,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -57,10 +57,8 @@ import { actService } from "@/features/act/api/minutesService";
 import { reorderArray } from "@/lib/utils";
 import { agreementService } from "@/features/agreement/api/agreementService";
 import { participantsService } from "@/features/act/api/participantsService";
-import {
-  OFFICIAL_SYNDIC,
-  OFFICIAL_SECRETARY,
-} from "@/features/act/lib/officials";
+import { BookPdfDocument } from "../components/BookPdfDocument";
+import { calculatePdfPageCount } from "../utils/pdfHelpers";
 
 const recalculateNumbers = (tomeState: Tome): Tome => {
   const recalculatedActs = tomeState.acts?.map((act, actIndex) => {
@@ -120,9 +118,12 @@ export const BookWorkspacePage = () => {
 
   const [allSigners, setAllSigners] = useState<CouncilMember[]>([]);
 
-  const previewKey = tome
-    ? tome.updatedAt + JSON.stringify(tome.pdfSettings)
-    : "";
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"GLOBAL" | "ACT">("GLOBAL");
+
+  // const previewKey = tome
+  //   ? tome.updatedAt + JSON.stringify(tome.pdfSettings)
+  //   : "";
 
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
     const view = searchParams.get("view") || "cover";
@@ -211,7 +212,7 @@ export const BookWorkspacePage = () => {
           acts: foundActs,
         });
 
-        setAllSigners([OFFICIAL_SECRETARY, OFFICIAL_SYNDIC, ...propietarios]);
+        setAllSigners([...propietarios]);
         const bookId = foundTome.book.id;
         const foundBook = await bookService.getBookById(bookId);
 
@@ -442,28 +443,81 @@ export const BookWorkspacePage = () => {
     loadActForEditing();
   }, [currentView.main.type, currentView.activeActId, setTome, setViewAndUrl]);
 
+  const getInitialPageForAct = useCallback(
+    (targetActId: string | null): number => {
+      if (!targetActId || !tome || !tome.acts) return 1;
+      const sortedActs = [...tome.acts].sort(
+        (a, b) => (a.actNumber || 0) - (b.actNumber || 0)
+      );
+
+      const currentIndex = sortedActs.findIndex((a) => a.id === targetActId);
+
+      if (currentIndex === 0) {
+        const offset = tome.pdfSettings?.pageNumberingOffset || 0;
+        return Math.max(1, 2 - offset);
+      }
+      const prevAct = sortedActs[currentIndex - 1];
+      if (prevAct.lastPageNumber) {
+        return prevAct.lastPageNumber + 1;
+      }
+      return 1;
+    },
+    [tome]
+  );
+
   const handleActUpdate = useCallback(
     async (updatedAct: Act) => {
       if (!tome || !tome.acts) return;
+
+      const toastId = toast.loading("Procesando acta y numeración...");
+
       try {
-        await actService.updateAct(updatedAct);
+        const startPage = getInitialPageForAct(updatedAct.id);
+        const tempActs = tome.acts.map((a) =>
+          a.id === updatedAct.id ? updatedAct : a
+        );
+        const tempTome = { ...tome, acts: tempActs };
+
+        const pageCount = await calculatePdfPageCount(
+          <BookPdfDocument
+            tome={tempTome}
+            allSigners={allSigners}
+            targetActId={updatedAct.id}
+            initialPageNumber={startPage}
+          />
+        );
+        const calculatedLastPage = startPage + pageCount - 1;
+
+        console.log(
+          `Acta empieza en: ${startPage}, Longitud: ${pageCount}, Termina en: ${calculatedLastPage}`
+        );
+
+        const actToSave = {
+          ...updatedAct,
+          lastPageNumber: calculatedLastPage,
+        };
+
+        await actService.updateAct(actToSave);
+
         setTome((prevTome) => {
           if (!prevTome) return null;
           const updatedActs = prevTome.acts!.map((act) =>
-            act.id === updatedAct.id ? updatedAct : act
+            act.id === actToSave.id ? actToSave : act
           );
           return { ...prevTome, acts: updatedActs };
         });
+
+        toast.success("Acta guardada y numeración actualizada.", {
+          id: toastId,
+        });
       } catch (error: unknown) {
         console.error("❌ Error al guardar acta:", error);
-        if (error instanceof Error) {
-          throw new Error(error.message || "No se pudo guardar el acta");
-        } else {
-          throw new Error("No se pudo guardar el acta");
-        }
+        const msg =
+          error instanceof Error ? error.message : "Error desconocido";
+        toast.error(`Error al guardar: ${msg}`, { id: toastId });
       }
     },
-    [tome]
+    [tome, allSigners, getInitialPageForAct]
   );
 
   const handleCreateAct = async () => {
@@ -535,7 +589,7 @@ export const BookWorkspacePage = () => {
         description:
           "El formulario que estabas editando ya no está visible. Cierra este diálogo y vuelve a la sección que querías guardar.",
       });
-      return; 
+      return;
     }
 
     try {
@@ -708,6 +762,14 @@ export const BookWorkspacePage = () => {
     );
   }
 
+  const activeActId =
+    currentView.main.type === "act-edit" ? currentView.activeActId : null;
+
+  const handleOpenPreview = (mode: "GLOBAL" | "ACT") => {
+    setPreviewMode(mode);
+    setIsPreviewOpen(true);
+  };
+
   const renderHeader = () => (
     <div className="shrink-0 p-3 border-b bg-background flex justify-between items-center">
       <div className="flex items-center gap-1">
@@ -794,28 +856,55 @@ export const BookWorkspacePage = () => {
         )}
       </div>
 
-      <Sheet>
-        <SheetTrigger asChild className="gap-0!">
+      <div className="flex items-center gap-2">
+        {/* Botón Vista Acta (Condicional) */}
+        {activeActId && (
           <Button
-            variant="outline"
-            className="shadow-none"
+            variant="destructive"
+            className="shadow-sm border-none"
+            onClick={() => handleOpenPreview("ACT")}
             disabled={isEditorSaving}
           >
-            <PanelRightOpen className="mr-2 h-4 w-4" />
-            Vista Previa (PDF)
+            <FileText className="mr-2 h-4 w-4" />
+            Ver Acta
           </Button>
-        </SheetTrigger>
-        <SheetContent className="w-full sm:max-w-[800px] p-0 flex flex-col">
-          <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
-            <SheetTitle>Vista Previa del Tomo (PDF)</SheetTitle>
-          </SheetHeader>
-          <BookPdfPreview
-            key={previewKey}
-            tome={tome}
-            allSigners={allSigners}
-          />
-        </SheetContent>
-      </Sheet>
+        )}
+
+        {/* Botón Libro Completo */}
+        <Sheet open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <Button
+            variant="destructive"
+            className="shadow-none"
+            onClick={() => handleOpenPreview("GLOBAL")}
+            disabled={isEditorSaving}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Ver Libro
+          </Button>
+
+          <SheetContent className="w-full sm:max-w-[900px] p-0 flex flex-col sm:duration-300">
+            <SheetHeader className="p-4 border-b flex flex-row items-center justify-between bg-muted/10">
+              <SheetTitle>
+                {previewMode === "ACT"
+                  ? "Vista Previa: Acta Actual"
+                  : "Vista Previa: Libro Completo"}
+              </SheetTitle>
+            </SheetHeader>
+
+            {tome && (
+              <BookPdfPreview
+                key={`${tome.id}-${previewMode}`}
+                tome={tome}
+                allSigners={allSigners}
+                targetActId={previewMode === "ACT" ? activeActId : null}
+                initialPageNumber={
+                  previewMode === "ACT" ? getInitialPageForAct(activeActId) : 1
+                }
+              />
+            )}
+          </SheetContent>
+        </Sheet>
+      </div>
     </div>
   );
 

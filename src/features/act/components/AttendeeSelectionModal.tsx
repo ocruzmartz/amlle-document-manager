@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { type Act, type CouncilMember } from "@/types";
-import { participantsService } from "@/features/act/api/participantsService";
+import { type Act, type CouncilMember, type Propietario } from "@/types";
+import { councilService } from "@/features/council/api/councilService";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -12,22 +12,13 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import {
-  availableSyndics,
-  availableSecretaries,
-  OFFICIAL_SYNDIC,
-  OFFICIAL_SECRETARY,
-} from "../lib/officials";
+  sortCouncilMembers,
+  getRoleLabel,
+} from "@/features/council/utils/roleUtils";
 
 interface AttendeeSelectionModalProps {
   isOpen: boolean;
@@ -42,120 +33,131 @@ export const AttendeeSelectionModal = ({
   currentAttendees,
   onAttendeesChange,
 }: AttendeeSelectionModalProps) => {
-  const defaultSyndicId = availableSyndics[0]?.id || null;
-  const defaultSecretaryId = availableSecretaries[0]?.id || null;
-
-  const [propietariosList, setPropietariosList] = useState<CouncilMember[]>([]);
+  const [allMembers, setAllMembers] = useState<Propietario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [selectedSyndicId, setSelectedSyndicId] = useState<string | null>(
-    defaultSyndicId
-  );
-  const [selectedSecretaryId, setSelectedSecretaryId] = useState<string | null>(
-    defaultSecretaryId
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [substitutingIds, setSubstitutingIds] = useState<Set<string>>(
+    new Set()
   );
 
-  const [ownerAttendance, setOwnerAttendance] = useState<
-    {
-      ownerId: string;
-      attended: boolean;
-      substituteId: string | null;
-    }[]
-  >([]);
-
+  // ✅ EFECTO 1: Cargar datos de la API (Solo cuando se abre el modal)
   useEffect(() => {
-    const loadData = async () => {
-      if (isOpen) {
+    if (isOpen) {
+      const fetchMembers = async () => {
         setIsLoading(true);
-        const ownersFromApi = await participantsService.getPropietarios();
-        setPropietariosList(ownersFromApi);
-        setSelectedSyndicId(currentAttendees?.syndic?.id || null);
-        setSelectedSecretaryId(currentAttendees?.secretary?.id || null);
-        setOwnerAttendance(
-          ownersFromApi.map((owner) => {
-            const current = currentAttendees?.owners?.find(
-              (att) => att.id === owner.id || att.substituteForId === owner.id
-            );
-            const isSubstituted = current && current.id !== owner.id;
-            return {
-              ownerId: owner.id,
-              attended: !!current,
-              substituteId: isSubstituted ? current.id : null,
-            };
-          })
-        );
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, [isOpen, currentAttendees]);
+        try {
+          // Solo si no tenemos datos ya cargados, o si queremos forzar refresco al abrir
+          const membersFromApi = await councilService.getPropietarios();
+          const sortedMembers = sortCouncilMembers<Propietario>(membersFromApi);
+          setAllMembers(sortedMembers);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchMembers();
+    }
+  }, [isOpen]); // <--- Quitamos currentAttendees de aquí
 
-  const handleOwnerAttendanceChange = (
-    ownerId: string,
-    checked: boolean | "indeterminate"
-  ) => {
-    const isAttending = checked === true;
-    setOwnerAttendance((prev) =>
-      prev.map((item) =>
-        item.ownerId === ownerId
-          ? {
-              ...item,
-              attended: isAttending,
-              substituteId: isAttending ? item.substituteId : null,
-            }
-          : item
-      )
-    );
+  // ✅ EFECTO 2: Sincronizar selección (Se ejecuta si cambian los asistentes o al terminar de cargar la lista)
+  useEffect(() => {
+    if (isOpen && allMembers.length > 0) {
+      const currentList = [
+        currentAttendees?.syndic,
+        currentAttendees?.secretary,
+        ...(currentAttendees?.owners || []),
+      ].filter((m): m is CouncilMember => !!m);
+
+      // 1. Marcar presentes
+      const initialIds = new Set(currentList.map((m) => m.id));
+      setSelectedIds(initialIds);
+
+      // 2. Marcar suplentes activos (los que tienen substituteForId)
+      const initialSubstituting = new Set(
+        currentList.filter((m) => !!m.substituteForId).map((m) => m.id)
+      );
+      setSubstitutingIds(initialSubstituting);
+    }
+  }, [isOpen, allMembers, currentAttendees]); // <--- Aquí sí va currentAttendees, pero es una operación rápida síncrona
+
+  const handlePresenceToggle = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+      if (substitutingIds.has(id)) {
+        const newSubSet = new Set(substitutingIds);
+        newSubSet.delete(id);
+        setSubstitutingIds(newSubSet);
+      }
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
   };
 
-  const handleSubstituteChange = (ownerId: string, substituteId: string) => {
-    setOwnerAttendance((prev) =>
-      prev.map((item) =>
-        item.ownerId === ownerId
-          ? {
-              ...item,
-              substituteId: substituteId === "none" ? null : substituteId,
-              attended: true,
-            }
-          : item
-      )
-    );
+  const handleSubstitutingToggle = (id: string) => {
+    const newSet = new Set(substitutingIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+      if (!selectedIds.has(id)) {
+        const newPresenceSet = new Set(selectedIds);
+        newPresenceSet.add(id);
+        setSelectedIds(newPresenceSet);
+      }
+    }
+    setSubstitutingIds(newSet);
   };
 
   const handleConfirm = () => {
-    const finalAttendees: Act["attendees"] = {
-      syndic: OFFICIAL_SYNDIC || null,
-      secretary: OFFICIAL_SECRETARY || null,
+    let syndic: CouncilMember | null = null;
+    let secretary: CouncilMember | null = null;
+    const owners: CouncilMember[] = [];
 
-      owners: ownerAttendance
-        .filter((item) => item.attended)
-        .map((item) => {
-          if (item.substituteId) {
-            const owner = propietariosList.find((p) => p.id === item.ownerId);
-            const substitute = owner?.approvedSubstitutes?.find(
-              (m) => m.id === item.substituteId
-            );
+    allMembers.forEach((owner) => {
+      // 1. Propietario
+      if (selectedIds.has(owner.id)) {
+        const memberToSave: CouncilMember = {
+          id: owner.id,
+          name: owner.name,
+          role: owner.type,
+        };
+        if (owner.type === "SINDICO") syndic = memberToSave;
+        else if (owner.type === "SECRETARIA") secretary = memberToSave;
+        else owners.push(memberToSave);
+      }
 
-            return substitute
-              ? {
-                  ...substitute,
-                  role: "SUBSTITUTE",
-                  substituteForId: item.ownerId,
-                }
-              : null;
+      // 2. Suplentes
+      owner.substitutos?.forEach((sub) => {
+        if (selectedIds.has(sub.id)) {
+          const isSubstituting = substitutingIds.has(sub.id);
+
+          const subToSave: CouncilMember = {
+            id: sub.id,
+            name: sub.name,
+            role: sub.type,
+            substituteForId: isSubstituting ? owner.id : undefined,
+          };
+
+          if (isSubstituting && owner.type === "SINDICO" && !syndic) {
+            syndic = subToSave;
+          } else if (
+            isSubstituting &&
+            owner.type === "SECRETARIA" &&
+            !secretary
+          ) {
+            secretary = subToSave;
           } else {
-            const owner = propietariosList.find((m) => m.id === item.ownerId);
-            if (owner) {
-              const { ...ownerWithoutSub } = owner;
-              return { ...ownerWithoutSub, role: "OWNER" };
-            }
-            return null;
+            owners.push(subToSave);
           }
-        })
-        .filter((member): member is CouncilMember => member !== null),
-    };
+        }
+      });
+    });
 
-    onAttendeesChange(finalAttendees);
+    onAttendeesChange({ syndic, secretary, owners });
     onOpenChange(false);
   };
 
@@ -163,224 +165,137 @@ export const AttendeeSelectionModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
-            Gestionar Asistencia del Concejo
-          </DialogTitle>
+          <DialogTitle className="text-2xl">Gestionar Asistencia</DialogTitle>
+          {!isLoading && (
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-base font-semibold">
+                Asistencia: {selectedIds.size} de{" "}
+                {allMembers.reduce(
+                  (acc, member) =>
+                    acc +
+                    1 +
+                    (member.substitutos ? member.substitutos.length : 0),
+                  0
+                )}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="text-base font-semibold border-amber-200 text-amber-700"
+              >
+                {substitutingIds.size} Supliendo
+              </Badge>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden overflow-y-auto">
-          <ScrollArea className="h-full pr-4 ">
-            <div className="space-y-6 py-4 ">
-              <div className="flex justify-between">
-                {/* Síndico */}
-                <div className="flex gap-2">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Síndico Municipal
-                    </Label>
-                    <Select
-                      value={selectedSyndicId || "none"}
-                      onValueChange={(id) =>
-                        setSelectedSyndicId(id === "none" ? null : id)
-                      }
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          value="none"
-                          className="text-muted-foreground italic"
-                        >
-                          No asistió
-                        </SelectItem>
-                        {availableSyndics.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Secretaria */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Secretaria Municipal
-                    </Label>
-                    <Select
-                      value={selectedSecretaryId || "none"}
-                      onValueChange={(id) =>
-                        setSelectedSecretaryId(id === "none" ? null : id)
-                      }
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          value="none"
-                          className="text-muted-foreground italic"
-                        >
-                          No asistió
-                        </SelectItem>
-                        {availableSecretaries.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {/* Resumen de Asistencia */}
-                {!isLoading && (
-                  <div className="h-11 flex items-center justify-between">
-                    <span className="text-sm font-medium mr-2">
-                      Concejales Presentes:
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="text-sm font-semibold"
-                    >
-                      {ownerAttendance.filter((a) => a.attended).length}/
-                      {propietariosList.length}
-                    </Badge>
-                  </div>
-                )}
+          <ScrollArea className="h-full pr-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="animate-spin text-muted-foreground" />
               </div>
+            ) : (
+              <div className="py-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {allMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="p-4 rounded-lg border bg-card hover:bg-muted/10 transition-all flex flex-col gap-3"
+                    >
+                      {/* Fila del Propietario */}
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`chk-${member.id}`}
+                          checked={selectedIds.has(member.id)}
+                          onCheckedChange={() =>
+                            handlePresenceToggle(member.id)
+                          }
+                          className="h-5 w-5"
+                        />
+                        <div className="flex  justify-between items-center w-full min-w-0">
+                          <Label
+                            htmlFor={`chk-${member.id}`}
+                            className="cursor-pointer font-semibold text-base block"
+                          >
+                            {member.name}
+                          </Label>
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-sm border-blue-200 text-blue-700 bg-blue-50"
+                          >
+                            {getRoleLabel(member.type)}
+                          </Badge>
+                        </div>
+                      </div>
 
-              {/* Separador */}
-              <div className="border-t"></div>
-
-              {/* Título de Concejales */}
-              <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-                  Concejales Propietarios
-                </h3>
-
-                {/* Grid de Concejales */}
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-48">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">
-                      Cargando propietarios...
-                    </span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {propietariosList.map((owner, index) => {
-                      const attendanceInfo = ownerAttendance.find(
-                        (item) => item.ownerId === owner.id
-                      );
-                      const attended = attendanceInfo?.attended ?? false;
-                      const substituteId = attendanceInfo?.substituteId ?? null;
-                      const hasSubstitute = attended && substituteId;
-
-                      return (
-                        <div
-                          key={owner.id}
-                          className={`p-4 rounded-lg border transition-all ${
-                            attended
-                              ? "bg-muted/50 border-muted-foreground/20"
-                              : "hover:bg-muted/20"
-                          }`}
-                        >
-                          {/* Header del Concejal */}
-                          <div className="flex items-start gap-3 mb-3">
-                            <Checkbox
-                              id={`owner-${owner.id}`}
-                              checked={attended}
-                              onCheckedChange={(checked) =>
-                                handleOwnerAttendanceChange(owner.id, checked)
-                              }
-                              className="h-5 w-5 mt-0.5"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <Label
-                                htmlFor={`owner-${owner.id}`}
-                                className="cursor-pointer font-semibold text-base leading-tight block"
+                      {/* Lista de Suplentes */}
+                      {member.substitutos && member.substitutos.length > 0 && (
+                        <div className="ml-8 pt-2 border-t border-dashed space-y-2">
+                          {member.substitutos.map((sub) => {
+                            const isPresent = selectedIds.has(sub.id);
+                            return (
+                              <div
+                                key={sub.id}
+                                className="flex flex-col gap-1.5 p-2 rounded-md bg-muted/20"
                               >
-                                {owner.name}
-                              </Label>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  Concejal #{index + 1}
-                                </Badge>
-                                {hasSubstitute && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
+                                {/* Fila 1: Asistencia */}
+                                <div className="flex items-center gap-3">
+                                  <Checkbox
+                                    id={`chk-${sub.id}`}
+                                    checked={isPresent}
+                                    onCheckedChange={() =>
+                                      handlePresenceToggle(sub.id)
+                                    }
+                                    className="h-4 w-4"
+                                  />
+                                  <Label
+                                    htmlFor={`chk-${sub.id}`}
+                                    className="cursor-pointer text-sm font-medium"
                                   >
-                                    Sustituido
-                                  </Badge>
+                                    {sub.name}
+                                  </Label>
+                                </div>
+
+                                {/* Fila 2: Opción de Suplir (Solo si asiste) */}
+                                {isPresent && (
+                                  <div className="ml-7 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={`sub-chk-${sub.id}`}
+                                        checked={substitutingIds.has(sub.id)}
+                                        onCheckedChange={() =>
+                                          handleSubstitutingToggle(sub.id)
+                                        }
+                                        className="h-4 w-4 border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                                      />
+                                      <Label
+                                        htmlFor={`sub-chk-${sub.id}`}
+                                        className="cursor-pointer text-sm text-muted-foreground hover:text-amber-700"
+                                      >
+                                        Suplir Cargo de {member.name}
+                                      </Label>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          </div>
-
-                          {/* Selector de Sustituto */}
-                          {attended && (
-                            <div className="pl-8 space-y-2">
-                              <Label
-                                htmlFor={`substitute-${owner.id}`}
-                                className="text-xs text-muted-foreground"
-                              >
-                                ¿Quién asiste?
-                              </Label>
-                              <Select
-                                value={substituteId || "none"}
-                                onValueChange={(id) =>
-                                  handleSubstituteChange(owner.id, id)
-                                }
-                              >
-                                <SelectTrigger
-                                  id={`substitute-${owner.id}`}
-                                  className="h-9"
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">
-                                    <span className="font-medium">
-                                      {owner.name}
-                                    </span>
-                                    <span className="text-muted-foreground ml-2">
-                                      (Propietario)
-                                    </span>
-                                  </SelectItem>
-                                  {owner.approvedSubstitutes?.map((sub) => (
-                                    <SelectItem key={sub.id} value={sub.id}>
-                                      <span className="font-medium">
-                                        {sub.name}
-                                      </span>
-                                      <span className="text-muted-foreground ml-2">
-                                        (Sustituto)
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <ScrollBar orientation="vertical" />
           </ScrollArea>
         </div>
-
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 bg-gray-100 p-4 rounded-b-lg">
           <DialogClose asChild>
-            <Button variant="outline" size="lg">
-              Cancelar
-            </Button>
+            <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleConfirm} size="lg" className="px-8">
+          <Button onClick={handleConfirm} className="px-8">
             Confirmar
           </Button>
         </DialogFooter>

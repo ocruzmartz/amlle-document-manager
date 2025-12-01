@@ -789,24 +789,22 @@ body {
   line-height: 1.6;
   color: black;
   font-family: system-ui, -apple-system, sans-serif;
-
-  /* --- LÍNEAS ELIMINADAS --- */
-  /* transform: scale(0.6); */
-  /* transform-origin: top center; */
-  /* Se han quitado las media queries de scale también */
 }
 
 /* ===== CONTENEDOR DE VISTA PREVIA PDF ===== */
 .pdf-preview-container {
   width: 100%;
   height: 100%;
-  overflow: hidden; /* ✅ Ocultar scroll si el PDF es más grande */
+  overflow: auto;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .pdf-container {
   width: 100%;
   height: 100%;
+  flex: 1;
 }
 
 /* ===== ESTILOS PARA EL IFRAME DEL PDF ===== */
@@ -814,13 +812,12 @@ body {
   border: none !important;
   width: 100% !important;
   height: 100% !important;
-  min-height: 600px; /* ✅ Altura mínima para mejor visualización */
+  min-height: 0 !important;
 }
 
 /* ===== RESPONSIVE PARA VISTA PREVIA PDF ===== */
 @media (max-width: 1024px) {
   .pdf-preview-container {
-    /* En pantallas pequeñas, mantener tamaño normal */
     overflow: auto;
   }
 }

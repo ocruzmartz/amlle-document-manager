@@ -16,9 +16,9 @@ export const participantsService = {
     const propietariosAsCouncilMembers: CouncilMember[] =
       propietariosFromApi.map((p) => ({
         ...p,
-        role: "OWNER",
+        role: "OWNER" as CouncilMember["role"],
       }));
 
     return propietariosAsCouncilMembers;
   },
-};
+};  

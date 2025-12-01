@@ -169,7 +169,7 @@ export const AgreementList = ({
                             variant="outline"
                             size="sm"
                           >
-                            Editar
+                            Editar 
                           </Button>
                         </div>
                       </div>
